@@ -1,5 +1,12 @@
 # cycle-040 Notes
 
+important:[TOBIAS] Shipped patched construct.json + new construct.yaml for all 3 constructs.
+  Key changes: brier_type per theatre, rlmf.exports, dual role (role + semantic_role),
+  echelon verification_checks block, construct_class: theatre, domain_claims, skill_manifest.
+  Files staged in grimoires/pub/. Settlement factory (Phase 3) must emit this schema.
+  Open: BREATH domain_claims uses "environmental" — Echelon doesn't recognize yet.
+  Soju investigating first-class Echelon support in Constructs Network.
+
 ## Rollback Plan (Multi-Model Adversarial Review Upgrade)
 
 ### Full Rollback

@@ -1,249 +1,505 @@
-# PRD: Community Feedback — Review Pipeline Hardening
+# FORGE — Product Requirements Document
 
-**Cycle**: cycle-048
-**Created**: 2026-02-28
-**Sources**: Issues #425, #426, #427, #430 (community feedback from zkSoju, gumibera)
-**Flatline Review**: Passed — 8 HIGH_CONSENSUS findings integrated, 0 BLOCKERS
+> **Status**: Active
+> **Version**: 1.0.0
+> **Date**: 2026-03-19
+> **Sources**: grimoires/pub/FORGE_PROGRAM.md, TREMOR/CORONA/BREATH/Echelon reference docs
+
+---
 
 ## 1. Problem Statement
 
-The Loa review pipeline has several reliability gaps discovered during real-world usage across loa-constructs (v2.8.0), loa-finn, loa-hounfour, loa-freeside, and loa-dixie. These range from parsing failures that block the review loop (#427.1), to stale state propagation that silently skips quality gates (#430), to a YAML parser bug that disables the Bridgebuilder (#425). Each individually causes friction; together they undermine confidence in the review pipeline as a whole.
+> *Sources: FORGE_PROGRAM.md (Identity, Platform context), Echelon readme*
 
-> Sources: #427 (zkSoju, loa-constructs cycle-036), #426 (zkSoju), #425 (zkSoju), #430 (gumibera, simstim cycle-018)
+The Echelon prediction market platform deploys "Theatres" — structured markets on real-world outcomes. Three constructs (TREMOR, CORONA, BREATH) have proven that this architecture works across seismic, space weather, and air quality domains. But each construct was hand-coded: a human looked at a data feed, designed the right Theatre templates, and hardcoded the parameters.
 
-## 2. Goals & Success Criteria
+**The problem**: Scaling to new data feeds requires repeated human expert analysis. There is no automated system that can take an arbitrary live data feed, characterize its statistical properties, and propose appropriate Theatre templates.
 
-| Goal | Metric | Source |
-|------|--------|--------|
-| GPT review loop completes without false-negative exit codes | All verdict check sites handle both `.verdict` and `.overall_verdict` | #427.1 |
-| Bridgebuilder config parsing works regardless of YAML section ordering | Regex uses `[ \t]+` not `\s+` for section capture | #425 |
-| Flatline readiness validated fresh per cycle | `flatline-readiness.sh` checks all configured providers (incl. Gemini) | #430 |
-| 401 errors surface actual API error message | `lib-curl-fallback.sh` extracts `.error.message` from response body | #426 |
-| Cross-platform `timeout` usage documented and portable | Canonical `run_with_timeout()` in compat-lib.sh, existing ad-hoc implementations migrated | #427.2 |
-| Curl config injection guard standardized | API key validated before writing curl config; all existing sites migrated | #427.4 |
+**The opportunity**: All three existing constructs, despite being in very different domains, share common structural patterns. The same 6 Theatre templates (threshold_gate, cascade, divergence, regime_shift, persistence, anomaly) appear across all three. The feed characteristics that cause each template to be appropriate can be expressed as measurable statistical properties.
 
-## 3. User Context
+FORGE exists to automate this: a feed characterizer + template selector that generalizes the patterns already proven in TREMOR, CORONA, and BREATH into a deployable factory for any data feed.
 
-**Primary persona**: Loa operator running multi-model review pipelines (simstim, run-bridge, gpt-review) across macOS and Linux.
+---
 
-**Pain points** (from feedback):
-- "Agent carried stale skip decisions without verification" (#430)
-- "Useful approvals that the parser rejected" (#427.1)
-- "Observe 'disabled' error despite `enabled: true` being set" (#425)
-- "Had to curl API directly to see 'Incorrect API key' error" (#426)
+## 2. Vision & Goals
+
+> *Sources: FORGE_PROGRAM.md (Identity, The metric, Beyond convergence)*
+
+**Vision**: The Uniswap factory for prediction surfaces. Point FORGE at any live data feed → it characterizes the data → selects Theatre templates → deploys markets. Domain expertise encoded once, applied everywhere.
+
+**Primary goal**: Achieve convergence on all three backing specs simultaneously:
+- TREMOR (USGS seismic): 5 templates correctly proposed
+- CORONA (NOAA/NASA space weather): 5 templates correctly proposed
+- BREATH (PurpleAir/AirNow air quality): 3 templates correctly proposed
+- **Maximum TotalScore: 20.5** (13.0 TemplateScore + 7.5 GrammarScore)
+- Both raw fixture mode AND anonymized fixture mode must converge
+
+**Secondary goal**: Generalize beyond the three known feeds:
+- Loop 4: Novel feed (ThingSpeak temperature) — validate the classifier generalizes
+- Loop 5: Composed feed (PurpleAir + wind direction) — validate cross-feed composition
+
+**Success definition**: 20.5/20.5 on raw + anonymized fixtures for all three backing specs. Convergence is necessary but not sufficient for deployment. Full deployment additionally requires Loop 4, Loop 5, and usefulness filter calibration.
+
+---
+
+## 3. Users & Stakeholders
+
+> *Sources: Echelon readme, FORGE_PROGRAM.md (Platform context)*
+
+**Primary user**: The Echelon platform / automated deployment pipeline. FORGE runs as a library/construct — it has no human operator in the hot path. It receives a data feed, produces Theatre proposals, and those proposals are validated and deployed.
+
+**Secondary user**: Construct developers and integrators building new domains on Echelon. They point FORGE at a new feed and use the proposals as a starting point.
+
+**Constrained operator (anti-cheating)**: The classifier must behave correctly even when the operator doesn't know what domain the feed is from. Statistical properties only — no source identity leaks.
+
+---
 
 ## 4. Functional Requirements
 
-### FR-1: GPT Verdict Parsing Resilience (#427.1)
+> *Sources: FORGE_PROGRAM.md (The files, Build order, Backing specs, Anti-cheating)*
 
-**Problem**: The review pipeline checks `.verdict` in multiple locations across the codebase. GPT 5.3-codex returns `.overall_verdict` on re-review iterations, causing exit code 5 (format error). The PRD originally identified only `gpt-review-api.sh` lines 116 and 131, but Flatline review found `.verdict`-only checks in at least 7 locations across 4+ files.
+### 4.1 Phase 0 — Scaffolding (build once, fixed)
 
-**Affected files** (Flatline-identified):
-- `gpt-review-api.sh` lines 116, 131 — legacy codex path
-- `lib-curl-fallback.sh` line 318 — terminal verdict validation in `call_api()`
-- `lib-route-table.sh` lines 202, 581 — declarative route table validation
-- `lib/normalize-json.sh` line 250 — `validate_agent_response()` schema check
-- Existing BATS tests in `test-gpt-review-integration.bats` — `.verdict`-only assertions
+**F-01: Deterministic Replay Module** (`src/replay/deterministic.js`)
+- Takes a fixture JSON file, replays it as if it were a live feed
+- Same input → same output every time (no randomness)
+- Must handle USGS GeoJSON, SWPC JSON, PurpleAir JSON, AirNow JSON
+- This is the prerequisite for running the convergence loop
 
-**Fix**:
-- Create centralized `extract_verdict()` helper in `lib/normalize-json.sh`: `jq -r '.verdict // .overall_verdict // "UNKNOWN"'`
-- Apply normalization early in the response pipeline (before any validation)
-- Update all call sites to use the centralized helper
-- Update existing test assertions to use the normalized pattern
+**F-02: Feed Ingester** (`src/ingester/generic.js`)
+- Normalizes raw feed data into `{timestamp, value, metadata}` tuples
+- Handles: USGS GeoJSON, SWPC JSON, PurpleAir JSON, AirNow JSON
+- **CRITICAL**: Strips all source-identifying information from metadata before the classifier sees it. Metadata may contain: sensor coordinates (if present), sensor count, generic value labels ("reading_1", "reading_2"). Metadata MUST NOT contain: domain names, source identifiers, API paths, unit names, field names from original feed
 
-**Acceptance criteria**:
-- GPT review completes when response contains `.overall_verdict` instead of `.verdict`
-- Existing `.verdict` responses continue to work unchanged
-- All verdict check sites (7+) use centralized `extract_verdict()`
-- BATS test covers both field names through the `call_api()`, `validate_review_result()`, and `validate_agent_response()` paths
-- Existing `test-gpt-review-integration.bats` assertions updated
+**F-03: Convergence Test Harness** (`test/convergence/tremor.spec.js`, `corona.spec.js`, `breath.spec.js`)
+- Three spec files; each loads the corresponding fixture, runs classify → select, asserts against backing spec
+- **Must run in two modes**:
+  - Raw fixture mode: original field names, original structure
+  - Anonymized fixture mode: shuffled field names, stripped source URLs, generic metadata
+- A classifier is INVALID if it passes raw but fails anonymized
+- Per-experiment report output (see section 4.3 for schema)
+- Rate limiting module (`src/ingester/rate-limiter.js`) for live feeds
 
-**Implementation order**: Implement AFTER FR-4 (both modify `lib-curl-fallback.sh`)
+### 4.2 Phase 1 — Feed Classifier
 
-### FR-2: Bridgebuilder YAML Parser Fix (#425)
+**F-04: Q1 Cadence** (`src/classifier/cadence.js`)
+- Computes median timestamp delta and jitter coefficient (stdev/median of deltas)
+- Classifications (measurable thresholds):
+  - `seconds`: median_delta < 60s
+  - `minutes`: 60s ≤ median_delta < 3600s
+  - `hours`: 3600s ≤ median_delta < 86400s
+  - `days`: median_delta ≥ 86400s
+  - `event_driven`: jitter_coefficient > 2.0
+  - `multi_cadence`: bimodal/multimodal delta histogram (two or more peaks separated by > 2× smaller peak)
 
-**Problem**: `config.ts` line 189 regex `/^bridgebuilder:\s*\n((?:\s+.+\n?)*)/m` uses `\s+` which matches newlines, causing capture to bleed through all subsequent YAML sections. Last `enabled: false` from any later section overwrites bridgebuilder's `enabled: true`.
+**F-05: Q2 Distribution** (`src/classifier/distribution.js`)
+- Computes bounds, percentiles, detects breakpoints
+- Classifications:
+  - `bounded_numeric`: values stay within stable min/max across ≥90% of window; range is finite and non-growing
+  - `unbounded_numeric`: no known fixed upper bound; coefficient of max growth across rolling sub-windows exceeds 0.1 AND no stable ceiling in top decile
+  - `categorical`: unique_values / total_observations < 0.05 AND values are non-continuous
+  - `composite`: two or more sub-streams with different distribution types (detected via multimodal value histogram)
 
-**Context** (Flatline-clarified): The upstream Loa repo's `.loa.config.yaml` has no top-level `bridgebuilder:` section — it has `bridgebuilder_design_review:` and `run_bridge.bridgebuilder:`. The bug manifests in downstream repos (loa-constructs, loa-finn, etc.) that DO have standalone `bridgebuilder:` sections. The regex's `^` in multiline mode matches any line start, so it could also false-match `bridgebuilder_design_review:` as a prefix. The existing `config.test.ts` tests bypass `loadYamlConfig()` entirely (passing yamlConfig directly to `resolveConfig()`), so they don't exercise the regex.
+**F-06: Q3 Noise Profile** (`src/classifier/noise.js`)
+- Computes autocorrelation, spike rate, cycle period
+- Spike primitive: `|value - rolling_median(window=20)| > 3 × rolling_MAD(window=20)`; spike_rate = spike_count / total_observations
+- Classifications:
+  - `spike_driven`: spike_rate > 0.05 AND lag-1 autocorrelation < 0.3
+  - `cyclical`: dominant FFT frequency with spectral power > 2× next peak AND autocorrelation shows periodicity (peak at lag > 1)
+  - `trending`: linear regression slope |t-statistic| > 2.0
+  - `stable_with_drift`: rolling stdev < 0.1 × rolling mean AND |regression slope t-stat| < 2.0
+  - `mixed`: two or more criteria simultaneously satisfied
 
-**Fix**:
-- Replace `\s+` with `[ \t]+` in the inner capture group
-- Updated regex: `/^bridgebuilder:\s*\n((?:[ \t]+.+\n?)*)/m`
-- Verify regex does NOT match `bridgebuilder_design_review:` (prefix false positive)
-- Rebuild TypeScript → dist/
+**F-07: Q4 Density** (`src/classifier/density.js`)
+- Counts sensors, detects co-located pairs, counts tiers
+- Classifications:
+  - `single_point`: sensor_count = 1 or no spatial metadata
+  - `sparse_network`: sensor_count > 1 AND mean nearest-neighbor distance > 50km (or co_located_pairs / sensor_count < 0.1)
+  - `dense_network`: sensor_count > 1 AND mean nearest-neighbor distance ≤ 50km (or co_located_pairs / sensor_count ≥ 0.1)
+  - `multi_tier`: two or more distinct sensor classes inferred from cadence differences, quality distribution, spatial density clustering, or normalized trust metadata — NOT from source-specific labels
 
-**Acceptance criteria**:
-- Bridgebuilder reads `enabled: true` correctly regardless of section ordering in `.loa.config.yaml`
-- Existing config.test.ts passes
-- New test exercises `loadYamlConfig()` directly (not just `resolveConfig()` with injected config)
-- New test: config with `bridgebuilder:` before `red_team:` (which has `enabled: false`) parses correctly
-- New test: config with `bridgebuilder_design_review:` is NOT captured by `bridgebuilder:` regex
-- Built dist/ output committed and matches TypeScript source (`npm run build && git diff --exit-code dist/`)
+**F-08: Q5 Thresholds** (`src/classifier/thresholds.js`)
+- Histogram clustering, regulatory table lookup (if configured)
+- Classifications:
+  - `regulatory`: feed values cluster at known breakpoint boundaries (histogram shows sharp density changes at configured regulatory table values — EPA AQI, NOAA scales, etc.)
+  - `physical`: thresholds correspond to natural phase boundaries (bimodal value distribution with clear separation)
+  - `statistical`: thresholds derived from percentile analysis (p95, p99, or 3-sigma as candidate gate thresholds)
+  - `none`: no stable breakpoint family detected
 
-### FR-3: Flatline Readiness — 3-Model Validation (#430)
+**F-09: Feed Grammar Orchestrator** (`src/classifier/feed-grammar.js`)
+- Runs Q1-Q5 in sequence, produces a `FeedProfile`
+- FeedProfile schema:
+  ```js
+  {
+    cadence: { classification, median_ms, [jitter_coefficient], [streams] },
+    distribution: { type, [bounds], [sub_types] },
+    noise: { classification, [spike_rate], [components] },
+    density: { classification, [sensor_count], [tiers] },
+    thresholds: { type, [values] },
+  }
+  ```
+- **Determinism**: Same input → same FeedProfile. No randomness in convergence mode.
+- **Anti-cheating**: Classifier receives only normalized `{timestamp, value, metadata}` tuples with source identity stripped. No URL sniffing, field name matching, or hardcoded mappings to known feeds.
 
-**Problem**: Simstim Phase 0 doesn't validate Flatline readiness. Agents inherit stale skip decisions from previous cycles. PR #431 adds a readiness check but only validates 2 of 3 configured providers.
+### 4.3 Phase 2 — Template Selector
 
-**This is a NEW FILE** (Flatline-clarified): `flatline-readiness.sh` does not exist in the repository. This is greenfield implementation, not a patch. Scope estimation should account for writing the full script from scratch.
+**F-10: Selection Rules** (`src/selector/rules.js`)
+- Explicit decision tree mapping FeedProfile properties to Theatre template recommendations
+- Every rule must follow the enforced schema:
+  ```js
+  {
+    id: "rule_001",
+    conditions: [
+      { field: "noise.classification", operator: "equals", value: "spike_driven" },
+      ...
+    ],
+    output: {
+      template: "threshold_gate",
+      params: { threshold, window_hours, base_rate }
+    },
+    confidence: "conditions_satisfied / conditions_total",
+    traced_to: "TREMOR MagGate, CORONA FlareGate"
+  }
+  ```
+- No inline logic, no hidden branches, no anonymous rules
+- Every rule cites the backing construct it generalizes via `traced_to`
+- Confidence is mechanical: (conditions satisfied) / (total conditions)
 
-**Fix** (supersedes PR #431):
-- Create `.claude/scripts/flatline-readiness.sh` (new file)
-- Reads configured models from `.loa.config.yaml` (primary, secondary, tertiary)
-- Maps models to API key env vars:
-  - `opus` / `claude-*` → `ANTHROPIC_API_KEY`
-  - `gpt-*` → `OPENAI_API_KEY`
-  - `gemini-*` → `GOOGLE_API_KEY` (canonical) with `GEMINI_API_KEY` as accepted alias + deprecation warning
-- Reports status based on provider availability:
-  - `READY` (exit 0): All configured provider keys present
-  - `DISABLED` (exit 1): `flatline_protocol.enabled` is false or absent
-  - `NO_API_KEYS` (exit 2): Zero provider keys present
-  - `DEGRADED` (exit 3): 1+ but not all provider keys present
-- Integration into `simstim-orchestrator.sh` preflight (from PR #431)
-- SKILL.md updated with fresh-per-cycle validation warning
-- Mirrors `beads-health.sh` pattern (same exit codes, flags, PROJECT_ROOT override)
+**F-11: Template Selector** (`src/selector/template-selector.js`)
+- Runs all rules against a FeedProfile, produces ranked proposals with confidence and rationale
+- Tie-breaking (deterministic):
+  1. Higher confidence wins
+  2. More specific rule (greater condition count) wins
+  3. Higher backing-construct frequency in `traced_to` wins
+  4. Lexical rule ID as final tiebreak
+- False positive penalty: −0.5 per proposed template not in backing spec
 
-**Output schema** (`--json`):
-```json
+**F-12: Structured Logging** (required for every classify → select cycle)
+```js
 {
-  "status": "READY|DEGRADED|NO_API_KEYS|DISABLED",
-  "providers": {
-    "anthropic": { "configured": true, "available": true },
-    "openai": { "configured": true, "available": true },
-    "google": { "configured": true, "available": true, "env_var": "GOOGLE_API_KEY" }
-  },
-  "recommendations": ["..."]
+  iteration: N,
+  feed: 'fixture_name',
+  feed_profile: { /* full FeedProfile */ },
+  rules_evaluated: [
+    { id, conditions_met, conditions_total, fired: true },
+    { id, conditions_met, conditions_total, fired: false, failed_condition: '...' },
+  ],
+  proposals: [ /* ranked template proposals */ ],
+  score: { template_score, grammar_score, total },
+  delta: +/-N,
+  decision: 'keep' | 'discard'
 }
 ```
 
-**Acceptance criteria**:
-- `flatline-readiness.sh --json` reports correct status for all provider combinations
-- Gemini availability checked when `flatline_protocol.models.tertiary` is configured
-- Both `GOOGLE_API_KEY` and `GEMINI_API_KEY` accepted; `GEMINI_API_KEY` triggers deprecation warning
-- `tests/unit/flatline-readiness.bats` covers READY, DEGRADED, NO_API_KEYS, DISABLED
-- Simstim preflight logs Flatline status to trajectory
+### 4.4 Phase 3 — Generalized Infrastructure
 
-### FR-4: API Error Message Surfacing (#426)
+**F-13: Theatre Templates** (6 files in `src/theatres/`)
+- `threshold-gate.js` — binary: will value exceed X within Z hours? Generalized from TREMOR MagGate, CORONA FlareGate/GeomagGate, BREATH AQI Gate
+- `cascade.js` — multi-class (5 buckets): following trigger, how many qualifying sub-events? Generalized from TREMOR Aftershock, CORONA ProtonCascade, BREATH WildfireCascade
+- `divergence.js` — binary: will two measurements disagree beyond threshold? Generalized from TREMOR OracleDivergence, CORONA SolarWindDivergence, BREATH SensorDivergence
+- `regime-shift.js` — binary: will system transition from state A to B? Generalized from TREMOR DepthRegime
+- `persistence.js` — binary: will condition X persist for N consecutive periods? Extracted from BREATH auto-spawn + CORONA sustained Kp patterns
+- `anomaly.js` — binary: will statistically anomalous reading occur? Generalized from TREMOR SwarmWatch (b-value)
 
-**Problem**: `lib-curl-fallback.sh` 401 handler (lines 255-257) prints generic "Authentication failed" for 401 errors. The actual API error message (e.g., "Incorrect API key provided") is discarded.
+**F-14: Generalized Processor Pipeline**
+- `quality.js` — generalized quality scoring (from TREMOR/CORONA/BREATH processor patterns)
+- `uncertainty.js` — generalized doubt pricing
+- `settlement.js` — generalized settlement logic (T0/T1 settlement authority, T2/T3 signal only)
+- `bundles.js` — generalized evidence bundle construction
 
-**Fix**:
-- Extract `.error.message` from response body via `jq -r '.error.message // empty' 2>/dev/null`
-- Pass extracted message through `redact_secrets()` before display (prevents API key fragment leakage)
-- Show both: specific error first, generic fallback second
-- Handle non-JSON error bodies gracefully (HTML from proxies/CDNs, empty bodies, JSON without `.error` key)
+**F-15: Oracle Trust Model**
+- `oracle-trust.js` — T0-T3 trust tiers:
 
-**Note**: `.env` sourcing is intentionally NOT supported (SKP-003 security decision — env-only auth prevents credential file exposure). This is documented behavior, not a bug.
+| Tier | Role | Settles? |
+|------|------|----------|
+| T0 | Settlement authority | Yes |
+| T1 | Official source | Yes (Brier discount) |
+| T2 | Corroboration | No (evidence only) |
+| T3 | Signal | No (position update only) |
 
-**Scope note**: This FR covers the direct curl path in `call_api()` only. The model-invoke path (`call_api_via_model_invoke()`) also swallows errors but is a separate concern for a future cycle.
+- T3 may promote to T2 via: min observation count + uptime % + neighborhood agreement + anti-spoof checks. Never to T0/T1 without human override.
+- **Critical**: PurpleAir = T3. AirNow = T1. If FORGE proposes PurpleAir can settle a theatre, the trust model is broken.
 
-**Acceptance criteria**:
-- 401 responses show the API provider's error message (after secret redaction)
-- Non-JSON error bodies (HTML, empty, malformed) fall back gracefully to generic message
-- Error messages passed through `redact_secrets()` before display
-- BATS test verifies error extraction for: valid JSON error, HTML body, empty body, JSON without `.error`
+**F-16: Adversarial Detection** (`src/trust/adversarial.js`)
+- Required for any T2/T3 source
+- Detects and mitigates: location spoofing, value manipulation, replayed/frozen data, clock drift, mirrored feeds, Sybil sensors
+- PurpleAir channel A/B consistency is the design template
 
-**Implementation order**: Implement BEFORE FR-1 (both modify `lib-curl-fallback.sh`)
+**F-17: Economic Usefulness Filter** (`src/filter/usefulness.js`)
+- Formula (equal weights, iterate):
+  ```
+  usefulness = population_impact × regulatory_relevance × predictability × actionability
+  ```
+- Each factor 0-1. Not optimized prematurely — this needs real-world iteration.
 
-### FR-5: Cross-Platform `timeout` Helper (#427.2)
+**F-18: Cross-Feed Composition** (`src/composer/compose.js`)
+- Handles composed feeds (e.g., PurpleAir + wind direction for smoke plume detection)
+- Temporal alignment and causal ordering between feeds
 
-**Problem**: `timeout` command doesn't exist on stock macOS. Scripts use ad-hoc fallback chains. At least 2 incompatible `run_with_timeout()` implementations already exist (`post-pr-orchestrator.sh` line 105, `post-pr-e2e.sh` line 103), plus a bare `timeout` call in `golden-path.sh` line 403.
+**F-19: RLMF Certificates** (`src/rlmf/certificates.js`)
+- Same schema as TREMOR/CORONA/BREATH certificates (pipeline compatibility)
 
-**Fix**:
-- Add canonical `run_with_timeout()` to `.claude/scripts/compat-lib.sh`
-- Fallback chain: `timeout` → `gtimeout` → `perl -e 'alarm(N); exec @ARGV'` → warn and run without timeout
-- Runtime detection (not cached at source time) to support test PATH manipulation
-- Migrate existing implementations:
-  - `post-pr-orchestrator.sh` line 105 → use `compat-lib.sh` helper
-  - `post-pr-e2e.sh` line 103 → use `compat-lib.sh` helper (preserve security allowlist logic separately)
-  - `golden-path.sh` line 403 → use `compat-lib.sh` helper
-- Document in `.claude/protocols/cross-platform-shell.md`
-- CI lint (`shell-compat-lint.yml`) should flag bare `timeout` usage
+**F-20: ForgeConstruct Entrypoint** (`src/index.js`)
+- Exposes `ForgeConstruct` class following the established construct pattern: Oracle → Processor → Theatre → RLMF
 
-**Acceptance criteria**:
-- `run_with_timeout 10 sleep 20` terminates after 10s on both macOS and Linux
-- Function exists in compat-lib.sh with runtime detection (not cached)
-- Existing ad-hoc implementations (3 sites) migrated to canonical helper
-- BATS test covers all fallback paths using PATH manipulation to simulate each scenario
-- CI lint rule flags bare `timeout` command usage
-- Protocol doc updated
+---
 
-### FR-6: Curl Config Injection Guard (#427.4)
+## 5. Scoring System
 
-**Problem**: SHELL-002 documents curl config files for API key protection but doesn't warn about CR/LF injection in key values.
+> *Sources: FORGE_PROGRAM.md (The metric)*
 
-**Affected curl config sites** (Flatline-identified):
-- `lib-curl-fallback.sh` lines 211-215
-- `constructs-auth.sh` lines 156-159
-- `constructs-browse.sh` lines 117-120, 179-182
+### TemplateScore (per expected template)
+```
+template_match: +1 if correct template proposed, 0 if missing
+param_field_score (per required param): +1 if matches backing spec, 0 if not
+template_score = template_match × (0.5 + 0.5 × mean(param_field_scores))
+false_positive: -0.5 per proposed template not in backing spec
+```
 
-**Fix**:
-- Add `write_curl_auth_config()` helper to `lib-security.sh`
-- Returns path to config file (enforces `mktemp` + `chmod 600` centrally)
-- Validates key contents: rejects `\r`, `\n`, `\0`, `\` (backslash); escapes `"` in curl config output
-- Uses `printf` not `echo` for config file writing
-- Migrate all existing curl config creation sites to use the new helper
-- Document pattern in SHELL-002 section of cross-platform protocol
+### Required param fields per template type (always scored)
+| Template | Required params |
+|----------|----------------|
+| threshold_gate | threshold, window_hours, base_rate |
+| cascade | trigger_threshold, bucket_count, window_hours |
+| divergence | source_a_type, source_b_type, divergence_threshold |
+| regime_shift | state_boundary, zone_prior |
+| anomaly | baseline_metric, sigma_threshold, window_hours |
+| persistence | condition_threshold, consecutive_count |
 
-**Acceptance criteria**:
-- Keys containing CR/LF/null/backslash are rejected with clear error message
-- Keys with quotes are properly escaped in curl config output
-- Valid keys (including base64 characters `+`, `/`, `=`) write correct curl config
-- All existing curl config sites (3 files, 4 locations) migrated to `write_curl_auth_config()`
-- CI grep check for raw `printf.*Authorization.*Bearer` patterns prevents regression
-- BATS test covers injection vectors and valid key edge cases
+### Context params (scored when present in backing spec)
+- threshold_gate: settlement_source, input_mode, threshold_type
+- cascade: prior_model
+- divergence: resolution_mode
 
-## 5. Technical & Non-Functional
+### GrammarScore
+- +1 per correct Q classification matching backing spec
+- Max: 3 specs × 5 questions = 15 points
 
-- **System Zone authorization**: All target files are in `.claude/scripts/` and `.claude/skills/` (System Zone). These are framework-internal fixes to the review pipeline itself, requiring authorized System Zone writes for this cycle. Safety hooks (`team-role-guard-write.sh`) must be accounted for in Agent Teams mode.
-- All fixes must include BATS tests (Shell Tests CI now functional after #434)
-- TypeScript changes (FR-2) must rebuild dist/ and pass existing tests
-- No new runtime dependencies
-- Cross-platform: all changes must work on macOS (Darwin) and Linux (Ubuntu CI)
-- Pre-existing BATS test failures (271): New tests should be runnable in isolation (`bats tests/unit/<specific-file>.bats`) to avoid interference
-- FR-4 must be implemented before FR-1 (both modify `lib-curl-fallback.sh` in adjacent code paths)
-- Integration test: A single BATS test should exercise FR-1 (verdict normalization) + FR-4 (error surfacing) + FR-6 (curl config guard) in a single review pipeline pass
+### TotalScore
+```
+TotalScore = TemplateScore + (0.5 × GrammarScore)
+Max = 13.0 + 7.5 = 20.5
+```
 
-## 6. Scope
+### Duplicate matching
+When multiple expected templates share the same type, proposals are matched by maximum param field overlap. Greedy matching: highest-overlap pair first. Each proposal assigned to at most one expected template.
 
-### In scope
-- FR-1 through FR-6 as described above
-- Migration of existing ad-hoc implementations to centralized helpers (FR-5, FR-6)
+---
 
-### Out of scope
-- Deployment platform awareness for `/bug` triage (#426 enhancement suggestion) — future cycle
-- `.env` file sourcing for API keys — intentional security decision (SKP-003)
-- Shell Tests 271 pre-existing test failures — separate tech debt issue
-- Model-invoke path error surfacing (`call_api_via_model_invoke()`) — future cycle
-- Full YAML parser replacement for config.ts — the regex fix is sufficient for the reported bug
+## 6. Convergence Loop Protocol
 
-## 7. Risks & Dependencies
+> *Sources: FORGE_PROGRAM.md (The loop, Keep/discard rule)*
 
-| Risk | Mitigation |
-|------|------------|
-| PR #431 conflicts with FR-3 | Close #431, implement fresh from this PRD |
-| TypeScript rebuild for FR-2 may produce merge conflicts with concurrent TS PRs | Merge quickly after building; verify deterministic build output |
-| `GOOGLE_API_KEY` vs `GEMINI_API_KEY` naming inconsistency | **Resolved**: `GOOGLE_API_KEY` is canonical (per cheval.py, google_adapter.py); `GEMINI_API_KEY` accepted as alias with deprecation warning |
-| Curl injection guard may break existing key formats | Use allowlist for known-safe characters; reject only definite injection vectors |
-| FR-1 + FR-4 touch adjacent code in `lib-curl-fallback.sh` | Implement FR-4 first, FR-1 second; shared integration test verifies no interaction bugs |
-| All FRs require System Zone writes | Framework-internal fixes authorized for cycle-048; safety hooks accounted for |
-| 271 pre-existing BATS failures may mask new test results | Run new tests in isolation first, then verify in full suite |
+### Keep/discard rule
+**Keep (git commit)** if ANY of:
+- TotalScore increased
+- TotalScore unchanged BUT structured logs show strictly better decomposition (fewer false positives, or better grammar alignment)
+- Change is `[exploratory]` in commit message (max 1 per 10 iterations)
 
-## 8. Issue References
+**Discard (git revert)** if:
+- TotalScore decreased AND none of the above apply
 
-| Issue | Status | Disposition |
-|-------|--------|-------------|
-| #421 | Closed | Fixed by #434 (gpt-5.3-codex default) |
-| #425 | Open | FR-2 |
-| #426 | Open | FR-4 (error surfacing); .env sourcing is by-design; deployment context is future |
-| #427 | Open | FR-1 (verdict), FR-5 (timeout), FR-6 (curl guard); finding 3 fixed by #434 |
-| #430 | Open | FR-3 (supersedes PR #431) |
+### One change per iteration
+- One modification to one classifier question OR one selector rule
+- Test, keep or discard, repeat
+- Do not batch changes
 
-## 9. Flatline Review Log
+---
 
-**Phase**: PRD review (cycle-048 Phase 2)
-**Reviewers**: Opus (reviewer) + Opus (skeptic)
-**Findings**: 16 reviewer + 16 skeptic = 32 total
-**HIGH_CONSENSUS**: 8 findings integrated (FR-1 scope expansion, FR-2 context clarification, FR-3 greenfield reframe, FR-4 redaction + non-JSON handling, FR-5 migration scope, FR-6 migration checklist, System Zone authorization, implementation sequencing)
-**DISPUTED**: 1 (GOOGLE_API_KEY resolution — resolved by checking both, integrated)
-**PRAISE**: 2 (scope discipline, centralization approach)
-**BLOCKERS**: 0
+## 7. Technical Constraints
+
+> *Sources: FORGE_PROGRAM.md (Constraints, Other constraints)*
+
+| Constraint | Requirement |
+|-----------|-------------|
+| Dependencies | Zero external. Node.js 20+ only (built-in `fetch`, `node:test`) |
+| Test runner | `node --test` |
+| Determinism | Same input → same FeedProfile → same proposals → same score. Every time. No randomness, sampling, or non-seeded heuristics in convergence mode. |
+| Anti-cheating | Classifier MUST NOT use source identity. Anonymized fixture mode must pass. |
+| Rule schema | Enforced structure with id, conditions, output, confidence, traced_to |
+| Structured logging | Every classify → select cycle must produce full structured log |
+| Threshold changes | Must be justified in structured log and pass keep/discard rule |
+| RLMF schema | Same as TREMOR/CORONA/BREATH for pipeline compatibility |
+
+---
+
+## 8. Convergence Targets (Backing Specifications)
+
+> *Sources: FORGE_PROGRAM.md (Backing specification)*
+
+### TREMOR (USGS seismic)
+
+Expected FeedProfile:
+```js
+{
+  cadence: { classification: 'event_driven', median_ms: ~60000 },
+  distribution: { type: 'unbounded_numeric' },
+  noise: { classification: 'spike_driven' },
+  density: { classification: 'sparse_network' },
+  thresholds: { type: 'statistical' },
+}
+```
+
+Expected proposals (5 templates):
+| Template | Key params |
+|----------|-----------|
+| threshold_gate | threshold: M5.0, window: 24h |
+| cascade | trigger: M6.0+, buckets: 5, window: 72h |
+| divergence | source_a: automatic, source_b: reviewed |
+| anomaly | b-value deviation, window: 7d |
+| regime_shift | shallow vs deep, zone prior |
+
+### CORONA (NOAA SWPC + NASA DONKI)
+
+Expected FeedProfile:
+```js
+{
+  cadence: { classification: 'multi_cadence', streams: ['1min', '3hr', '5min', 'event'] },
+  distribution: { type: 'composite', sub_types: ['bounded_numeric', 'categorical'] },
+  noise: { classification: 'mixed', components: ['cyclical', 'spike_driven'] },
+  density: { classification: 'single_point' },
+  thresholds: { type: 'regulatory', values: ['G1-G5', 'S1-S5', 'R1-R5'] },
+}
+```
+
+Expected proposals (5 templates):
+| Template | Key params |
+|----------|-----------|
+| threshold_gate | flare class ≥M1.0, window: 24h |
+| threshold_gate | Kp ≥5, window: 72h, multi-input |
+| threshold_gate | CME arrival ±6h |
+| cascade | trigger: M5+ flare, buckets: 5, window: 72h |
+| divergence | Bz volatility streak |
+
+### BREATH (PurpleAir + AirNow)
+
+Expected FeedProfile:
+```js
+{
+  cadence: { classification: 'multi_cadence', streams: ['120s', '60min'] },
+  distribution: { type: 'bounded_numeric', bounds: [0, 500] },
+  noise: { classification: 'mixed', components: ['cyclical', 'spike_driven'] },
+  density: { classification: 'multi_tier', tiers: ['dense', 'sparse'] },
+  thresholds: { type: 'regulatory', values: [51, 101, 151, 201, 301] },
+}
+```
+
+Expected proposals (3 templates):
+| Template | Key params |
+|----------|-----------|
+| threshold_gate | AQI ≥151, window: 24h, settlement: AirNow |
+| divergence | sensor A vs sensor B, consecutive: 3 |
+| cascade | trigger: AQI ≥200, metric: sensor fraction, buckets: 5, window: 72h |
+
+---
+
+## 9. Novel Validation (Post-Convergence)
+
+> *Sources: FORGE_PROGRAM.md (Beyond convergence)*
+
+### Loop 4 — Novel feed (ThingSpeak temperature)
+- Single sensor, hourly, bounded -40 to 60°C, no regulatory thresholds
+- Expected: `{ cadence: 'hours', distribution: 'bounded_numeric', noise: 'cyclical', density: 'single_point', thresholds: 'statistical' }`
+- Expected proposals: threshold_gate at historical extremes, regime_shift at seasonal transitions
+- Expected usefulness score: lower than PurpleAir (no regulatory/population significance)
+
+### Loop 5 — Feed composition (PurpleAir + wind direction)
+- Expected proposal: smoke plume arrival theatre (binary: will AQI exceed 200 at downwind location within 12h?)
+- Neither feed alone generates this — requires temporal alignment and causal ordering
+- This is the factory proof: FORGE composing feeds to produce novel theatres
+
+---
+
+## 10. Scope
+
+### In Scope (MVP)
+
+1. **Phase 0**: Scaffolding (replay, ingester, test harness) — prerequisite for loop
+2. **Phase 1**: Five-question classifier (Q1-Q5 + orchestrator) — primary loop target
+3. **Phase 2**: Selector (rules + template-selector) — convergence to 13/13
+4. **Phase 3**: Generalized infrastructure (theatres, processors, trust, RLMF, composer, entrypoint) — post-convergence
+
+### Out of Scope (Phase 1 MVP)
+
+- Live feed polling (replay module sufficient for convergence)
+- Frontend or admin UI
+- Smart contract integration
+- Production deployment / horizontal scaling
+- ThingSpeak API integration (Loop 4 uses fixture, not live feed)
+- Automatic feed discovery / crawling
+
+### Open Questions (do not prematurely solve)
+
+1. **Composite feed classification**: classify the composite (AQI) or classify sub-feeds (PM2.5, O3) and compose?
+2. **Automatic vs declared composition**: does FORGE detect cross-feed correlations automatically, or does a human declare the composition graph?
+3. **Economic usefulness weights**: start with equal weights, iterate after real-world data
+4. **Multi-input theatres**: how does the selector express "this theatre needs inputs from multiple classified feeds"?
+
+---
+
+## 11. Risks & Dependencies
+
+> *Sources: FORGE_PROGRAM.md (Anti-cheating, Convergence is necessary but not sufficient)*
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| Classifier uses source identity (cheating) | Critical | Anonymized fixture mode is mandatory gating test |
+| Convergence on raw but not anonymized | High | Run both modes every iteration from day one |
+| False positives reducing score | High | Track false_positives in structured log; tighten rules iteratively |
+| Q classification ambiguity (edge cases between two classifications) | Medium | Measurable numeric thresholds defined in spec; log boundary cases |
+| Determinism violation (non-seeded heuristics) | High | No randomness in convergence mode; enforce in test harness |
+| Selector rule explosion (too many rules) | Medium | Traced_to field enforces each rule is grounded in a real construct |
+| Phase 3 divergence from construct patterns | Medium | Extract directly from proven TREMOR/CORONA/BREATH implementations |
+| TotalScore plateau (diminishing returns) | Low | Use exploratory commits (max 1 per 10 iterations) to escape local optima |
+
+**Critical dependency**: The fixtures in `fixtures/` are FIXED. The agent modifies classifier and selector code only. Never modify fixtures, test assertions, or backing spec definitions.
+
+---
+
+## 12. File Structure
+
+> *Sources: FORGE_PROGRAM.md (The files)*
+
+```
+prepare (FIXED — do not modify)
+├── fixtures/usgs-m4.5-day.json
+├── fixtures/swpc-goes-xray.json
+├── fixtures/donki-flr-cme.json
+├── fixtures/purpleair-sf-bay.json
+├── fixtures/airnow-sf-bay.json
+├── test/convergence/tremor.spec.js
+├── test/convergence/corona.spec.js
+├── test/convergence/breath.spec.js
+└── grimoires/pub/*                    (backing spec reference)
+
+code (AGENT MODIFIES)
+├── src/classifier/feed-grammar.js
+├── src/classifier/cadence.js
+├── src/classifier/distribution.js
+├── src/classifier/noise.js
+├── src/classifier/density.js
+├── src/classifier/thresholds.js
+├── src/selector/template-selector.js
+└── src/selector/rules.js
+
+infrastructure (BUILD ONCE, then fixed)
+├── src/ingester/generic.js
+├── src/ingester/rate-limiter.js
+├── src/replay/deterministic.js
+├── src/processor/quality.js
+├── src/processor/uncertainty.js
+├── src/processor/settlement.js
+├── src/processor/bundles.js
+├── src/theatres/threshold-gate.js
+├── src/theatres/cascade.js
+├── src/theatres/divergence.js
+├── src/theatres/regime-shift.js
+├── src/theatres/persistence.js
+├── src/theatres/anomaly.js
+├── src/trust/oracle-trust.js
+├── src/trust/adversarial.js
+├── src/filter/usefulness.js
+├── src/composer/compose.js
+├── src/rlmf/certificates.js
+└── src/index.js
+```

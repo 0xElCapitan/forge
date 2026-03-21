@@ -1,0 +1,18 @@
+{
+  "name": "forge",
+  "version": "0.1.0",
+  "description": "Feed-Adaptive Oracle & Runtime Generator for Echelon",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/convergence/*.spec.js",
+    "test:unit": "node --test test/unit/*.spec.js",
+    "test:all": "node --test test/unit/*.spec.js test/convergence/*.spec.js",
+    "test:tremor": "node --test test/convergence/tremor.spec.js",
+    "test:corona": "node --test test/convergence/corona.spec.js",
+    "test:breath": "node --test test/convergence/breath.spec.js"
+  },
+  "devDependencies": {}
+}

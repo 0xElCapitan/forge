@@ -1,0 +1,30 @@
+slug: corona
+version: "0.1.0"
+construct_class: theatre
+domain_claims:
+  - space_weather
+  - oracle_verification
+  - settlement_verification
+  - calibration_analysis
+  - prediction_markets
+  - evidence_bundles
+  - rlmf_export
+  - theatre_management
+skill_manifest:
+  - command: /flare-gate
+    domain: space_weather
+  - command: /geomag-gate
+    domain: prediction_markets
+  - command: /cme-arrival
+    domain: settlement_verification
+  - command: /proton-cascade
+    domain: calibration_analysis
+  - command: /sw-divergence
+    domain: oracle_verification
+refusals:
+  - scope: financial_trading
+    reason: CORONA is scoped to space-weather intelligence and theatre settlement, not market execution.
+  - scope: medical_diagnosis
+    reason: CORONA does not provide medical or health advice.
+  - scope: terrestrial_seismic_analysis
+    reason: CORONA is specialized for solar and geomagnetic event intelligence, not earthquake analysis.

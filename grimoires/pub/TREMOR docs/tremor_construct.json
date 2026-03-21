@@ -1,0 +1,200 @@
+{
+  "name": "tremor",
+  "version": "0.1.0",
+  "description": "Seismic intelligence construct for the Echelon prediction market framework. Ingests USGS/EMSC/IRIS real-time earthquake feeds, builds density-normalized evidence bundles, runs five Theatre types for binary and multi-class prediction markets, and exports Brier-scored RLMF training certificates with full position history and temporal analysis.",
+  "short_description": "Seismic prediction markets with ground-truth RLMF export",
+  "author": "El Capitan",
+  "license": "AGPL-3.0",
+  "domain": ["analytics", "prediction-markets", "osint"],
+  "tags": [
+    "seismic",
+    "prediction-market",
+    "brier-score",
+    "rlmf",
+    "osint",
+    "usgs",
+    "evidence-bundles",
+    "echelon",
+    "ground-truth"
+  ],
+  "visibility": "public",
+
+  "skills": [
+    "seismic-intelligence",
+    "evidence-bundle-construction",
+    "magnitude-uncertainty-pricing",
+    "station-density-normalization",
+    "settlement-assessment",
+    "theatre-management",
+    "rlmf-certificate-export",
+    "cross-source-triangulation",
+    "omori-law-modeling",
+    "gutenberg-richter-analysis"
+  ],
+
+  "commands": [
+    "poll",
+    "open-magnitude-gate",
+    "open-aftershock-cascade",
+    "open-swarm-watch",
+    "open-depth-regime",
+    "get-state",
+    "get-certificates",
+    "flush-certificates"
+  ],
+
+  "entry_point": "BUTTERFREEZONE.md",
+
+  "context_files": [
+    "BUTTERFREEZONE.md",
+    "README.md",
+    "src/skills/seismic.md",
+    "spec/construct.json",
+    "src/index.js",
+    "src/processor/bundles.js",
+    "src/oracles/usgs.js",
+    "src/rlmf/certificates.js"
+  ],
+
+  "composes_with": {
+    "depends_on": [],
+    "depended_by": [],
+    "optional": ["k-hole", "observer"]
+  },
+
+  "echelon": {
+    "verification_checks": [
+      {
+        "check": "evidence_bundle_accuracy",
+        "ground_truth": "USGS reviewed catalog (earthquake.usgs.gov/fdsnws/event/1)",
+        "description": "Magnitude, location, and depth in evidence bundles match USGS reviewed values"
+      },
+      {
+        "check": "settlement_tier_correctness",
+        "ground_truth": "USGS event status field (automatic to reviewed transition)",
+        "description": "Settlement tier assignment matches actual USGS review state and timing"
+      },
+      {
+        "check": "brier_score_computation",
+        "ground_truth": "Theatre outcome vs closing position, independently verifiable",
+        "description": "Brier scores in RLMF certificates are mathematically correct against recorded positions and outcomes"
+      },
+      {
+        "check": "cross_validation_fidelity",
+        "ground_truth": "EMSC seismicportal.eu magnitude for same event",
+        "description": "Cross-validation divergence values match actual magnitude difference between USGS and EMSC"
+      },
+      {
+        "check": "theatre_resolution_integrity",
+        "ground_truth": "USGS reviewed catalog query at theatre close time",
+        "description": "Theatre outcomes match what the USGS catalog shows for the region and timeframe"
+      }
+    ],
+
+    "theatre_templates": [
+      {
+        "id": "magnitude_gate",
+        "name": "Magnitude Gate",
+        "question_template": "Will a M≥{threshold} event occur in {region} within {window}?",
+        "resolution": "binary",
+        "timeframe": "4h-72h",
+        "oracle": "USGS reviewed catalog",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "aftershock_cascade",
+        "name": "Aftershock Cascade",
+        "question_template": "Given mainshock M≥{trigger_mag}, how many M≥{threshold} aftershocks within {window}?",
+        "resolution": "multi_bucket",
+        "buckets": ["0-2", "3-5", "6-10", "11-20", "21+"],
+        "timeframe": "72h fixed",
+        "oracle": "USGS reviewed catalog",
+        "brier_type": "multi_class",
+        "auto_spawn": "M>=6.0 detection"
+      },
+      {
+        "id": "swarm_watch",
+        "name": "Swarm Watch",
+        "question_template": "Will active cluster in {zone} produce M≥{threshold} within 7 days?",
+        "resolution": "binary",
+        "timeframe": "7 days",
+        "oracle": "USGS reviewed catalog",
+        "brier_type": "binary",
+        "auto_spawn": "cluster detection"
+      },
+      {
+        "id": "depth_regime",
+        "name": "Depth Regime",
+        "question_template": "Will next M≥{threshold} in {subduction_zone} be shallow or deep?",
+        "resolution": "binary",
+        "timeframe": "up to 14 days",
+        "oracle": "USGS reviewed depth",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "oracle_divergence",
+        "name": "Oracle Divergence",
+        "question_template": "Will USGS reviewed magnitude for {event_id} differ from automatic by >=0.3?",
+        "resolution": "binary",
+        "timeframe": "1h-48h",
+        "oracle": "USGS automatic vs reviewed comparison",
+        "brier_type": "binary",
+        "auto_spawn": "M>=4.5 automatic detection"
+      }
+    ],
+
+    "osint_sources": [
+      {
+        "id": "usgs_neic",
+        "name": "USGS NEIC",
+        "endpoint": "https://earthquake.usgs.gov/fdsnws/event/1",
+        "feed": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary",
+        "auth": "none",
+        "format": "geojson",
+        "role": "primary"
+      },
+      {
+        "id": "emsc",
+        "name": "EMSC",
+        "endpoint": "https://seismicportal.eu/fdsnws/event/1",
+        "auth": "none",
+        "format": "geojson",
+        "role": "cross_validation"
+      },
+      {
+        "id": "iris_dmc",
+        "name": "IRIS DMC",
+        "endpoint": "https://service.iris.edu/fdsnws/event/1",
+        "auth": "none",
+        "format": "geojson",
+        "role": "cross_validation"
+      }
+    ],
+
+    "settlement_tiers": [
+      {
+        "tier": 1,
+        "name": "oracle",
+        "condition": "status=reviewed",
+        "evidence_class": "ground_truth",
+        "brier_discount": 0
+      },
+      {
+        "tier": 2,
+        "name": "provisional_mature",
+        "condition": "status=automatic AND age>2h AND stable AND quality>0.5 AND cross_validated",
+        "evidence_class": "provisional_mature",
+        "brier_discount": 0.10
+      },
+      {
+        "tier": 3,
+        "name": "market_freeze",
+        "condition": "theatre_expiring AND (quality<0.5 OR !cross_validated)",
+        "evidence_class": "provisional",
+        "brier_discount": 0.20
+      }
+    ]
+  }
+}
