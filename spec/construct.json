@@ -1,0 +1,253 @@
+{
+  "name": "FORGE",
+  "slug": "forge",
+  "version": "0.1.0",
+  "description": "Feed-Adaptive Oracle & Runtime Generator for Echelon. Classifies any structured event feed across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects Theatre templates via rule-based matching, proposes composed theatres from feed pairs, and exports Brier-scored RLMF certificates. The Uniswap factory for prediction surfaces.",
+  "short_description": "Feed classification and Theatre proposal engine for Echelon",
+  "author": "El Capitan",
+  "license": "AGPL-3.0",
+  "domain": ["analytics", "feed-classification", "prediction-markets", "rlmf"],
+  "tags": [
+    "feed-classification",
+    "theatre-proposal",
+    "prediction-market",
+    "brier-score",
+    "rlmf",
+    "echelon",
+    "feed-grammar",
+    "oracle-trust",
+    "composer"
+  ],
+  "visibility": "public",
+
+  "skills": [
+    "feed-characterization",
+    "theatre-proposal",
+    "feed-alignment",
+    "causal-ordering",
+    "usefulness-scoring",
+    "rlmf-export",
+    "trust-enforcement"
+  ],
+
+  "commands": [
+    "analyze",
+    "classify",
+    "propose",
+    "compose",
+    "replay",
+    "get-certificates"
+  ],
+
+  "entry_point": "BUTTERFREEZONE.md",
+
+  "context_files": [
+    "BUTTERFREEZONE.md",
+    "src/index.js",
+    "spec/construct.json",
+    "src/classifier/feed-grammar.js",
+    "src/selector/rules.js",
+    "src/selector/template-selector.js"
+  ],
+
+  "composes_with": {
+    "depends_on": [],
+    "depended_by": ["tremor", "breath", "corona"],
+    "optional": ["k-hole", "observer"]
+  },
+
+  "runtime": "node",
+  "runtime_version": ">=20",
+  "dependencies": [],
+
+  "data_sources": [
+    {
+      "id": "usgs_seismic",
+      "role": "primary",
+      "semantic_role": "classification_target",
+      "auth": "none",
+      "url": "earthquake.usgs.gov/earthquakes/feed/v1.0/summary"
+    },
+    {
+      "id": "swpc_space_weather",
+      "role": "primary",
+      "semantic_role": "classification_target",
+      "auth": "none",
+      "url": "services.swpc.noaa.gov"
+    },
+    {
+      "id": "purpleair_sensor",
+      "role": "cross_validation",
+      "semantic_role": "trust_tier_signal",
+      "auth": "api_key",
+      "url": "api.purpleair.com/v1"
+    },
+    {
+      "id": "epa_airnow",
+      "role": "cross_validation",
+      "semantic_role": "trust_tier_settlement",
+      "auth": "api_key",
+      "url": "www.airnowapi.org/aq"
+    }
+  ],
+
+  "rlmf": {
+    "schema_version": "0.1.0",
+    "exports": ["brier_score", "position_history", "calibration_bucket"],
+    "compatible_with": ["tremor", "breath", "corona"]
+  },
+
+  "ecosystem": [
+    { "repo": "0xHoneyJar/loa", "role": "framework", "protocol": "loa-constructs@0.1.0" },
+    { "repo": "echelon/framework", "role": "runtime", "protocol": "echelon-theatres@0.1.0" }
+  ],
+
+  "echelon": {
+    "verification_checks": [
+      {
+        "check": "evidence_bundle_accuracy",
+        "ground_truth": "Backing construct ground truth (USGS reviewed catalog, NOAA SWPC, EPA AirNow)",
+        "description": "Proposed theatre templates match the feed profile characteristics documented in the backing spec — correct template type, brier_type, and settlement_source for each feed"
+      },
+      {
+        "check": "settlement_tier_correctness",
+        "ground_truth": "oracle-trust.js TRUST_REGISTRY (src/trust/oracle-trust.js)",
+        "description": "Settlement source in each theatre proposal is T0 or T1. PurpleAir (T3) and OpenAQ (T2) may never appear as settlement_source — enforced by canSettle() at bundle processing time"
+      },
+      {
+        "check": "brier_score_computation",
+        "ground_truth": "Theatre outcome vs closing position, independently verifiable",
+        "description": "Brier scores in exported RLMF certificates are mathematically correct against recorded positions and outcomes via brierScoreBinary and brierScoreMultiClass"
+      }
+    ],
+
+    "theatre_templates": [
+      {
+        "id": "threshold_gate",
+        "name": "Threshold Gate",
+        "question_template": "Will {metric} exceed {threshold} within {window}?",
+        "resolution": "binary",
+        "timeframe": "4h-72h",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "cascade",
+        "name": "Cascade",
+        "question_template": "How many {events} occur following {trigger} within {window}?",
+        "resolution": "multi_bucket",
+        "buckets": 5,
+        "timeframe": "up to 72h",
+        "brier_type": "multi_class",
+        "auto_spawn": false
+      },
+      {
+        "id": "divergence",
+        "name": "Divergence",
+        "question_template": "Will {source_a} and {source_b} diverge beyond {threshold}?",
+        "resolution": "binary",
+        "timeframe": "4h-48h",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "regime_shift",
+        "name": "Regime Shift",
+        "question_template": "Will {metric} transition from {state_a} to {state_b}?",
+        "resolution": "binary",
+        "timeframe": "up to 14 days",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "anomaly",
+        "name": "Anomaly",
+        "question_template": "Will {metric} deviate beyond {sigma_threshold}σ from baseline within {window}?",
+        "resolution": "binary",
+        "timeframe": "up to 7 days",
+        "brier_type": "binary",
+        "auto_spawn": false
+      },
+      {
+        "id": "persistence",
+        "name": "Persistence",
+        "question_template": "Will {condition} persist for {consecutive_count} consecutive intervals?",
+        "resolution": "binary",
+        "timeframe": "configurable",
+        "brier_type": "binary",
+        "auto_spawn": false
+      }
+    ],
+
+    "osint_sources": [
+      {
+        "id": "usgs_neic",
+        "name": "USGS NEIC",
+        "endpoint": "https://earthquake.usgs.gov/fdsnws/event/1",
+        "feed": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary",
+        "auth": "none",
+        "format": "geojson",
+        "role": "primary"
+      },
+      {
+        "id": "swpc_noaa",
+        "name": "NOAA SWPC",
+        "endpoint": "https://services.swpc.noaa.gov",
+        "auth": "none",
+        "format": "json",
+        "role": "primary"
+      },
+      {
+        "id": "epa_airnow",
+        "name": "EPA AirNow",
+        "endpoint": "https://www.airnowapi.org/aq",
+        "auth": "api_key",
+        "format": "json",
+        "role": "primary"
+      },
+      {
+        "id": "purpleair",
+        "name": "PurpleAir",
+        "endpoint": "https://api.purpleair.com/v1",
+        "auth": "api_key",
+        "format": "json",
+        "role": "cross_validation"
+      }
+    ],
+
+    "settlement_tiers": [
+      {
+        "tier": "T0",
+        "name": "settlement_authority",
+        "can_settle": true,
+        "brier_discount": 0,
+        "description": "Ground truth source. May settle any theatre. No Brier discount.",
+        "examples": ["epa_aqs", "usgs_reviewed", "gfz_kp"]
+      },
+      {
+        "tier": "T1",
+        "name": "official_source",
+        "can_settle": true,
+        "brier_discount": 0.10,
+        "description": "Official real-time source. May settle with 10% Brier discount applied to position history.",
+        "examples": ["airnow", "usgs_automatic", "swpc_goes", "noaa_goes"]
+      },
+      {
+        "tier": "T2",
+        "name": "corroboration",
+        "can_settle": false,
+        "brier_discount": null,
+        "description": "Corroboration source. Position updates only. May not settle a theatre.",
+        "examples": ["openaq", "emsc"]
+      },
+      {
+        "tier": "T3",
+        "name": "signal",
+        "can_settle": false,
+        "brier_discount": null,
+        "description": "Signal source. Position updates only. May not settle. PurpleAir is the canonical T3 — this invariant is enforced at bundle processing time.",
+        "examples": ["purpleair", "thingspeak"]
+      }
+    ]
+  }
+}

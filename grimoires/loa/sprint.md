@@ -753,6 +753,397 @@ graph TD
 
 ---
 
+---
+
+## Sprint 10 — Echelon Construct Spec
+
+**Goal**: FORGE ships machine-readable `spec/construct.json` and `spec/construct.yaml` that the Echelon planner can parse. Tobias can run FORGE through full-stack Echelon validation. This is the release blocker.
+
+All spec content is derived from existing code — `src/trust/oracle-trust.js` (T0-T3), `src/theatres/` (6 template types), `src/selector/rules.js` (FORGE's validated feed corpora), `src/index.js` (commands + exports). No new logic needed.
+
+### Tasks
+
+#### T-33: Generate spec/construct.json
+
+**Description**: Create `spec/construct.json` following `grimoires/pub/TREMOR docs/tremor_construct.json` as the gold standard. Use the dual `role` + `semantic_role` pattern from `grimoires/pub/BREATH docs/breath_construct.json` for `data_sources[]`.
+
+Top-level fields:
+- `name`: `"forge"`, `version`: `"0.1.0"`, `description`, `short_description`, `author`, `license`, `domain`, `tags`, `visibility`
+- `skills[]`: `["feed-characterization", "theatre-proposal", "feed-alignment", "causal-ordering", "usefulness-scoring", "rlmf-export", "trust-enforcement"]`
+- `commands[]`: `["analyze", "classify", "propose", "compose", "replay", "get-certificates"]`
+- `entry_point`: `"BUTTERFREEZONE.md"`
+- `context_files[]`: `["BUTTERFREEZONE.md", "README.md", "src/index.js", "spec/construct.json", "src/classifier/feed-grammar.js", "src/selector/rules.js", "src/selector/template-selector.js"]`
+- `composes_with`: `{ depends_on: [], depended_by: ["tremor", "breath", "corona"], optional: ["k-hole", "observer"] }`
+- `data_sources[]` — dual role pattern, four entries (validated feed corpora):
+  - `{ id: "usgs_seismic", role: "primary", semantic_role: "classification_target", auth: "none", url: "earthquake.usgs.gov/earthquakes/feed/v1.0/summary" }`
+  - `{ id: "swpc_space_weather", role: "primary", semantic_role: "classification_target", auth: "none", url: "services.swpc.noaa.gov" }`
+  - `{ id: "purpleair_sensor", role: "cross_validation", semantic_role: "trust_tier_signal", auth: "api_key", url: "api.purpleair.com/v1" }`
+  - `{ id: "epa_airnow", role: "cross_validation", semantic_role: "trust_tier_settlement", auth: "api_key", url: "www.airnowapi.org/aq" }`
+- `echelon` block:
+  - `verification_checks[]` — three entries:
+    - `{ check: "evidence_bundle_accuracy", ground_truth: "backing construct ground truth (USGS/SWPC/AirNow reviewed catalog)", description: "Proposed theatre templates match the feed profile characteristics documented in the backing spec" }`
+    - `{ check: "settlement_tier_correctness", ground_truth: "oracle-trust.js TRUST_REGISTRY", description: "Settlement source in each proposal is T0 or T1 — never T3 (e.g. PurpleAir may not settle)" }`
+    - `{ check: "brier_score_computation", ground_truth: "Theatre outcome vs closing position, independently verifiable", description: "Brier scores in exported RLMF certificates are mathematically correct against recorded positions and outcomes" }`
+  - `theatre_templates[]` — one entry per template type, `brier_type` on each:
+    - `{ id: "threshold_gate", name: "Threshold Gate", question_template: "Will {metric} exceed {threshold} within {window}?", resolution: "binary", timeframe: "4h-72h", brier_type: "binary", auto_spawn: false }`
+    - `{ id: "cascade", name: "Cascade", question_template: "How many {events} following {trigger} within {window}?", resolution: "multi_bucket", buckets: 5, timeframe: "up to 72h", brier_type: "multi_class", auto_spawn: false }`
+    - `{ id: "divergence", name: "Divergence", question_template: "Will {source_a} and {source_b} diverge beyond {threshold}?", resolution: "binary", timeframe: "4h-48h", brier_type: "binary", auto_spawn: false }`
+    - `{ id: "regime_shift", name: "Regime Shift", question_template: "Will {metric} transition from {state_a} to {state_b}?", resolution: "binary", timeframe: "up to 14 days", brier_type: "binary", auto_spawn: false }`
+    - `{ id: "anomaly", name: "Anomaly", question_template: "Will {metric} exceed {sigma_threshold}σ from baseline within {window}?", resolution: "binary", timeframe: "up to 7 days", brier_type: "binary", auto_spawn: false }`
+    - `{ id: "persistence", name: "Persistence", question_template: "Will {condition} persist for {consecutive_count} consecutive intervals?", resolution: "binary", timeframe: "configurable", brier_type: "binary", auto_spawn: false }`
+  - `osint_sources[]` — FORGE's validated feed sources with `role` field:
+    - `{ id: "usgs_neic", name: "USGS NEIC", endpoint: "...", auth: "none", format: "geojson", role: "primary" }`
+    - `{ id: "swpc_noaa", name: "NOAA SWPC", endpoint: "...", auth: "none", format: "json", role: "primary" }`
+    - `{ id: "epa_airnow", name: "EPA AirNow", endpoint: "...", auth: "api_key", format: "json", role: "primary" }`
+    - `{ id: "purpleair", name: "PurpleAir", endpoint: "...", auth: "api_key", format: "json", role: "cross_validation" }`
+  - `settlement_tiers[]` — four entries matching oracle-trust.js T0-T3:
+    - `{ tier: "T0", name: "settlement_authority", can_settle: true, brier_discount: 0, examples: ["epa_aqs", "usgs_reviewed", "gfz_kp"] }`
+    - `{ tier: "T1", name: "official_source", can_settle: true, brier_discount: 0.10, examples: ["airnow", "usgs_automatic", "swpc_goes"] }`
+    - `{ tier: "T2", name: "corroboration", can_settle: false, position_updates: true, examples: ["openaq", "emsc"] }`
+    - `{ tier: "T3", name: "signal", can_settle: false, position_updates: true, examples: ["purpleair", "thingspeak"] }`
+- `rlmf`: `{ schema_version: "0.1.0", exports: ["brier_score", "position_history", "calibration_bucket"] }`
+
+**Acceptance criteria**:
+- `spec/construct.json` is valid JSON
+- All 6 theatre templates present with `brier_type` on every entry
+- All 3 `verification_checks` present (`evidence_bundle_accuracy`, `settlement_tier_correctness`, `brier_score_computation`)
+- All 4 `settlement_tiers` (T0-T3) present with `can_settle` matching `oracle-trust.js` (`canSettle` returns true only for T0/T1)
+- `rlmf.exports` exactly `["brier_score", "position_history", "calibration_bucket"]`
+- All `data_sources` have both `role` and `semantic_role`
+- All `osint_sources` have `role` field (primary or cross_validation)
+- `composes_with.depended_by` lists `["tremor", "breath", "corona"]`
+
+**Effort**: M
+**Depends on**: none (all content derivable from existing code)
+
+---
+
+#### T-34: Generate spec/construct.yaml
+
+**Description**: Create `spec/construct.yaml` following `grimoires/pub/TREMOR docs/tremor_construct.yaml` as the pattern. Must have `construct_class: theatre`, `domain_claims[]`, `skill_manifest[]`, `refusals[]`.
+
+Fields:
+- `slug`: `forge`
+- `version`: `"0.1.0"`
+- `construct_class`: `theatre`
+- `domain_claims[]` — exactly as specified (7 claims):
+  - `feed_characterization`
+  - `prediction_markets`
+  - `rlmf_export`
+  - `theatre_management`
+  - `oracle_verification`
+  - `settlement_verification`
+  - `calibration_analysis`
+- `skill_manifest[]` — command + domain for each:
+  - `{ command: analyze, domain: feed_characterization }`
+  - `{ command: classify, domain: feed_characterization }`
+  - `{ command: propose, domain: prediction_markets }`
+  - `{ command: compose, domain: theatre_management }`
+  - `{ command: replay, domain: calibration_analysis }`
+  - `{ command: get-certificates, domain: rlmf_export }`
+- `refusals[]` — FORGE's scope boundary (3 entries):
+  - `{ scope: financial_trading, reason: "FORGE is scoped to feed analysis and Theatre proposal, not market execution." }`
+  - `{ scope: domain_specific_advice, reason: "FORGE characterizes feed structure and proposes theatre templates — it does not provide domain-specific predictions (seismic, meteorological, medical)." }`
+  - `{ scope: live_settlement, reason: "FORGE proposes theatres. Settlement authority remains with T0/T1 oracle sources as enforced by the trust model." }`
+
+**Acceptance criteria**:
+- `spec/construct.yaml` is valid YAML
+- `construct_class: theatre` present
+- All 7 `domain_claims` present exactly as listed
+- `skill_manifest` has 6 entries, each with `command` and `domain`
+- `refusals` has 3 entries, each with `scope` and `reason`
+- `refusals` explicitly names FORGE's scope boundary (feed analysis + Theatre proposal, not execution)
+
+**Effort**: S
+**Depends on**: T-33 (content should be consistent with construct.json)
+
+---
+
+**Sprint 10 definition of done**: `spec/construct.json` and `spec/construct.yaml` exist, are structurally valid, and correctly reflect FORGE's implementation (T0-T3 model, 6 theatre types, validated feed corpora). Tobias can load them into the Echelon planner without schema errors.
+
+---
+
+## Sprint 11 — BUTTERFREEZONE.md
+
+**Goal**: FORGE ships a machine-readable `BUTTERFREEZONE.md` that follows the standard Loa contract. Any agent loading FORGE gets full provenance-tagged context without reading source code.
+
+Pattern: `grimoires/pub/TREMOR docs/TREMOR butterfreezone.md`. All content is code-derivable.
+
+### Tasks
+
+#### T-35: Generate BUTTERFREEZONE.md
+
+**Description**: Create `BUTTERFREEZONE.md` at the FORGE repo root. Follow the TREMOR butterfreezone structure exactly:
+- HTML comment `AGENT-CONTEXT` block (YAML, not rendered)
+- Key Capabilities section with `file:line` provenance on every entry
+- Architecture section (pipeline diagram + directory structure)
+- Interfaces section (Construct API, Theatre Templates, Data Feeds)
+- Module Map table
+- Verification section (test count, zero deps, Node 20+)
+- Culture section
+- Quick Start
+- `ground-truth-meta` HTML comment at bottom
+
+**AGENT-CONTEXT block** (derive from existing code):
+```yaml
+name: forge
+type: construct
+purpose: >
+  Feed-adaptive oracle factory for the Echelon prediction market framework.
+  Classifies any structured event feed across 5 grammar dimensions (cadence,
+  distribution, noise, density, thresholds), selects Theatre templates via
+  rule-based matching, proposes composed theatres from feed pairs, and exports
+  Brier-scored RLMF certificates. The Uniswap factory for prediction surfaces.
+key_files:
+  - src/index.js
+  - src/classifier/feed-grammar.js
+  - src/selector/rules.js
+  - src/selector/template-selector.js
+  - spec/construct.json
+  - src/composer/compose.js
+interfaces:
+  core: [ForgeConstruct, classify, selectTemplates, alignFeeds, detectCausalOrdering, proposeComposedTheatre]
+  theatres: [threshold_gate, cascade, divergence, regime_shift, anomaly, persistence]
+  oracles: [oracle-trust (T0-T3)]
+dependencies: []
+ecosystem:
+  - repo: 0xHoneyJar/loa
+    role: framework
+    interface: constructs
+    protocol: loa-constructs@0.1.0
+  - repo: echelon/framework
+    role: runtime
+    interface: theatre-registry
+    protocol: echelon-theatres@0.1.0
+capability_requirements:
+  - filesystem: read (scope: fixture files)
+version: v0.1.0
+installation_mode: standalone
+trust_level: L1-local
+```
+
+**Key Capabilities** — derive `file:line` from actual source (must be accurate at time of implementation):
+- `classify` — 5-dimension feed grammar classifier (cadence, distribution, noise, density, thresholds) — `src/classifier/feed-grammar.js:N`
+- `classifyCadence` — cadence classifier: event_driven / seconds / minutes / hours / multi_cadence / irregular — `src/classifier/cadence.js:N`
+- `classifyDistribution` — distribution classifier: bounded_numeric / unbounded_numeric / composite / categorical — `src/classifier/distribution.js:N`
+- `classifyNoise` — noise classifier: spike_driven / steady / mixed / irregular — `src/classifier/noise.js:N`
+- `classifyDensity` — density classifier: sparse_network / multi_tier / single_point / mesh — `src/classifier/density.js:N`
+- `classifyThresholds` — threshold classifier: regulatory / physical / statistical / none — `src/classifier/thresholds.js:N`
+- `selectTemplates` — rule-based Theatre template selection from FeedProfile — `src/selector/template-selector.js:N`
+- `evaluateRule` — evaluates a single condition rule against a FeedProfile using dot-path operators — `src/selector/template-selector.js:N`
+- `RULES` — 16 rules covering TREMOR, CORONA, and BREATH feed profiles — `src/selector/rules.js:35`
+- `alignFeeds` — temporal alignment of two event streams within sliding window — `src/composer/compose.js:28`
+- `detectCausalOrdering` — mean offset analysis to detect leading/lagging feed relationship — `src/composer/compose.js:63`
+- `proposeComposedTheatre` — composition rules: produces Theatre templates from feed pairs that neither feed would generate alone — `src/composer/compose.js:N`
+- `computeUsefulness` — scores Theatre proposal usefulness: market_depth, settlement_clarity, temporal_fitness, novelty — `src/filter/usefulness.js:N`
+- `buildBundle` — constructs evidence bundle from feed events: quality → uncertainty → settlement → bundle — `src/processor/bundles.js:N`
+- `getTrustTier` / `canSettle` / `validateSettlement` — T0-T3 oracle trust enforcement; PurpleAir (T3) can never settle — `src/trust/oracle-trust.js:61`
+- `exportCertificate` — RLMF training certificate with Brier score, position history, calibration bucket — `src/rlmf/certificates.js:N`
+- `createReplay` — deterministic replay of a recorded feed session — `src/replay/deterministic.js:N`
+- `ForgeConstruct` — top-level construct class: `analyze(fixturePath)` runs full pipeline, `getCertificates()` returns RLMF state — `src/index.js:37`
+
+**Architecture** — FORGE's pipeline is: fixture → ingester → classifier → selector → proposals. Include ASCII pipeline diagram showing the flow, then directory listing.
+
+**Interfaces**:
+- Construct API table (Export | Type | Description) — all exports from `src/index.js`
+- Theatre Templates table (Template | ID | Resolution | Brier Type)
+- Data Feeds / Trust Model table (Tier | Name | Can Settle | Examples)
+
+**Module Map**:
+
+| Module | Files | Purpose |
+|--------|-------|---------|
+| `src/ingester/` | 1 | Generic JSON event stream ingester |
+| `src/classifier/` | 6 | 5-dimension feed grammar (cadence, distribution, noise, density, thresholds + grammar orchestration) |
+| `src/selector/` | 2 | Rule-based Theatre template selection (16 rules, 3 backing specs) |
+| `src/theatres/` | 6 | Theatre template definitions (threshold_gate, cascade, divergence, regime_shift, persistence, anomaly) |
+| `src/processor/` | 4 | Evidence bundle pipeline (quality, uncertainty, settlement, bundle orchestration) |
+| `src/trust/` | 2 | Oracle trust enforcement (T0-T3 model, adversarial detection) |
+| `src/rlmf/` | 1 | RLMF certificate export (Brier scoring, calibration) |
+| `src/filter/` | 1 | Usefulness scoring (market_depth, settlement_clarity, temporal_fitness, novelty) |
+| `src/composer/` | 1 | Feed composition: temporal alignment, causal ordering, composed theatre proposal |
+| `src/replay/` | 1 | Deterministic replay of recorded feed sessions |
+| `spec/` | 2 | Machine-readable construct specification (construct.json, construct.yaml) |
+| `test/unit/` | 11 | Unit test suite (node:test, zero dependencies) |
+| `test/convergence/` | 6 | Convergence loop tests (3 backing specs × raw + anonymized) |
+
+**Verification**: Count actual tests at implementation time with `node --test --reporter=tap test/unit/*.spec.js 2>&1 | grep -c '^ok'`. Zero external dependencies. Node.js 20+ built-in fetch + test runner.
+
+**Culture**:
+```
+Naming: FORGE — Feed-Adaptive Oracle & Runtime Generator for Echelon.
+
+Principles: The feed is the signal. The market is the measurement.
+FORGE reads structure from data streams, not semantics — it does not know
+what a seismic event "means", only that it is spike_driven, unbounded_numeric,
+and sparse_network. From that grammar, the right Theatre emerges.
+
+Domain metaphor: The Uniswap factory pattern applied to prediction surfaces.
+Point at any live data feed with a computable ground truth and a meaningful
+question, and FORGE finds the Theatre geometry.
+```
+
+**Quick Start**:
+```bash
+node --test test/unit/*.spec.js   # Run unit tests
+node --test test/convergence/*.spec.js   # Run convergence tests
+```
+```js
+import { ForgeConstruct } from './src/index.js';
+const forge = new ForgeConstruct();
+const result = await forge.analyze('fixtures/usgs-m4.5-day.json');
+console.log(result.proposals);
+```
+
+**Acceptance criteria**:
+- AGENT-CONTEXT block is valid YAML and contains all required fields: `name`, `type`, `purpose`, `key_files`, `interfaces`, `dependencies`, `ecosystem`, `capability_requirements`, `trust_level`
+- All Key Capabilities entries have a `file:line` provenance tag
+- `file:line` references are accurate (verified by reading actual source at implementation time)
+- Architecture diagram correctly shows the 4-stage pipeline (ingester → classifier → selector → proposals)
+- Module Map table has correct file counts (verify with `ls`)
+- Verification section states the correct test count (verify with `node --test`)
+- Quick Start runs without error on Node.js 20+
+- `ground-truth-meta` comment at bottom records `head_sha`, `generated_at`, `generator`
+
+**Effort**: M
+**Depends on**: T-33, T-34 (spec files must exist for key_files reference)
+
+---
+
+**Sprint 11 definition of done**: `BUTTERFREEZONE.md` exists at the FORGE repo root, all provenance tags are accurate, and the document passes the standard butterfreezone-validate contract.
+
+---
+
+## Sprint 12 — Composer: proposeComposedTheatre
+
+**Goal**: `src/composer/compose.js` gains `proposeComposedTheatre`, making the file production-ready for Loop 5 (the Uniswap moment). The canonical test case passes: PurpleAir AQI feed + wind direction feed → smoke plume arrival theatre.
+
+This is the creative sprint. The interfaces are fixed (`alignFeeds` and `detectCausalOrdering` exist and work). The new function adds composition-specific rules on top of the existing selector rule patterns.
+
+### Tasks
+
+#### T-36: Implement proposeComposedTheatre ✓
+
+**Description**: Add `proposeComposedTheatre(feedProfileA, feedProfileB, alignedPairs, causalOrder)` to `src/composer/compose.js`. The function evaluates composition rules and returns a Theatre proposal (or `null` if no composition opportunity is found).
+
+**Return shape** (consistent with `Proposal` from `src/selector/template-selector.js`):
+```js
+{
+  template: 'threshold_gate',          // Theatre template type
+  params: {
+    threshold: null,                   // derived from feedProfileA regulatory threshold
+    window_hours: null,                // derived from causalOrder.lag_ms (converted to hours)
+    arrival_window_ms: null,           // causalOrder.lag_ms — raw lag for downstream use
+    base_rate: null,
+    input_mode: 'multi',               // two-feed composition is always multi-input
+    threshold_type: 'regulatory',
+    settlement_source: null,           // caller must supply T0/T1 source
+  },
+  confidence: 0.78,
+  composition_basis: {
+    feed_a_role: 'threshold_target',   // what feedA contributes
+    feed_b_role: 'arrival_predictor',  // what feedB contributes
+    causal_leader: 'B',                // which feed leads (from causalOrder.leader)
+    lag_ms: 3600000,                   // from causalOrder.lag_ms
+    rule_fired: 'threshold_with_arrival_predictor',
+  }
+}
+```
+
+**Composition rules** (evaluate in order, return first match):
+
+1. **`threshold_with_arrival_predictor`** — the canonical rule:
+   - `feedA.distribution.type === 'bounded_numeric'`
+   - `feedA.thresholds.type === 'regulatory'`
+   - `feedB.cadence.classification === 'seconds' || feedB.cadence.classification === 'minutes'` (continuous directional/velocity data)
+   - `feedB.distribution.type === 'bounded_numeric'`
+   - `causalOrder.leader === 'B'` (feedB leads feedA — the predictor arrives before the outcome)
+   - `causalOrder.lag_ms > 0` (non-trivial lead time)
+   - → propose `threshold_gate` with `arrival_window_ms = causalOrder.lag_ms`, `input_mode: 'multi'`
+   - Confidence: 0.78
+
+2. **`co_bounded_divergence`** — two bounded feeds at similar cadence, concurrent ordering:
+   - `feedA.distribution.type === 'bounded_numeric'`
+   - `feedB.distribution.type === 'bounded_numeric'`
+   - `causalOrder.leader === 'concurrent'`
+   - `alignedPairs.length >= 5` (enough overlap to have a divergence market)
+   - → propose `divergence` with `resolution_mode: 'expiry'`
+   - Confidence: 0.65
+
+3. **`cascade_amplifier`** — spike-driven feed followed by bounded feed, B leads A:
+   - `feedA.noise.classification === 'spike_driven'`
+   - `feedB.distribution.type === 'bounded_numeric'`
+   - `causalOrder.leader === 'B'`
+   - `causalOrder.lag_ms > 0`
+   - → propose `cascade` with `window_hours = Math.ceil(causalOrder.lag_ms / 3_600_000) * 2`
+   - Confidence: 0.60
+
+If no rule fires: return `null`.
+
+**Validation** (guard clauses, throw TypeError):
+- `feedProfileA` and `feedProfileB` must be objects with `distribution`, `cadence`, `noise`, `thresholds` fields
+- `alignedPairs` must be an array
+- `causalOrder` must have `leader` and `lag_ms` fields
+
+**Acceptance criteria**:
+- `proposeComposedTheatre(aqiProfile, windProfile, pairs, { leader: 'B', lag_ms: 3600000 })` fires rule 1 and returns a `threshold_gate` proposal with `arrival_window_ms: 3600000` and `input_mode: 'multi'`
+- `proposeComposedTheatre(aqiProfile, aqiProfile2, pairs, { leader: 'concurrent', lag_ms: 0 })` fires rule 2 and returns a `divergence` proposal
+- `proposeComposedTheatre(seismicProfile, aqiProfile, pairs, { leader: 'A', lag_ms: 3600000 })` returns `null` (no rule matches — B does not lead A)
+- `proposeComposedTheatre(aqiProfile, windProfile, [], causal)` returns `null` for rule 2 (insufficient pairs) but rule 1 still fires since it doesn't require pair count
+- TypeError thrown when feedProfileA/B is missing required fields
+- Function is pure (no side effects, deterministic output for same inputs)
+
+**Effort**: M
+**Depends on**: T-33 (compose.js already exists — this is additive)
+
+---
+
+#### T-37: Tests for proposeComposedTheatre ✓
+
+**Description**: Add `test/unit/composer.spec.js` with unit tests for all three rules + null return + guard clauses. Construct minimal synthetic `FeedProfile` objects rather than loading fixture files (keep tests dependency-free and fast).
+
+Synthetic profiles needed:
+- `aqiProfile`: `{ distribution: { type: 'bounded_numeric' }, cadence: { classification: 'multi_cadence' }, noise: { classification: 'mixed' }, thresholds: { type: 'regulatory' }, density: { classification: 'multi_tier' } }`
+- `windProfile`: `{ distribution: { type: 'bounded_numeric' }, cadence: { classification: 'minutes' }, noise: { classification: 'steady' }, thresholds: { type: 'statistical' }, density: { classification: 'single_point' } }`
+- `seismicProfile`: `{ distribution: { type: 'unbounded_numeric' }, cadence: { classification: 'event_driven' }, noise: { classification: 'spike_driven' }, thresholds: { type: 'statistical' }, density: { classification: 'sparse_network' } }`
+
+Test cases:
+- `threshold_with_arrival_predictor` fires: AQI + wind, `leader: 'B'`, `lag_ms: 3600000` → `threshold_gate`, `arrival_window_ms: 3600000`, `input_mode: 'multi'`
+- `threshold_with_arrival_predictor` blocked by wrong leader: same profiles, `leader: 'A'` → `null`
+- `threshold_with_arrival_predictor` blocked by wrong feedA type: seismic + wind, `leader: 'B'` → null for rule 1, check rule 3 fires (`cascade_amplifier`)
+- `co_bounded_divergence` fires: AQI + wind, `leader: 'concurrent'`, 10 pairs → `divergence`
+- `co_bounded_divergence` blocked by insufficient pairs: same, 3 pairs → falls through to null
+- `cascade_amplifier` fires: seismic + AQI, `leader: 'B'`, `lag_ms: 7200000` → `cascade`, `window_hours: 4`
+- Guard clauses: missing `distribution` on feedA → TypeError; missing `leader` on causalOrder → TypeError
+- Deterministic: same inputs → same output (call twice, deep-equal)
+
+**Acceptance criteria**:
+- All test cases pass with `node --test test/unit/composer.spec.js`
+- No external dependencies used in test file
+- Test count increases by at least 8 (one per test case above)
+
+**Effort**: S
+**Depends on**: T-36
+
+---
+
+#### T-38: Export proposeComposedTheatre from src/index.js ✓
+
+**Description**: Add `proposeComposedTheatre` to the Composer exports block in `src/index.js`. One line. Update BUTTERFREEZONE.md `interfaces.core` to include it (or note it if BUTTERFREEZONE was generated in Sprint 11 before this function existed — verify and patch the file:line reference).
+
+**Acceptance criteria**:
+- `import { proposeComposedTheatre } from './src/index.js'` resolves without error
+- BUTTERFREEZONE.md `interfaces.core` lists `proposeComposedTheatre` with correct `file:line`
+
+**Effort**: XS
+**Depends on**: T-36, T-35
+
+---
+
+**Sprint 12 definition of done**: `proposeComposedTheatre` is implemented, exported, and tested. The canonical smoke plume arrival test case passes. BUTTERFREEZONE.md reflects the complete composer interface.
+
+---
+
 ## Risk Register
 
 | Risk | Sprint | Mitigation |
@@ -775,3 +1166,6 @@ graph TD
 | 5 | Selector producing matches | TemplateScore ≥ 5/13 |
 | 6 | **Full convergence** | TotalScore = 20.5/20.5 (both modes) |
 | 7-9 | Infrastructure quality | `/review-sprint` + `/audit-sprint` approved |
+| 10 | **Echelon planner unblocked** | `spec/construct.json` + `spec/construct.yaml` structurally valid; Tobias can run FORGE through full-stack validation |
+| 11 | BUTTERFREEZONE shipped | `BUTTERFREEZONE.md` exists with accurate `file:line` provenance on all capabilities |
+| 12 | Composer complete | `proposeComposedTheatre` exported, canonical smoke plume test passes, test count +8 |

@@ -17,12 +17,15 @@
         { "local_id": "sprint-6", "global_id": 6, "label": "Selector Convergence", "status": "completed", "completed_at": "2026-03-20" },
         { "local_id": "sprint-7", "global_id": 7, "label": "Theatre Templates", "status": "completed", "completed_at": "2026-03-20" },
         { "local_id": "sprint-8", "global_id": 8, "label": "Processor Pipeline + Trust Model", "status": "completed", "completed_at": "2026-03-20" },
-        { "local_id": "sprint-9", "global_id": 9, "label": "RLMF + Usefulness + Entrypoint", "status": "completed", "completed_at": "2026-03-20" }
+        { "local_id": "sprint-9", "global_id": 9, "label": "RLMF + Usefulness + Entrypoint", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-10", "global_id": 10, "label": "Echelon Construct Spec (construct.json + construct.yaml)", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-11", "global_id": 11, "label": "BUTTERFREEZONE.md", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-12", "global_id": 12, "label": "Composer: proposeComposedTheatre", "status": "completed", "completed_at": "2026-03-20" }
       ]
     }
   ],
   "active_cycle": "cycle-001",
   "active_bugfix": null,
-  "global_sprint_counter": 9,
+  "global_sprint_counter": 12,
   "bugfix_cycles": []
 }
