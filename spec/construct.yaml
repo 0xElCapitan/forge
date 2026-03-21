@@ -1,0 +1,31 @@
+slug: forge
+version: "0.1.0"
+construct_class: theatre
+domain_claims:
+  - feed_characterization
+  - prediction_markets
+  - rlmf_export
+  - theatre_management
+  - oracle_verification
+  - settlement_verification
+  - calibration_analysis
+skill_manifest:
+  - command: analyze
+    domain: feed_characterization
+  - command: classify
+    domain: feed_characterization
+  - command: propose
+    domain: prediction_markets
+  - command: compose
+    domain: theatre_management
+  - command: replay
+    domain: calibration_analysis
+  - command: get-certificates
+    domain: rlmf_export
+refusals:
+  - scope: financial_trading
+    reason: FORGE is scoped to feed analysis and Theatre proposal, not market execution.
+  - scope: domain_specific_advice
+    reason: FORGE characterizes feed structure and proposes theatre templates — it does not provide domain-specific predictions (seismic, meteorological, epidemiological, or financial).
+  - scope: live_settlement
+    reason: FORGE proposes theatres. Settlement authority remains with T0/T1 oracle sources as enforced by the trust model (src/trust/oracle-trust.js). FORGE never settles a theatre directly.

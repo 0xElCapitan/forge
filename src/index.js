@@ -120,4 +120,4 @@ export { exportCertificate, brierScoreBinary, brierScoreMultiClass } from './rlm
 export { computeUsefulness } from './filter/usefulness.js';
 
 // Composer
-export { alignFeeds, detectCausalOrdering } from './composer/compose.js';
+export { alignFeeds, detectCausalOrdering, proposeComposedTheatre } from './composer/compose.js';
