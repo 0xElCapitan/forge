@@ -1,0 +1,205 @@
+{
+  "feed_profile": {
+    "cadence": {
+      "classification": "event_driven",
+      "median_ms": 3876464,
+      "jitter_coefficient": 0.9692706996254467
+    },
+    "distribution": {
+      "type": "unbounded_numeric",
+      "bounds": {
+        "min": 1773902840040,
+        "max": 1773983871040
+      }
+    },
+    "noise": {
+      "classification": "spike_driven"
+    },
+    "density": {
+      "classification": "sparse_network",
+      "sensor_count": 18
+    },
+    "thresholds": {
+      "type": "statistical"
+    }
+  },
+  "proposals": [
+    {
+      "template": "threshold_gate",
+      "params": {
+        "threshold": 5,
+        "window_hours": 24,
+        "base_rate": null,
+        "input_mode": "single",
+        "threshold_type": "statistical",
+        "settlement_source": null
+      },
+      "confidence": 0.9,
+      "rationale": "Rule 'seismic_threshold_gate' fired (3/3 conditions). Traced to: TREMOR/MagGate."
+    },
+    {
+      "template": "cascade",
+      "params": {
+        "trigger_threshold": 6,
+        "bucket_count": 5,
+        "window_hours": 72,
+        "prior_model": "omori"
+      },
+      "confidence": 0.85,
+      "rationale": "Rule 'seismic_cascade' fired (2/2 conditions). Traced to: TREMOR/AftershockCascade."
+    },
+    {
+      "template": "divergence",
+      "params": {
+        "source_a_type": "automatic",
+        "source_b_type": "reviewed",
+        "divergence_threshold": null,
+        "resolution_mode": "self-resolving"
+      },
+      "confidence": 0.8,
+      "rationale": "Rule 'seismic_review_divergence' fired (2/2 conditions). Traced to: TREMOR/OracleDivergence."
+    },
+    {
+      "template": "anomaly",
+      "params": {
+        "baseline_metric": "b-value",
+        "sigma_threshold": null,
+        "window_hours": 168
+      },
+      "confidence": 0.75,
+      "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch."
+    },
+    {
+      "template": "regime_shift",
+      "params": {
+        "state_boundary": null,
+        "zone_prior": null
+      },
+      "confidence": 0.7,
+      "rationale": "Rule 'seismic_regime_shift' fired (2/2 conditions). Traced to: TREMOR/DepthRegime."
+    }
+  ],
+  "envelope": {
+    "ir_version": "0.1.0",
+    "forge_version": "0.1.0",
+    "emitted_at": 1774110459474,
+    "feed_id": "usgs_m4.5_day",
+    "feed_profile": {
+      "cadence": {
+        "classification": "event_driven",
+        "median_gap_ms": null,
+        "cv": null
+      },
+      "distribution": {
+        "type": "unbounded_numeric",
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "noise": {
+        "classification": "spike_driven",
+        "spike_ratio": null
+      },
+      "density": {
+        "classification": "sparse_network",
+        "stream_count": null
+      },
+      "thresholds": {
+        "type": "statistical",
+        "detected_thresholds": null
+      }
+    },
+    "source_metadata": {
+      "source_id": "usgs_automatic",
+      "trust_tier": "T1",
+      "endpoint": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson",
+      "poll_interval_ms": 60000
+    },
+    "proposals": [
+      {
+        "proposal_id": "1dbaa87ce9b8bc98",
+        "template": "threshold_gate",
+        "params": {
+          "threshold": 5,
+          "window_hours": 24,
+          "base_rate": null,
+          "input_mode": "single",
+          "threshold_type": "statistical",
+          "settlement_source": null
+        },
+        "confidence": 0.9,
+        "rationale": "Rule 'seismic_threshold_gate' fired (3/3 conditions). Traced to: TREMOR/MagGate.",
+        "brier_type": "binary"
+      },
+      {
+        "proposal_id": "4f232e0ac1c9f056",
+        "template": "cascade",
+        "params": {
+          "trigger_threshold": 6,
+          "bucket_count": 5,
+          "window_hours": 72,
+          "prior_model": "omori"
+        },
+        "confidence": 0.85,
+        "rationale": "Rule 'seismic_cascade' fired (2/2 conditions). Traced to: TREMOR/AftershockCascade.",
+        "brier_type": "multi_class"
+      },
+      {
+        "proposal_id": "eceae36eb76065f9",
+        "template": "divergence",
+        "params": {
+          "source_a_type": "automatic",
+          "source_b_type": "reviewed",
+          "divergence_threshold": null,
+          "resolution_mode": "self-resolving"
+        },
+        "confidence": 0.8,
+        "rationale": "Rule 'seismic_review_divergence' fired (2/2 conditions). Traced to: TREMOR/OracleDivergence.",
+        "brier_type": "binary"
+      },
+      {
+        "proposal_id": "9525d2cd7d3ea679",
+        "template": "anomaly",
+        "params": {
+          "baseline_metric": "b-value",
+          "sigma_threshold": null,
+          "window_hours": 168
+        },
+        "confidence": 0.75,
+        "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch.",
+        "brier_type": "binary"
+      },
+      {
+        "proposal_id": "ca56d925623277c6",
+        "template": "regime_shift",
+        "params": {
+          "state_boundary": null,
+          "zone_prior": null
+        },
+        "confidence": 0.7,
+        "rationale": "Rule 'seismic_regime_shift' fired (2/2 conditions). Traced to: TREMOR/DepthRegime.",
+        "brier_type": "binary"
+      }
+    ],
+    "composition": null,
+    "usefulness_scores": {
+      "0": 0.0594,
+      "1": 0.0594,
+      "2": 0.0594,
+      "3": 0.0594,
+      "4": 0.0594
+    }
+  },
+  "log": {
+    "fixture": "fixtures/usgs-m4.5-day.json",
+    "event_count": 18,
+    "proposals_count": 5,
+    "templates_proposed": [
+      "threshold_gate",
+      "cascade",
+      "divergence",
+      "anomaly",
+      "regime_shift"
+    ]
+  }
+}

@@ -43,6 +43,7 @@
       "properties": {
         "source_id":   { "type": ["string", "null"], "description": "Oracle source identifier (e.g. 'usgs_automatic', 'purpleair')." },
         "trust_tier":  { "enum": ["T0", "T1", "T2", "T3", "unknown"], "description": "FORGE trust tier for this source." },
+        "domain":      { "type": ["string", "null"], "description": "Feed domain hint (e.g. 'seismic', 'space_weather', 'air_quality'). Caller-supplied, not classifier-inferred. Makes the envelope self-describing for Echelon routing." },
         "endpoint":    { "type": ["string", "null"], "description": "Feed URL (for live adapters)." },
         "poll_interval_ms": { "type": ["integer", "null"], "description": "Recommended poll interval in ms." },
         "event_count": { "type": ["integer", "null"], "description": "Number of events in the classified window." }

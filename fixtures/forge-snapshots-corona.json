@@ -1,0 +1,77 @@
+{
+  "feed_profile": {
+    "cadence": {
+      "classification": "multi_cadence",
+      "median_ms": 60000,
+      "streams": [
+        "0s",
+        "3hr"
+      ]
+    },
+    "distribution": {
+      "type": "bounded_numeric",
+      "bounds": {
+        "min": 0,
+        "max": 3.4154228956140287e-7
+      }
+    },
+    "noise": {
+      "classification": "mixed",
+      "stream_count": 2
+    },
+    "density": {
+      "classification": "single_point"
+    },
+    "thresholds": {
+      "type": "regulatory",
+      "stream_count": 2
+    }
+  },
+  "proposals": [],
+  "envelope": {
+    "ir_version": "0.1.0",
+    "forge_version": "0.1.0",
+    "emitted_at": 1774110469584,
+    "feed_id": "swpc_goes_xray",
+    "feed_profile": {
+      "cadence": {
+        "classification": "multi_cadence",
+        "median_gap_ms": null,
+        "cv": null
+      },
+      "distribution": {
+        "type": "bounded_numeric",
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "noise": {
+        "classification": "mixed",
+        "spike_ratio": null
+      },
+      "density": {
+        "classification": "single_point",
+        "stream_count": null
+      },
+      "thresholds": {
+        "type": "regulatory",
+        "detected_thresholds": null
+      }
+    },
+    "source_metadata": {
+      "source_id": "swpc_goes",
+      "trust_tier": "T1",
+      "endpoint": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
+      "poll_interval_ms": 60000
+    },
+    "proposals": [],
+    "composition": null,
+    "usefulness_scores": {}
+  },
+  "log": {
+    "fixture": "fixtures/swpc-goes-xray.json",
+    "event_count": 773,
+    "proposals_count": 0,
+    "templates_proposed": []
+  }
+}
