@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.constructs.network/schemas/proposal-ir/0.1.0",
+  "title": "FORGE Proposal IR",
+  "description": "Intermediate Representation emitted by FORGE and consumed by Echelon's admission gate. Each ProposalEnvelope contains the full classification, one or more theatre proposals, provenance metadata, and optional composition context. Versioned for forward-compatibility.",
+  "version": "0.1.0",
+
+  "type": "object",
+  "required": ["ir_version", "forge_version", "emitted_at", "feed_id", "feed_profile", "proposals"],
+  "additionalProperties": false,
+
+  "properties": {
+
+    "ir_version": {
+      "type": "string",
+      "const": "0.1.0",
+      "description": "Proposal IR schema version. Echelon MUST reject envelopes with unrecognised versions."
+    },
+
+    "forge_version": {
+      "type": "string",
+      "description": "FORGE semver that produced this envelope (e.g. '0.1.0')."
+    },
+
+    "emitted_at": {
+      "type": "integer",
+      "description": "Unix epoch milliseconds when FORGE emitted this envelope."
+    },
+
+    "feed_id": {
+      "type": "string",
+      "description": "Stable identifier for the data feed that was classified (e.g. 'usgs_m4.5_hour', 'swpc_goes_xray'). Echelon uses this for dedup and routing."
+    },
+
+    "feed_profile": {
+      "$ref": "#/$defs/FeedProfile",
+      "description": "Complete 5-dimension classification (Q1-Q5). Echelon may use this for its own routing logic beyond what FORGE proposes."
+    },
+
+    "source_metadata": {
+      "type": "object",
+      "description": "Optional provenance about the feed source. Not used for matching — informational only.",
+      "properties": {
+        "source_id":   { "type": ["string", "null"], "description": "Oracle source identifier (e.g. 'usgs_automatic', 'purpleair')." },
+        "trust_tier":  { "enum": ["T0", "T1", "T2", "T3", "unknown"], "description": "FORGE trust tier for this source." },
+        "endpoint":    { "type": ["string", "null"], "description": "Feed URL (for live adapters)." },
+        "poll_interval_ms": { "type": ["integer", "null"], "description": "Recommended poll interval in ms." },
+        "event_count": { "type": ["integer", "null"], "description": "Number of events in the classified window." }
+      },
+      "additionalProperties": false
+    },
+
+    "proposals": {
+      "type": "array",
+      "minItems": 0,
+      "items": { "$ref": "#/$defs/Proposal" },
+      "description": "Ordered list of theatre proposals (highest confidence first). Empty array is valid — means FORGE found no viable templates for this feed."
+    },
+
+    "composition": {
+      "oneOf": [
+        { "$ref": "#/$defs/CompositionContext" },
+        { "type": "null" }
+      ],
+      "description": "Present only when this envelope was produced by composing two feeds. Null for single-feed classification."
+    },
+
+    "usefulness_scores": {
+      "type": ["object", "null"],
+      "description": "Optional map of proposal index → usefulness score (0-1). Populated when FORGE runs the economic filter.",
+      "patternProperties": {
+        "^[0-9]+$": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "$defs": {
+
+    "FeedProfile": {
+      "type": "object",
+      "required": ["cadence", "distribution", "noise", "density", "thresholds"],
+      "additionalProperties": false,
+      "properties": {
+        "cadence": {
+          "type": "object",
+          "required": ["classification"],
+          "properties": {
+            "classification": {
+              "enum": ["seconds", "minutes", "hours", "days", "event_driven", "multi_cadence"],
+              "description": "Q1: temporal cadence of the feed."
+            },
+            "median_gap_ms":  { "type": ["number", "null"] },
+            "cv":             { "type": ["number", "null"] }
+          }
+        },
+        "distribution": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["bounded_numeric", "unbounded_numeric", "categorical", "composite"],
+              "description": "Q2: value distribution shape."
+            },
+            "min":  { "type": ["number", "null"] },
+            "max":  { "type": ["number", "null"] },
+            "mean": { "type": ["number", "null"] }
+          }
+        },
+        "noise": {
+          "type": "object",
+          "required": ["classification"],
+          "properties": {
+            "classification": {
+              "enum": ["smooth", "noisy", "spike_driven", "mixed"],
+              "description": "Q3: noise/volatility profile."
+            },
+            "spike_ratio": { "type": ["number", "null"] }
+          }
+        },
+        "density": {
+          "type": "object",
+          "required": ["classification"],
+          "properties": {
+            "classification": {
+              "enum": ["single_point", "sparse_network", "dense_network", "multi_tier"],
+              "description": "Q4: source density and network topology."
+            },
+            "stream_count": { "type": ["integer", "null"] }
+          }
+        },
+        "thresholds": {
+          "type": "object",
+          "required": ["type"],
+          "properties": {
+            "type": {
+              "enum": ["regulatory", "statistical", "physical", "none"],
+              "description": "Q5: threshold regime."
+            },
+            "detected_thresholds": {
+              "type": ["array", "null"],
+              "items": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+
+    "Proposal": {
+      "type": "object",
+      "required": ["proposal_id", "template", "params", "confidence", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "proposal_id": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 16,
+          "description": "Deterministic SHA-256 hash (first 16 hex chars) of feed_id + template + sorted core params. Echelon uses this for dedup — identical feeds with identical classifications always produce the same ID."
+        },
+        "template": {
+          "enum": ["threshold_gate", "cascade", "divergence", "regime_shift", "anomaly", "persistence"],
+          "description": "Theatre template type. Must match a template registered in Echelon's theatre registry."
+        },
+        "params": {
+          "type": "object",
+          "description": "Template-specific parameters. Schema depends on template type. Echelon MAY override specific fields (e.g. settlement_source) at admission time.",
+          "properties": {
+            "threshold":           { "type": ["number", "string", "null"] },
+            "window_hours":        { "type": ["number", "null"] },
+            "base_rate":           { "type": ["number", "null"] },
+            "input_mode":          { "enum": ["single", "multi", null] },
+            "threshold_type":      { "enum": ["regulatory", "statistical", "physical", null] },
+            "settlement_source":   { "type": ["string", "null"] },
+            "trigger_threshold":   { "type": ["number", "string", "null"] },
+            "bucket_count":        { "type": ["integer", "null"] },
+            "prior_model":         { "type": ["string", "null"] },
+            "source_a_type":       { "type": ["string", "null"] },
+            "source_b_type":       { "type": ["string", "null"] },
+            "divergence_threshold": { "type": ["number", "null"] },
+            "resolution_mode":     { "type": ["string", "null"] },
+            "baseline_metric":     { "type": ["string", "null"] },
+            "sigma_threshold":     { "type": ["number", "null"] },
+            "state_boundary":      { "type": ["string", "number", "null"] },
+            "zone_prior":          { "type": ["number", "null"] },
+            "arrival_window_ms":   { "type": ["integer", "null"] }
+          },
+          "additionalProperties": true
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "FORGE confidence in this proposal (0-1). Echelon's admission gate may apply its own threshold."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Human-readable explanation of why this template was proposed. Includes rule ID and traced_to references."
+        },
+        "brier_type": {
+          "enum": ["binary", "multi_class", null],
+          "description": "Expected Brier scoring method for RLMF certificates from this theatre."
+        }
+      }
+    },
+
+    "CompositionContext": {
+      "type": "object",
+      "required": ["feed_a_id", "feed_b_id", "causal_order", "rule_fired"],
+      "additionalProperties": false,
+      "properties": {
+        "feed_a_id":     { "type": "string", "description": "feed_id of the primary feed." },
+        "feed_b_id":     { "type": "string", "description": "feed_id of the secondary feed." },
+        "feed_a_role":   { "type": "string", "description": "Semantic role of feed A in the composition (e.g. 'threshold_target')." },
+        "feed_b_role":   { "type": "string", "description": "Semantic role of feed B in the composition (e.g. 'arrival_predictor')." },
+        "causal_order":  {
+          "type": "object",
+          "required": ["leader", "lag_ms"],
+          "properties": {
+            "leader": { "enum": ["A", "B", "concurrent"] },
+            "lag_ms": { "type": "number" }
+          }
+        },
+        "aligned_pair_count": { "type": "integer", "description": "Number of temporally aligned event pairs used." },
+        "rule_fired":    { "type": "string", "description": "Composition rule that matched (e.g. 'threshold_with_arrival_predictor')." }
+      }
+    }
+  }
+}
