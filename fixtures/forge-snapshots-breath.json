@@ -1,0 +1,102 @@
+{
+  "feed_profile": {
+    "cadence": {
+      "classification": "seconds",
+      "median_ms": 1,
+      "jitter_coefficient": 0
+    },
+    "distribution": {
+      "type": "bounded_numeric",
+      "bounds": {
+        "min": 12,
+        "max": 95
+      }
+    },
+    "noise": {
+      "classification": "spike_driven",
+      "spike_rate": 0.05
+    },
+    "density": {
+      "classification": "sparse_network",
+      "sensor_count": 20
+    },
+    "thresholds": {
+      "type": "regulatory"
+    }
+  },
+  "proposals": [
+    {
+      "template": "anomaly",
+      "params": {
+        "baseline_metric": "b-value",
+        "sigma_threshold": null,
+        "window_hours": 168
+      },
+      "confidence": 0.75,
+      "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch."
+    }
+  ],
+  "envelope": {
+    "ir_version": "0.1.0",
+    "forge_version": "0.1.0",
+    "emitted_at": 1774110479548,
+    "feed_id": "airnow_sf_bay",
+    "feed_profile": {
+      "cadence": {
+        "classification": "seconds",
+        "median_gap_ms": null,
+        "cv": null
+      },
+      "distribution": {
+        "type": "bounded_numeric",
+        "min": null,
+        "max": null,
+        "mean": null
+      },
+      "noise": {
+        "classification": "spike_driven",
+        "spike_ratio": null
+      },
+      "density": {
+        "classification": "sparse_network",
+        "stream_count": null
+      },
+      "thresholds": {
+        "type": "regulatory",
+        "detected_thresholds": null
+      }
+    },
+    "source_metadata": {
+      "source_id": "airnow",
+      "trust_tier": "T1",
+      "endpoint": "https://www.airnowapi.org/aq/observation/zipCode/current",
+      "poll_interval_ms": 300000
+    },
+    "proposals": [
+      {
+        "proposal_id": "d9c5e82c0ebb6621",
+        "template": "anomaly",
+        "params": {
+          "baseline_metric": "b-value",
+          "sigma_threshold": null,
+          "window_hours": 168
+        },
+        "confidence": 0.75,
+        "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch.",
+        "brier_type": "binary"
+      }
+    ],
+    "composition": null,
+    "usefulness_scores": {
+      "0": 0.34520625
+    }
+  },
+  "log": {
+    "fixture": "fixtures/airnow-sf-bay.json",
+    "event_count": 20,
+    "proposals_count": 1,
+    "templates_proposed": [
+      "anomaly"
+    ]
+  }
+}
