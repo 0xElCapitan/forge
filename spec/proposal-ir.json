@@ -149,14 +149,14 @@
 
     "Proposal": {
       "type": "object",
-      "required": ["proposal_id", "template", "params", "confidence", "rationale"],
+      "required": ["proposal_id", "template", "params", "confidence", "rationale", "brier_type"],
       "additionalProperties": false,
       "properties": {
         "proposal_id": {
           "type": "string",
           "minLength": 16,
           "maxLength": 16,
-          "description": "Deterministic SHA-256 hash (first 16 hex chars) of feed_id + template + sorted core params. Echelon uses this for dedup — identical feeds with identical classifications always produce the same ID."
+          "description": "Deterministic ID: SHA-256 of `feed_id:template:JSON.stringify(sorted params)`, first 16 hex characters. Stable across polls for unchanged feeds. Use as dedup key."
         },
         "template": {
           "enum": ["threshold_gate", "cascade", "divergence", "regime_shift", "anomaly", "persistence"],
@@ -198,8 +198,8 @@
           "description": "Human-readable explanation of why this template was proposed. Includes rule ID and traced_to references."
         },
         "brier_type": {
-          "enum": ["binary", "multi_class", null],
-          "description": "Expected Brier scoring method for RLMF certificates from this theatre."
+          "enum": ["binary", "multi_class"],
+          "description": "Expected Brier scoring method for RLMF certificates from this theatre. Always present — determined by template type (cascade → multi_class, all others → binary)."
         }
       }
     },
