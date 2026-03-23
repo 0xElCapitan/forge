@@ -85,7 +85,7 @@ export function emitEnvelope({
     params:      p.params,
     confidence:  p.confidence,
     rationale:   p.rationale,
-    brier_type:  BRIER_TYPE[p.template] ?? null,
+    brier_type:  BRIER_TYPE[p.template],
   }));
 
   // Optional usefulness scoring
