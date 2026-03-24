@@ -11,6 +11,7 @@
 #   constructs-loader.sh list-pack-skills <d> - List skills in a pack
 #   constructs-loader.sh get-pack-version <d> - Get pack version from manifest
 #   constructs-loader.sh check-updates        - Check for available updates
+#   constructs-loader.sh generate-index       - Generate construct index
 #
 # Exit Codes (for validate/preload):
 #   0 = valid
@@ -1018,6 +1019,11 @@ do_preload() {
     local output=""
     output=$(validate_skill "$skill_dir" 2>&1) || exit_code=$?
 
+    # Check pack staleness (warn if >7 days old) — Issue #449
+    if type check_pack_staleness &>/dev/null; then
+        check_pack_staleness "$skill_name" 7 || true  # Warning only, don't block
+    fi
+
     case "$exit_code" in
         0)
             # Valid - silent success
@@ -1458,6 +1464,7 @@ Commands:
     check-updates           Check for available updates
     validate-manifest <dir> Validate a pack's manifest.json against schema
     validate-all-manifests  Validate all pack manifests in registry
+    generate-index          Generate construct index (delegates to construct-index-gen.sh)
     ensure-gitignore        Add .claude/constructs/ to .gitignore if missing
 
 Exit Codes (validate/preload):
@@ -1536,6 +1543,15 @@ main() {
             ;;
         validate-all-manifests)
             do_validate_all_manifests "${2:-}"
+            ;;
+        generate-index|gen-index)
+            shift
+            local index_gen="$SCRIPT_DIR/construct-index-gen.sh"
+            if [[ ! -x "$index_gen" ]]; then
+                print_error "construct-index-gen.sh not found"
+                exit 2
+            fi
+            exec "$index_gen" "$@"
             ;;
         ensure-gitignore)
             ensure_constructs_gitignored
