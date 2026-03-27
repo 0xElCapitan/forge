@@ -1,0 +1,31 @@
+{
+  "version": "1.0.0",
+  "cycles": [
+    {
+      "id": "cycle-001",
+      "label": "FORGE — Feed-Adaptive Oracle & Runtime Generator",
+      "prd": "grimoires/loa/prd.md",
+      "created_at": "2026-03-19",
+      "status": "active",
+      "sdd": "grimoires/loa/sdd.md",
+      "sprints": [
+        { "local_id": "sprint-1", "global_id": 1, "label": "Phase 0: Scaffolding", "status": "completed", "completed_at": "2026-03-19" },
+        { "local_id": "sprint-2", "global_id": 2, "label": "Q1 Cadence + Q2 Distribution", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-3", "global_id": 3, "label": "Q3 Noise + Q4 Density", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-4", "global_id": 4, "label": "Q5 Thresholds + Full Grammar", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-5", "global_id": 5, "label": "Initial Selector Rules", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-6", "global_id": 6, "label": "Selector Convergence", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-7", "global_id": 7, "label": "Theatre Templates", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-8", "global_id": 8, "label": "Processor Pipeline + Trust Model", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-9", "global_id": 9, "label": "RLMF + Usefulness + Entrypoint", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-10", "global_id": 10, "label": "Echelon Construct Spec (construct.json + construct.yaml)", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-11", "global_id": 11, "label": "BUTTERFREEZONE.md", "status": "completed", "completed_at": "2026-03-20" },
+        { "local_id": "sprint-12", "global_id": 12, "label": "Composer: proposeComposedTheatre", "status": "completed", "completed_at": "2026-03-20" }
+      ]
+    }
+  ],
+  "active_cycle": "cycle-001",
+  "active_bugfix": null,
+  "global_sprint_counter": 12,
+  "bugfix_cycles": []
+}
