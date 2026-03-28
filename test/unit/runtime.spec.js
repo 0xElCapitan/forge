@@ -255,6 +255,37 @@ describe('ForgeRuntime — settlement', () => {
     assert.equal(t.resolution.outcome, 7);
     assert.equal(t.resolution.outcome_bucket, 3);  // 6-10 bucket
   });
+
+  // ── Sprint 3: RT-01 fail-closed settlement (CRITICAL fix) ─────────────────
+  it('rejects settlement when source_id is omitted (RT-01 fix)', () => {
+    const rt = new ForgeRuntime({ clock: () => NOW });
+    const ids = rt.instantiate([THRESHOLD_PROPOSAL], { now: NOW });
+
+    const result = rt.settle(ids[0], true);  // no source_id
+
+    assert.equal(result.settled, false);
+    assert.ok(result.reason.includes('source_id is required'));
+  });
+
+  it('rejects settlement when source_id is empty string', () => {
+    const rt = new ForgeRuntime({ clock: () => NOW });
+    const ids = rt.instantiate([THRESHOLD_PROPOSAL], { now: NOW });
+
+    const result = rt.settle(ids[0], true, { source_id: '' });
+
+    assert.equal(result.settled, false);
+    assert.ok(result.reason.includes('source_id is required'));
+  });
+
+  it('rejects settlement when source_id is null', () => {
+    const rt = new ForgeRuntime({ clock: () => NOW });
+    const ids = rt.instantiate([THRESHOLD_PROPOSAL], { now: NOW });
+
+    const result = rt.settle(ids[0], true, { source_id: null });
+
+    assert.equal(result.settled, false);
+    assert.ok(result.reason.includes('source_id is required'));
+  });
 });
 
 // ─── Certificates ────────────────────────────────────────────────────────────

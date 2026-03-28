@@ -281,6 +281,70 @@ describe('checkAdversarial — Sybil sensors', () => {
   });
 });
 
+// ─── Sprint 3: Check 6 — value out of range (RT-05/CR-01 fix) ───────────────
+
+describe('checkAdversarial — Check 6: value out of range (Sprint 3)', () => {
+  it('NaN value is flagged', () => {
+    const result = checkAdversarial({ value: NaN, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, false);
+    assert.ok(result.reason.includes('value_out_of_range'));
+  });
+
+  it('Infinity value is flagged', () => {
+    const result = checkAdversarial({ value: Infinity, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, false);
+    assert.ok(result.reason.includes('value_out_of_range'));
+  });
+
+  it('-Infinity value is flagged', () => {
+    const result = checkAdversarial({ value: -Infinity, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, false);
+    assert.ok(result.reason.includes('value_out_of_range'));
+  });
+
+  it('normal finite value passes Check 6', () => {
+    const result = checkAdversarial({ value: 42, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, true);
+  });
+
+  it('zero value passes Check 6', () => {
+    const result = checkAdversarial({ value: 0, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, true);
+  });
+
+  it('negative finite value passes Check 6', () => {
+    const result = checkAdversarial({ value: -500, timestamp: NOW }, { now: NOW });
+    assert.equal(result.clean, true);
+  });
+
+  it('null/undefined value skips Check 6 (opt-in field)', () => {
+    const result1 = checkAdversarial({ timestamp: NOW }, { now: NOW });
+    assert.equal(result1.clean, true);
+    const result2 = checkAdversarial({ value: null, timestamp: NOW }, { now: NOW });
+    assert.equal(result2.clean, true);
+  });
+});
+
+// ─── Sprint 3: RT-02 — getTrustTier type guard ─────────────────────────────
+
+describe('getTrustTier — type guard (Sprint 3)', () => {
+  it('object input returns unknown (no crash)', () => {
+    assert.equal(getTrustTier({}), 'unknown');
+  });
+
+  it('number input returns unknown (no crash)', () => {
+    assert.equal(getTrustTier(42), 'unknown');
+  });
+
+  it('array input returns unknown (no crash)', () => {
+    assert.equal(getTrustTier([]), 'unknown');
+  });
+
+  it('boolean input returns unknown (no crash)', () => {
+    assert.equal(getTrustTier(true), 'unknown');
+  });
+});
+
 describe('checkChannelConsistency', () => {
   it('consistent channels report consistent: true', () => {
     // |50 - 52| / 52 ≈ 0.038 < 0.15

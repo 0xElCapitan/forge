@@ -38,7 +38,9 @@ import { assignEvidenceClass } from './settlement.js';
  *
  * @param {{ value: number, timestamp?: number, [key: string]: any }} rawEvent
  * @param {Object} [config]
- * @param {string} [config.tier='T3']              - oracle trust tier
+ * @param {string} [config.tier='T3']              - oracle trust tier. API CONTRACT: caller MUST
+ *   look up tier via getTrustTier(source_id). Passing an incorrect tier produces valid
+ *   but misleading quality/evidence_class. FORGE does not cross-check tier vs source_id.
  * @param {string|null} [config.source_id=null]    - originating source identifier
  * @param {string[]} [config.theatre_refs=[]]      - theatre IDs this bundle targets
  * @param {number} [config.now=Date.now()]         - injectable clock
@@ -47,6 +49,10 @@ import { assignEvidenceClass } from './settlement.js';
  * @returns {Object} EvidenceBundle
  */
 export function buildBundle(rawEvent, config = {}) {
+  if (!rawEvent || rawEvent.value == null || typeof rawEvent.value !== 'number') {
+    throw new TypeError('rawEvent.value must be a number');
+  }
+
   const {
     tier           = 'T3',
     source_id      = null,

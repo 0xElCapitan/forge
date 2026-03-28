@@ -37,6 +37,7 @@ const DEFAULT_BASELINE = 0.50;
  * @returns {number} freshness in [0, 1]
  */
 function freshnessScore(timestamp, now, stale_after_ms) {
+  if (stale_after_ms <= 0) return 0;  // guard: avoid division by zero → NaN
   const age_ms = now - timestamp;
   if (age_ms < 0) return 0.9;  // future timestamp — slight penalty
   return Math.max(0, 1 - age_ms / stale_after_ms);

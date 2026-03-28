@@ -102,8 +102,8 @@ const THEATRE_OPS = {
 let _idCounter = 0;
 
 /** Generate a unique theatre ID. */
-function generateId(template) {
-  return `${template}-${Date.now()}-${++_idCounter}`;
+function generateId(template, clock = Date.now) {
+  return `${template}-${clock()}-${++_idCounter}`;
 }
 
 // ─── ForgeRuntime ────────────────────────────────────────────────────────────
@@ -180,7 +180,7 @@ export class ForgeRuntime {
         continue;
       }
 
-      const id = generateId(proposal.template);
+      const id = generateId(proposal.template, this.#clock);
       const theatre = ops.create(proposal.params, { now });
 
       // Attach runtime metadata (not part of the theatre template's domain)
@@ -226,9 +226,21 @@ export class ForgeRuntime {
       return { processed: 0, rejected: true, reason: adv.reason };
     }
 
+    // Snapshot critical fields at ingestion time (RT-10: validation-at-ingestion)
+    // Downstream code uses the snapshot, not the mutable original
+    const ingested = {
+      ...bundle,
+      _snapshot: {
+        quality:        bundle.quality,
+        evidence_class: bundle.evidence_class,
+        doubt_price:    bundle.doubt_price,
+        source_id:      bundle.source_id,
+      },
+    };
+
     // Determine target theatres
-    const targets = (Array.isArray(bundle.theatre_refs) && bundle.theatre_refs.length > 0)
-      ? bundle.theatre_refs
+    const targets = (Array.isArray(ingested.theatre_refs) && ingested.theatre_refs.length > 0)
+      ? ingested.theatre_refs
       : [...this.#theatres.keys()];
 
     let processed = 0;
@@ -240,7 +252,7 @@ export class ForgeRuntime {
       const ops = THEATRE_OPS[theatre.template];
       if (!ops) continue;
 
-      const updated = ops.process(theatre, bundle);
+      const updated = ops.process(theatre, ingested);
 
       // Preserve runtime metadata
       this.#theatres.set(id, { ...updated, _id: theatre._id, _feed_id: theatre._feed_id,
@@ -311,12 +323,13 @@ export class ForgeRuntime {
       return { settled: false, reason: `theatre '${theatreId}' is not open` };
     }
 
-    // Trust tier enforcement
-    if (opts.source_id) {
-      const validation = validateSettlement(opts.source_id);
-      if (!validation.allowed) {
-        return { settled: false, reason: validation.reason };
-      }
+    // Trust tier enforcement — fail-closed: source_id is REQUIRED for settlement
+    if (!opts.source_id) {
+      return { settled: false, reason: 'source_id is required for settlement' };
+    }
+    const validation = validateSettlement(opts.source_id);
+    if (!validation.allowed) {
+      return { settled: false, reason: validation.reason };
     }
 
     const ops = THEATRE_OPS[theatre.template];
