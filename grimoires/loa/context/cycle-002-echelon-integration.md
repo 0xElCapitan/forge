@@ -38,6 +38,10 @@ The IR spec exists but hasn't been validated against Echelon's actual admission 
 - Add a JSON Schema validator that runs on every emitted envelope (dev-time, not runtime)
 - Add an IR envelope example file per backing spec (TREMOR, CORONA, BREATH) — concrete reference for Tobias
 - Validate the IR schema covers Echelon's needs or flag gaps (e.g., does Echelon need agent deck hints? liquidity parameter suggestions?)
+- Add three fields confirmed as required by Echelon's Theatre Factory ProposalIR spec (v15 §9.2):
+  - `normalization_trace` — list of transformations applied to the proposal (what was stated vs inferred — distinguishes human proposals from FORGE-generated ones)
+  - `negative_policy_flags` — pre-screen results against Echelon's Negative Policy Registry (five block rules: reflexive_feed, no_settlement_authority, insufficient_independence, synthetic_only, hidden_upstream_dependency)
+  - `original_hash` — SHA-256 of the raw input payload for provenance
 
 ### 2. Runtime integration tests
 
@@ -68,6 +72,8 @@ These should be flagged in the SDD as requiring Echelon input, not solved unilat
 - Does Echelon's admission gate filter by usefulness score, or does it have its own filter?
 - How does Echelon handle FORGE proposing theatres that already exist (dedup)?
 - What's the handshake for IR version negotiation?
+- **Does FORGE populate `negative_policy_flags` or does Echelon's admission gate handle that screening entirely?** This determines whether FORGE needs to implement Negative Policy Registry logic or simply emit an empty list for Echelon to populate. Do not implement FORGE-side screening without confirming this boundary.
+- **Should FORGE's trust tier source list be aligned against Echelon's Settlement Authority Registry and OSINT source registry (57 sources, v0.4.0)?** FORGE's T0/T1 model has no `settlement_requires_corroboration` analog — some Echelon-side T1-equivalent sources require independent corroboration before settling alone. Confirm whether FORGE should carry this flag in source metadata or defer enforcement entirely to Echelon's admission gate.
 
 ## Constraints
 

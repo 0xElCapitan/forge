@@ -14,5 +14,7 @@
     "test:corona": "node --test test/convergence/corona.spec.js",
     "test:breath": "node --test test/convergence/breath.spec.js"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "@0xhoneyjar/loa-hounfour": "github:0xElCapitan/loa-hounfour"
+  }
 }
