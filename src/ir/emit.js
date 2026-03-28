@@ -125,8 +125,8 @@ function serializeProfile(profile) {
   return {
     cadence: {
       classification: profile.cadence.classification,
-      median_gap_ms:  profile.cadence.median_gap_ms  ?? null,
-      cv:             profile.cadence.cv             ?? null,
+      median_ms:          profile.cadence.median_ms          ?? null,
+      jitter_coefficient: profile.cadence.jitter_coefficient ?? null,
     },
     distribution: {
       type: profile.distribution.type,
@@ -136,11 +136,11 @@ function serializeProfile(profile) {
     },
     noise: {
       classification: profile.noise.classification,
-      spike_ratio:    profile.noise.spike_ratio ?? null,
+      spike_rate:     profile.noise.spike_rate ?? null,
     },
     density: {
       classification: profile.density.classification,
-      stream_count:   profile.density.stream_count ?? null,
+      sensor_count:   profile.density.sensor_count ?? profile.density.tier_count ?? null,
     },
     thresholds: {
       type:                 profile.thresholds.type,

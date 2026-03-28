@@ -59,7 +59,7 @@ const TRUST_REGISTRY = {
  * @returns {'T0'|'T1'|'T2'|'T3'|'unknown'}
  */
 export function getTrustTier(sourceId) {
-  if (!sourceId) return 'unknown';
+  if (!sourceId || typeof sourceId !== 'string') return 'unknown';
   return TRUST_REGISTRY[sourceId.toLowerCase()] ?? 'unknown';
 }
 

@@ -11,10 +11,10 @@ import { emitEnvelope } from '../../src/ir/emit.js';
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 const TREMOR_PROFILE = {
-  cadence:      { classification: 'event_driven', median_gap_ms: 4500000, cv: 1.2 },
+  cadence:      { classification: 'event_driven', median_ms: 4500000, jitter_coefficient: 1.2 },
   distribution: { type: 'unbounded_numeric', min: 4.5, max: 7.1, mean: 5.2 },
-  noise:        { classification: 'spike_driven', spike_ratio: 0.35 },
-  density:      { classification: 'sparse_network', stream_count: 1 },
+  noise:        { classification: 'spike_driven', spike_rate: 0.35 },
+  density:      { classification: 'sparse_network', sensor_count: 1 },
   thresholds:   { type: 'statistical', detected_thresholds: [5.0, 6.0] },
 };
 
@@ -214,11 +214,11 @@ describe('emitEnvelope', () => {
       proposals: [],
     });
 
-    assert.equal(env.feed_profile.cadence.median_gap_ms, null);
-    assert.equal(env.feed_profile.cadence.cv, null);
+    assert.equal(env.feed_profile.cadence.median_ms, null);
+    assert.equal(env.feed_profile.cadence.jitter_coefficient, null);
     assert.equal(env.feed_profile.distribution.min, null);
-    assert.equal(env.feed_profile.noise.spike_ratio, null);
-    assert.equal(env.feed_profile.density.stream_count, null);
+    assert.equal(env.feed_profile.noise.spike_rate, null);
+    assert.equal(env.feed_profile.density.sensor_count, null);
     assert.equal(env.feed_profile.thresholds.detected_thresholds, null);
   });
 });

@@ -231,3 +231,49 @@ describe('buildBundle', () => {
     assert.ok(stale.doubt_price > fresh.doubt_price);
   });
 });
+
+// ─── Sprint 3: Input validation (CR-02/SA-01) ──────────────────────────────
+
+describe('buildBundle — input validation (Sprint 3)', () => {
+  it('throws TypeError for missing rawEvent', () => {
+    assert.throws(() => buildBundle(null), TypeError);
+    assert.throws(() => buildBundle(undefined), TypeError);
+  });
+
+  it('throws TypeError for missing rawEvent.value', () => {
+    assert.throws(() => buildBundle({}), TypeError);
+    assert.throws(() => buildBundle({ timestamp: NOW }), TypeError);
+  });
+
+  it('throws TypeError for non-number rawEvent.value', () => {
+    assert.throws(() => buildBundle({ value: 'hello' }), TypeError);
+    assert.throws(() => buildBundle({ value: null }), TypeError);
+  });
+
+  it('accepts valid numeric values including edge cases', () => {
+    assert.doesNotThrow(() => buildBundle({ value: 0 }, { now: NOW }));
+    assert.doesNotThrow(() => buildBundle({ value: -1 }, { now: NOW }));
+    assert.doesNotThrow(() => buildBundle({ value: NaN }, { now: NOW }));
+    assert.doesNotThrow(() => buildBundle({ value: Infinity }, { now: NOW }));
+  });
+});
+
+// ─── Sprint 3: NaN guard (SA-02/ME-05/ME-06) ───────────────────────────────
+
+describe('computeQuality — NaN guard (Sprint 3)', () => {
+  it('returns finite value when stale_after_ms is 0', () => {
+    const q = computeQuality(freshEvent, { tier: 'T3', now: NOW, stale_after_ms: 0 });
+    assert.ok(Number.isFinite(q), `quality should be finite, got ${q}`);
+  });
+
+  it('returns finite value when stale_after_ms is negative', () => {
+    const q = computeQuality(freshEvent, { tier: 'T3', now: NOW, stale_after_ms: -1 });
+    assert.ok(Number.isFinite(q), `quality should be finite, got ${q}`);
+  });
+
+  it('doubt_price is finite when quality is finite', () => {
+    const q = computeQuality(freshEvent, { tier: 'T3', now: NOW, stale_after_ms: 0 });
+    const dp = computeDoubtPrice(q);
+    assert.ok(Number.isFinite(dp), `doubt_price should be finite, got ${dp}`);
+  });
+});

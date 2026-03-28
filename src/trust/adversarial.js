@@ -126,6 +126,14 @@ export function checkAdversarial(bundle, context = {}) {
     }
   }
 
+  // ── Check 6: Value out of range — physically implausible bounds ─────────────
+  if (bundle.value != null && !Number.isFinite(bundle.value)) {
+    return {
+      clean: false,
+      reason: `value_out_of_range: bundle.value is ${bundle.value} (must be finite number)`,
+    };
+  }
+
   return { clean: true };
 }
 

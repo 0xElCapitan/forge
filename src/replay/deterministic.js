@@ -6,7 +6,8 @@
  * @module replay/deterministic
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
+import { resolve, normalize } from 'node:path';
 
 /**
  * @typedef {Object} ReplayOptions
@@ -82,9 +83,18 @@ function flattenFixture(data, shape) {
  * @returns {ReplayResult}
  */
 export function createReplay(fixturePath, options = {}) {
-  const { speedFactor = 0 } = options;
+  const { speedFactor = 0, allowedDir } = options;
 
-  const raw = readFileSync(fixturePath, 'utf8');
+  // Path traversal guard: resolve to absolute and verify within allowed directory
+  const resolved = resolve(fixturePath);
+  if (allowedDir) {
+    const normalAllowed = normalize(resolve(allowedDir));
+    if (!normalize(resolved).startsWith(normalAllowed)) {
+      throw new Error(`Path traversal blocked: '${fixturePath}' resolves outside allowed directory`);
+    }
+  }
+
+  const raw = readFileSync(resolved, 'utf8');
   const data = JSON.parse(raw);
   const shape = detectShape(data);
   const events = flattenFixture(data, shape);
