@@ -86,13 +86,13 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (560 tests)
+# Unit tests (581 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (566 tests)
+# Everything (587 tests)
 npm run test:all
 ```
 
