@@ -86,13 +86,13 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (581 tests)
+# Unit tests (583 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (587 tests)
+# Everything (589 tests)
 npm run test:all
 ```
 
@@ -250,8 +250,8 @@ Real `forge.analyze()` IR output for each backing spec, used by Echelon's bridge
 | File | Domain | Proposals |
 |------|--------|-----------|
 | `fixtures/forge-snapshots-tremor.json` | Seismic | 5 proposals |
-| `fixtures/forge-snapshots-corona.json` | Space weather | 5 proposals |
-| `fixtures/forge-snapshots-breath.json` | Air quality | 3 proposals |
+| `fixtures/forge-snapshots-corona.json` | Space weather | 0 proposals |
+| `fixtures/forge-snapshots-breath.json` | Air quality | 1 proposal |
 
 ## License
 
