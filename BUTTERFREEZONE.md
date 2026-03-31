@@ -70,6 +70,7 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is a feed classification and Th
 - **alignFeeds** — Temporal alignment of two event streams within a sliding window. For each event in stream A, finds the nearest event in stream B within ±windowMs. Returns matched pairs only. (`src/composer/compose.js:28`)
 - **detectCausalOrdering** — Mean timestamp offset analysis to detect leading/lagging relationship between two aligned feed streams. Returns `leader` (`'A'`|`'B'`|`'concurrent'`) and `lag_ms`. (`src/composer/compose.js:63`)
 - **proposeComposedTheatre** — Three-rule composition engine. Evaluates two classified feeds + their temporal relationship and proposes the Theatre that neither feed would generate alone. Rules: `threshold_with_arrival_predictor` (bounded + arrival predictor → threshold_gate), `co_bounded_divergence` (two bounded + concurrent → divergence), `cascade_amplifier` (spike_driven + bounded → cascade). Returns null if no rule fires. (`src/composer/compose.js:118`)
+- **emitEnvelope** — Versioned ProposalEnvelope emitter. Annotates proposals with deterministic `proposal_id` (SHA-256 dedup key), `brier_type`, and per-proposal `usefulness_score` (null when economic filter not invoked). Produces the IR contract consumed by Echelon's admission gate. (`src/ir/emit.js:71`)
 - **computeUsefulness** — Scores a Theatre proposal across four dimensions: `market_depth`, `settlement_clarity`, `temporal_fitness`, `novelty`. Returns a 0–1 composite usefulness score. (`src/filter/usefulness.js:113`)
 - **buildBundle** — Evidence bundle constructor: computes quality score, doubt price (uncertainty), settlement assessment, and assembles the full bundle object from a raw feed event. (`src/processor/bundles.js:49`)
 - **getTrustTier** / **canSettle** / **validateSettlement** — T0–T3 oracle trust enforcement. `canSettle` returns true only for T0/T1. PurpleAir (T3) enforced as non-settling source. (`src/trust/oracle-trust.js:61`)
@@ -157,9 +158,18 @@ Directory structure:
 ./src/composer/compose.js
 ./src/replay
 ./src/replay/deterministic.js
+./src/ir
+./src/ir/emit.js
+./src/runtime
+./src/runtime/lifecycle.js
+./src/adapter
+./src/adapter/usgs-live.js
+./src/adapter/swpc-live.js
 ./spec
 ./spec/construct.json
 ./spec/construct.yaml
+./spec/proposal-ir.json
+./spec/STABILITY.md
 ./test
 ./test/unit
 ./test/convergence
@@ -198,8 +208,12 @@ Directory structure:
 | `brierScoreBinary` | Function | outcome + probability → Brier score |
 | `brierScoreMultiClass` | Function | outcome_bucket + distribution → Brier score |
 | `computeUsefulness` | Function | proposal + feedProfile → usefulness score (0–1) |
+| `emitEnvelope` | Function | feed_id + feed_profile + proposals + options → ProposalEnvelope (IR contract) |
+| `ForgeRuntime` | Class | Theatre lifecycle orchestrator. `.instantiate(proposals)` → theatre IDs. `.ingestBundle()` → process evidence. `.getCertificates()` → RLMF state |
 | `createReplay` | Function | fixturePath + options → deterministic replay session |
 | `ingest` / `ingestFile` | Functions | Raw data / file path → events[] |
+| `USGSLiveAdapter` | Class | Live USGS seismic feed adapter |
+| `classifyUSGSFeed` | Function | feedType → full pipeline on live USGS data |
 
 ### Theatre Templates
 
@@ -238,21 +252,24 @@ Directory structure:
 | `src/filter/` | 1 | Usefulness scoring across four dimensions: market_depth, settlement_clarity, temporal_fitness, novelty |
 | `src/composer/` | 1 | Feed composition: temporal alignment (sliding window), causal ordering (mean offset analysis) |
 | `src/replay/` | 1 | Deterministic replay of recorded feed sessions |
-| `spec/` | 2 | Machine-readable construct specification (construct.json, construct.yaml) |
-| `test/unit/` | 13 | Unit test suite — 503 tests, 140 suites (node:test, zero dependencies) |
+| `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary |
+| `src/runtime/` | 1 | ForgeRuntime — theatre lifecycle orchestrator (instantiate, ingest, expire, resolve) |
+| `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
+| `spec/` | 4 | Construct spec (construct.json, construct.yaml), Proposal IR schema (proposal-ir.json), stability policy (STABILITY.md) |
+| `test/unit/` | 16 | Unit test suite — 583 tests, 162 suites (node:test, zero dependencies) |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 503 tests across 140 suites (`node --test test/unit/*.spec.js`)
+- 583 tests across 162 suites (`node --test test/unit/*.spec.js`)
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 503
+# ℹ pass 583
 # ℹ fail 0
 ```
 
@@ -272,7 +289,7 @@ node --test test/unit/*.spec.js
 
 ```bash
 # No install needed — zero dependencies, Node.js 20+ only
-node --test test/unit/*.spec.js          # Run unit tests (503 tests)
+node --test test/unit/*.spec.js          # Run unit tests (583 tests)
 node --test test/convergence/*.spec.js   # Run convergence tests
 ```
 
@@ -303,16 +320,16 @@ const causal = detectCausalOrdering(pairs);
 ```
 
 <!-- ground-truth-meta
-head_sha: ab27f52
-generated_at: 2026-03-20T00:00:00Z
-generator: claude-sonnet-4-6 / sprint-11
+head_sha: f3f244e
+generated_at: 2026-03-31T00:00:00Z
+generator: claude-opus-4-6 / tobias-review-sprint
 sections:
   agent_context: forge-v0.1.0
-  capabilities: 18-entries-code-factual
-  architecture: pipeline-ingester-classifier-selector-processor-rlmf
+  capabilities: 19-entries-code-factual
+  architecture: pipeline-ingester-classifier-selector-processor-ir-runtime-rlmf
   interfaces: construct-api-theatre-templates-oracle-trust-model
-  module_map: 13-modules
-  verification: 503-tests-140-suites
+  module_map: 16-modules
+  verification: 583-tests-162-suites
   culture: echelon-convergence-loop
   quick_start: zero-deps-node20-composer-preview
 -->
