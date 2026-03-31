@@ -1,7 +1,7 @@
-# Sprint Plan: FORGE Pre-002 Holding Sprint
+# Sprint Plan: FORGE Tobias Review Response Sprint
 
 **Version:** 1.0
-**Date:** 2026-03-27
+**Date:** 2026-03-30
 **Author:** Sprint Planner Agent
 **PRD Reference:** grimoires/loa/prd.md
 **SDD Reference:** grimoires/loa/sdd.md
@@ -10,10 +10,10 @@
 
 ## Executive Summary
 
-This holding sprint subjects FORGE Cycle 001 to formal code review, security audit with adversarial red-teaming, and usefulness heuristic iteration. No new features are built. The work is strictly sequential with approval gates between phases.
+This sprint resolves 6 items from Tobias's sprint-10 review of FORGE, split into 2 sprints: MUST FIX first (blocking integration issues), then SHOULD ADDRESS (friction reducers). No new features. All changes additive to the IR schema.
 
-**Total Sprints:** 4
-**Sprint Duration:** Variable (no hard deadlines — this sprint runs until complete or interrupted by Cycle 002 inputs)
+**Total Sprints:** 2
+**Sprint Duration:** Variable (no hard deadlines — runs until complete or interrupted by Cycle 002 inputs)
 
 ---
 
@@ -21,318 +21,238 @@ This holding sprint subjects FORGE Cycle 001 to formal code review, security aud
 
 | Sprint | Theme | Key Deliverables | Dependencies |
 |--------|-------|------------------|--------------|
-| 1 | Code Review | Tech Lead approval, findings documented | None |
-| 2 | Security Audit + Red-Team | Security Auditor approval, red-team report | Sprint 1 approved |
-| 3 | Critical Fixes | All critical/high findings resolved, tests passing | Sprint 2 complete |
-| 4 | Usefulness Heuristic Iteration | `FORGE_USEFULNESS_FINDINGS.md` | Sprint 3 complete |
+| 1 | MUST FIX | entry_point fix, tier key docs, domain vocab fix | None |
+| 2 | SHOULD ADDRESS | stability policy, usefulness scoring fix, brier_type docs | Sprint 1 stable |
 
 ---
 
-## Sprint 1: Code Review
+## Sprint 1: MUST FIX
 
-### Sprint Goal
-Formal Tech Lead review of all Cycle 001 code with heightened attention to 5 priority targets. Produce findings with severity ratings and resolve all critical/high issues.
+**Goal:** Resolve all three blocking integration issues so Echelon's policy normaliser and admission gate operate without errors or tier-cap penalties.
 
-### Deliverables
-- [ ] Code review findings document with severity ratings for all findings
-- [ ] Formal Tech Lead approval (no open critical/high findings)
-- [ ] All 566 tests still passing
-
-### Acceptance Criteria
-- [ ] All 5 priority review targets examined (oracle trust, bundles, usefulness, compose, replay)
-- [ ] `getTrustTier()` handles unrecognized source IDs safely; `'unknown'` fallback consumed correctly everywhere
-- [ ] `canSettle()` returns `false` for T2, T3, and `'unknown'` — no exception path
-- [ ] `validateSettlement()` populates `reason` field for all rejection paths
-- [ ] `checkAdversarial()` wiring assessed — is runtime-level enforcement (lifecycle.js:223) sufficient or is bundle-level needed?
-- [ ] `assignEvidenceClass()`/`canSettleByClass()` consistent with `canSettle()` — no dual-gate disagreement
-- [ ] `computeQuality()` and `computeDoubtPrice()` handle zero variance, single-event, all-identical values
-- [ ] `proposeComposedTheatre()` returns clean `null` when no rule fires
-- [ ] No `Date.now()`, `Math.random()`, or non-deterministic patterns in replay
-- [ ] Composite usefulness score is true [0,1] with no silent clamping or NaN propagation
-
-### Technical Tasks
-
-- [ ] Task 1.1: Review `src/trust/oracle-trust.js` — tier lookup, settlement enforcement, reason population → **[G-1, G-5]**
-- [ ] Task 1.2: Review `src/trust/adversarial.js` — verify 5 implemented checks, document missing Check 6, assess wiring into pipeline → **[G-1, G-3]**
-- [ ] Task 1.3: Review `src/processor/bundles.js` + `quality.js` + `uncertainty.js` + `settlement.js` — trust enforcement consistency, edge cases, dual-gate agreement → **[G-1]**
-- [ ] Task 1.4: Review `src/filter/usefulness.js` — 4 dimensions, composite formula, NaN propagation → **[G-1, G-4]**
-- [ ] Task 1.5: Review `src/composer/compose.js` — null return, lag_ms=0, rule ordering → **[G-1]**
-- [ ] Task 1.6: Review `src/replay/deterministic.js` — determinism verification → **[G-1]**
-- [ ] Task 1.7: Full codebase sweep — remaining modules (ingester, classifier, selector, IR, runtime, theatres, RLMF, adapter) → **[G-1]**
-- [ ] Task 1.8: Compile findings document, severity-rate all issues, resolve critical/high → **[G-1, G-5]**
-
-### Dependencies
-- None (first sprint)
-
-### Security Considerations
-- **Trust boundaries:** `oracle-trust.js` is the primary trust boundary — this sprint's most critical review target
-- **Dual-gate consistency:** `canSettle(tier)` and `canSettleByClass(assignEvidenceClass(tier))` must agree for all tiers
-- **Adversarial wiring:** `checkAdversarial` runs at `ForgeRuntime.ingestBundle()` but NOT at `buildBundle()` — assess if this is a bypass vector
-
-### Risks & Mitigation
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Review finds fundamental design issue | Low | High | Document as finding; assess if fixable in Phase 2C or requires Cycle 002 redesign |
-| Tobias delivers early mid-review | Medium | Medium | Complete review quickly; findings are valuable regardless |
-
-### Success Metrics
-- All 5 priority targets reviewed with documented findings
-- Zero open critical/high findings at sprint end
-- 566/566 tests passing
+**Scope:** 3 tasks (T-R01, T-R02, T-R03) — all independent, no inter-task dependencies.
 
 ---
 
-## Sprint 2: Security Audit + Red-Team
+### Task T-R01: Fix construct.json entry_point
 
-### Sprint Goal
-Security audit confirming supply chain integrity, input boundary safety, and file I/O security. Red-team testing of oracle trust model, Argus adversarial gate, and evidence bundle spec. All findings documented with severity, attack path, defense, and disposition.
+**Priority:** P0 — MUST FIX
+**Effort:** XS
+**Goals:** G-1, G-4
+**File:** `spec/construct.json`
 
-### Deliverables
-- [x] Security audit findings with formal approval
-- [x] Red-team report for 3 targets (trust model, Argus, evidence bundles)
-- [x] All findings have severity + attack path + current defense + recommended fix + disposition
-- [x] All 566 tests still passing
+**Description:** `entry_point` and `context_files[0]` reference `BUTTERFREEZONE.md` which does not exist. Change both to `README.md`.
 
-### Acceptance Criteria
-- [x] `package.json` confirmed: no `dependencies` key or empty one
-- [x] No dynamic `require()` or `import()` of external modules at runtime
-- [x] Malformed JSON handled gracefully in `ingest()` — finding SA-04 documented
-- [x] Circular references do not cause infinite loops or stack overflow — finding SA-03 documented
-- [x] Infinity, NaN, -0, MAX_SAFE_INTEGER values handled correctly — findings SA-02, SA-06 documented
-- [x] Path traversal impossible in `ingestFile()` and `createReplay()` — finding SA-07 documented (NOT impossible — gap found)
-- [x] All 6 Argus checks verified present (or missing Check 6 documented as finding) — RT-05 documented
-- [x] Trust model tier bypass scenarios tested — no path where T2/T3/unknown settles — RT-01 CRITICAL bypass found
-- [x] Evidence bundle immutability verified or gap documented — RT-10 gap documented
-- [x] Doubt price floor behavior documented — RT-11
-- [x] `assignEvidenceClass`/`canSettle` disagreement scenarios tested — dual-gate agreement verified
-
-### Technical Tasks
-
-- [x] Task 2.1: Supply chain audit — scan `package.json`, verify no external imports in all 30 source files → **[G-2]**
-- [x] Task 2.2: Input boundary testing — malformed JSON, circular refs, memory-exceeding payloads, special numeric values → **[G-2]**
-- [x] Task 2.3: File I/O audit — path traversal in `ingestFile()`, `createReplay()`, `readFileSync()` calls, symlink behavior → **[G-2]**
-- [x] Task 2.4: Red-team oracle trust model — sourceId string manipulation (case, prefix, substring), null/undefined/empty/object inputs, exhaustive tier mapping, `canSettle()` bypass paths → **[G-3, G-5]**
-- [x] Task 2.5: Red-team Argus adversarial checks — verify all 6 checks, test false negatives (attacks that succeed), test false positives (legitimate data rejected), document thresholds → **[G-3]**
-- [x] Task 2.6: Red-team evidence bundles — craft artificially high quality, drive doubt price to zero, dual-gate disagreement, post-construction mutation → **[G-3]**
-- [x] Task 2.7: Compile red-team report with structured findings per target → **[G-3]**
-
-### Dependencies
-- Sprint 1: Tech Lead approval (no open critical/high findings)
-
-### Security Considerations
-- **This sprint IS the security review** — all security considerations from the PRD are addressed here
-- **Settlement invariant** is the #1 attack target: T3 (PurpleAir) must NEVER settle
-- **Argus Check 6** (value out of range): documented but not implemented — this is a known gap to confirm
-
-### Risks & Mitigation
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Critical trust model vulnerability discovered | Medium | High | Immediately escalate to Sprint 3 (critical fixes) |
-| Red-teaming reveals fundamental redesign needed | Low | High | Document gap; assess Cycle 002 safety; do not redesign in this sprint |
-| Path traversal vulnerability in file I/O | Medium | Medium | FORGE is a library (not a server), so attacker must have code execution — document risk level accordingly |
-
-### Success Metrics
-- Zero unmitigated critical findings
-- All 3 red-team targets have structured reports
-- Security Auditor formal approval issued
-
----
-
-## Sprint 3: Critical Fixes
-
-### Sprint Goal
-Resolve all critical and high findings from Sprints 1 and 2. Every fix must maintain all 566 tests passing and convergence score at 20.5/20.5.
-
-### Deliverables
-- [x] All critical findings fixed in code
-- [x] All high findings either fixed or documented as accepted risk with rationale
-- [x] All 587 tests passing after fixes (566 original + 21 new)
-- [x] Convergence score unchanged (20.0/20.0)
-
-### Acceptance Criteria
-- [x] Zero open critical findings
-- [x] Every high finding has either a code fix or a written accepted-risk rationale
-- [x] `npm run test:all` passes (587 tests, 0 failures)
-- [x] Convergence tests pass in both raw and anonymized fixture modes
-
-### Technical Tasks
-
-- [x] Task 3.1: Triage findings from Sprint 1 and Sprint 2 — categorize as critical/high/medium/low → **[G-5]**
-- [x] Task 3.2: Fix critical findings (if any) — implement fixes, verify tests pass → **[G-5]**
-- [x] Task 3.3: Fix high findings or document accepted-risk rationale for each → **[G-5]**
-- [x] Task 3.4: Run full test suite — confirm 587/587 pass, convergence 20.0/20.0 → **[G-1, G-2, G-5]**
-- [x] Task 3.5: Update findings documents with fix references and final dispositions → **[G-5]**
-
-### Dependencies
-- Sprint 2: Security audit + red-team complete
-
-### Security Considerations
-- **Every fix must be regression-tested** against the settlement invariant
-- **No new dependencies** may be introduced
-- **Convergence score must not regress** — any fix that changes classification output is suspect
-
-### Risks & Mitigation
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Fix introduces regression | Medium | High | Run full test suite after every change; revert if convergence regresses |
-| No critical/high findings (sprint is empty) | Medium | None | Sprint completes immediately; proceed to Sprint 4 |
-
-### Success Metrics
-- All critical findings resolved
-- All high findings dispositioned
-- 566/566 tests, 20.5/20.5 convergence
-
----
-
-## Sprint 4: Usefulness Heuristic Iteration
-
-### Sprint Goal
-Audit, baseline, interrogate, and iterate the economic usefulness heuristic. Document all findings in a self-contained report. This sprint is all-or-nothing: either T-H01 through T-H05 complete, or the entire phase defers.
-
-### Deliverables
-- [x] `grimoires/pub/FORGE_USEFULNESS_FINDINGS.md` with all 4 required sections
-- [x] Baseline scoring table for all 13 proposals
-- [x] Weight interrogation findings (one paragraph per dimension)
-- [x] Before/after comparison (even if weights reverted)
-- [x] All 587 tests still passing
-
-### Acceptance Criteria
-- [x] Baseline table covers all 13 proposals with per-dimension breakdown
-- [x] At least one proposal flagged as "score feels wrong" with reason
-- [x] Weight interrogation covers all 4 dimensions (population_impact, regulatory_relevance, predictability, actionability)
-- [x] Written weight proposal with justification exists before implementation
-- [x] Before/after comparison table produced
-- [x] All existing `computeUsefulness` unit tests still pass
-- [x] Either revised weights committed with rationale, OR revert committed with reason
-- [x] Findings doc is self-contained for a cold reader
-- [x] "What real-world data would tell us" section present
-
-### Technical Tasks
-
-- [x] Task 4.1 (T-H01): Read-only audit of `src/filter/usefulness.js` — document exact formula, weights, clamping, normalization, inputs. No code changes. → **[G-4]**
-- [x] Task 4.2 (T-H02): Score all 13 proposals from 3 golden envelope fixtures against current weights. Produce per-dimension breakdown table. Flag at least one "feels wrong" score. → **[G-4]**
-- [x] Task 4.3 (T-H03): Weight interrogation — one paragraph per dimension analyzing assumption, whether it holds, what's uncertain. Document reasoning before proposing changes. → **[G-4]**
-- [x] Task 4.4 (T-H04): Propose revised weights with justification. Implement. Run before/after comparison. Keep or revert. All `computeUsefulness` tests must pass. → **[G-4]**
-- [x] Task 4.5 (T-H05): Create `grimoires/pub/FORGE_USEFULNESS_FINDINGS.md` with 4 sections: baseline, interrogation, proposal+comparison, "what real-world data would tell us". → **[G-4]**
-
-### Task 4.E2E: End-to-End Goal Validation
-
-**Priority:** P0 (Must Complete)
-**Goal Contribution:** All goals (G-1, G-2, G-3, G-4, G-5)
-
-**Validation Steps:**
-
-| Goal ID | Goal | Validation Action | Expected Result |
-|---------|------|-------------------|-----------------|
-| G-1 | Formal code review approval | Verify Sprint 1 approval document exists | Tech Lead approval with no open critical/high |
-| G-2 | Formal security audit approval | Verify Sprint 2 approval document exists | Security Auditor approval with all critical/high dispositioned |
-| G-3 | Red-teaming findings documented | Verify red-team report covers 3 targets | Every finding has severity + attack path + defense + disposition |
-| G-4 | Usefulness heuristic documented | Verify `FORGE_USEFULNESS_FINDINGS.md` | All 4 sections present, self-contained |
-| G-5 | Critical vulnerabilities fixed | Verify Sprint 3 findings register | Zero open critical findings |
+**Implementation:**
+1. Edit `spec/construct.json` line 42: `"entry_point": "BUTTERFREEZONE.md"` → `"entry_point": "README.md"`
+2. Edit `spec/construct.json` `context_files[0]`: `"BUTTERFREEZONE.md"` → `"README.md"`
+3. Verify `README.md` exists at repo root
+4. Run `npm run test:all` — expect ≥ 566 tests passing
 
 **Acceptance Criteria:**
-- [x] Each goal validated with documented evidence
-- [x] All 587 tests passing (566 original + 21 Sprint 3)
-- [x] Convergence score 20.0/20.0
-- [x] FORGE ready for Cycle 002
-
-### Dependencies
-- Sprint 3: All critical/high findings resolved
-
-### Security Considerations
-- **Weight changes must not affect settlement logic** — usefulness is independent of trust enforcement
-- **No modifications to golden envelope fixtures or Proposal IR schema**
-- **Determinism must hold** — same input → same usefulness score
-
-### Risks & Mitigation
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Weight iteration worsens scores | Medium | Low | Reversion is a valid outcome; document why |
-| Tobias delivers, interrupting Phase 3 | Medium | Medium | Phase 3 defers as a unit — findings doc is incomplete but no code changes left unreviewed |
-| Multiplicative formula means one low factor dominates | Medium | Low | This IS the finding to document — not necessarily a bug |
-
-### Success Metrics
-- `FORGE_USEFULNESS_FINDINGS.md` exists with all 4 sections
-- At least one "feels wrong" proposal identified and analyzed
-- All 566 tests passing
+- [ ] `spec/construct.json` references `README.md` as entry_point
+- [ ] `context_files[0]` updated to `README.md`
+- [ ] All other construct.json fields unchanged
+- [ ] `npm run test:all` passes
 
 ---
 
-## Risk Register
+### Task T-R02: Document settlement tier key distinction
 
-| ID | Risk | Sprint | Probability | Impact | Mitigation | Owner |
-|----|------|--------|-------------|--------|------------|-------|
-| R1 | Critical trust model vulnerability | 1-2 | Medium | High | Fix immediately in Sprint 3 | Security Auditor |
-| R2 | Tobias delivers early | 1-4 | Medium | Medium | Phase 1+2 priority; Phase 3 defers as unit | Solo Developer |
-| R3 | Usefulness weight regression | 4 | Medium | Low | Revert is valid; document reasoning | Solo Developer |
-| R4 | Scope expansion from audit findings | 2-3 | Low | High | Only fix critical/high; defer rest to Cycle 002 | Tech Lead |
-| R5 | Fundamental trust model redesign needed | 2 | Low | High | Document gap; assess Cycle 002 safety | Security Auditor |
-| R6 | Missing Argus Check 6 is critical | 2 | High | Medium | Identify, document, assess severity | Red Team |
+**Priority:** P0 — MUST FIX
+**Effort:** XS
+**Goals:** G-1, G-3, G-4
+**Files:** `src/trust/oracle-trust.js`, `spec/proposal-ir.json`
 
----
+**Description:** Document that FORGE's string keys ("T0"–"T3") are oracle identity tiers, orthogonal to TREMOR's numeric data maturity levels. Add the Echelon provenance mapping.
 
-## Success Metrics Summary
+**Implementation:**
+1. Add comment block above `TRUST_REGISTRY` in `src/trust/oracle-trust.js` (after line 25):
+   - Document string key format and why it differs from TREMOR numeric levels
+   - List Echelon provenance mapping:
+     - T0 → signal_initiated (high confidence)
+     - T1 → signal_initiated (Brier-discounted confidence)
+     - T2 → suggestion_promoted (needs corroborating signals)
+     - T3 → suggestion_unlinked (no settlement evidence, never settles)
+2. Update `trust_tier` field description in `spec/proposal-ir.json` to document string format and Echelon mapping
+3. Run `npm run test:all` — expect ≥ 566 tests passing
 
-| Metric | Target | Measurement Method | Sprint |
-|--------|--------|-------------------|--------|
-| Code review findings | All critical/high resolved | Findings document | 1 |
-| Security audit approval | Formal approval issued | Audit document | 2 |
-| Red-team coverage | 3/3 targets with reports | Report existence | 2 |
-| Test integrity | 566/566 passing | `npm run test:all` | 1-4 |
-| Convergence score | 20.5/20.5 | Convergence test output | 1-4 |
-| Usefulness documentation | 4/4 sections complete | File existence + review | 4 |
-| Open critical findings | 0 | Findings register | 3 |
-
----
-
-## Dependencies Map
-
-```
-Sprint 1 (Review) ──▶ [approval gate] ──▶ Sprint 2 (Audit+RedTeam) ──▶ Sprint 3 (Fixes) ──▶ Sprint 4 (Usefulness)
-     │                                          │                            │                       │
-     └─ Tech Lead approval                      └─ Security approval         └─ Critical/high        └─ Findings doc
-                                                    Red-team report              resolved               E2E validation
-```
+**Acceptance Criteria:**
+- [ ] Comment block in `src/trust/oracle-trust.js` above tier definitions
+- [ ] Echelon provenance mapping documented in source
+- [ ] `spec/proposal-ir.json` trust_tier description updated
+- [ ] Tier format (string keys) unchanged
+- [ ] `npm run test:all` passes
 
 ---
 
-## Appendix
+### Task T-R03: Verify domain claim vocabulary
 
-### A. PRD Feature Mapping
+**Priority:** P0 — MUST FIX
+**Effort:** S
+**Goals:** G-1, G-3, G-4
+**Files:** `spec/construct.json`, `spec/construct.yaml`
 
-| PRD Feature | Sprint | Task |
-|-------------|--------|------|
-| FR-1: Oracle Trust Model Review | Sprint 1 | Task 1.1, 1.2 |
-| FR-2: Evidence Bundle Pipeline Review | Sprint 1 | Task 1.3 |
-| FR-3: Usefulness Filter Review | Sprint 1 | Task 1.4 |
-| FR-4: Composition Engine Review | Sprint 1 | Task 1.5 |
-| FR-5: Deterministic Replay Review | Sprint 1 | Task 1.6 |
-| FR-6: Supply Chain Audit | Sprint 2 | Task 2.1 |
-| FR-7: Input Boundaries | Sprint 2 | Task 2.2 |
-| FR-8: File I/O Audit | Sprint 2 | Task 2.3 |
-| FR-9: Red-Team Trust Model | Sprint 2 | Task 2.4 |
-| FR-10: Red-Team Argus | Sprint 2 | Task 2.5 |
-| FR-11: Red-Team Evidence Bundles | Sprint 2 | Task 2.6 |
-| FR-12: Usefulness Audit (T-H01) | Sprint 4 | Task 4.1 |
-| FR-13: Usefulness Baseline (T-H02) | Sprint 4 | Task 4.2 |
-| FR-14: Weight Interrogation (T-H03) | Sprint 4 | Task 4.3 |
-| FR-15: Weight Proposal (T-H04) | Sprint 4 | Task 4.4 |
-| FR-16: Document Findings (T-H05) | Sprint 4 | Task 4.5 |
+**Description:** Verify all domain claims against Echelon's v15 vocabulary. Replace `feed_characterization` with `feed_classification`. Conservative scope — only change the explicitly flagged term.
 
-### B. PRD Goal Mapping
+**Implementation:**
+1. Edit `spec/construct.json` skills array: `"feed-characterization"` → `"feed-classification"`
+2. Edit `spec/construct.yaml` domain_claims: `feed_characterization` → `feed_classification`
+3. Edit `spec/construct.yaml` skill_manifest entries: `domain: feed_characterization` → `domain: feed_classification`
+4. Document the change (comment or changelog note)
+5. **Do NOT rename** other potential vocabulary mismatches (prediction_markets, rlmf_export, theatre_management, oracle_verification, settlement_verification, calibration_analysis) — flag for Tobias confirmation
+6. Run `npm run test:all` — expect ≥ 566 tests passing
 
-| Goal ID | Goal Description | Contributing Tasks | Validation |
-|---------|------------------|-------------------|------------|
-| G-1 | Formal code review approval | Sprint 1: Tasks 1.1–1.8 | Sprint 4: E2E |
-| G-2 | Formal security audit approval | Sprint 2: Tasks 2.1–2.3 | Sprint 4: E2E |
-| G-3 | Red-teaming findings documented | Sprint 2: Tasks 2.4–2.7 | Sprint 4: E2E |
-| G-4 | Usefulness heuristic documented | Sprint 4: Tasks 4.1–4.5 | Sprint 4: E2E |
-| G-5 | Critical vulnerabilities fixed | Sprint 1: Task 1.8, Sprint 3: Tasks 3.1–3.5 | Sprint 4: E2E |
+**Acceptance Criteria:**
+- [ ] All `feed_characterization` references replaced with `feed_classification`
+- [ ] Original and replacement documented
+- [ ] Other domain claims flagged but not changed (conservative scope)
+- [ ] `npm run test:all` passes
 
-**Goal Coverage Check:**
-- [x] All PRD goals have at least one contributing task
-- [x] All goals have validation in Sprint 4 E2E
-- [x] No orphan tasks (all tasks map to a goal)
+**Open Question (SDD Q1):** Should other domain claims align to Echelon vocabulary? Candidates documented in SDD Section 9. Defer to Tobias confirmation.
+
+---
+
+## Sprint 2: SHOULD ADDRESS
+
+**Goal:** Establish IR schema stability commitment, fix usefulness scoring consistency across all golden envelopes, and document brier_type null rejection with validation test.
+
+**Scope:** 3 tasks (T-R04, T-R05, T-R06). T-R05 is the largest item (code change + fixture regeneration). T-R04 and T-R06 are independent.
+
+**Dependency:** Sprint 1 must be stable before T-R05 begins (it modifies fixtures that depend on pipeline correctness).
+
+---
+
+### Task T-R04: Document IR schema stability policy
+
+**Priority:** P1 — SHOULD ADDRESS
+**Effort:** XS
+**Goals:** G-2, G-3, G-4
+**Files:** `spec/STABILITY.md` (new), `spec/proposal-ir.json`
+
+**Description:** Create stability policy document for the IR schema. Tobias has 163 bridge tests locked to the current schema and needs semver commitments.
+
+**Implementation:**
+1. Create `spec/STABILITY.md` documenting:
+   - Current version: 0.1.0
+   - Stability status: stabilising — no breaking changes without prior notice
+   - Breaking change definition: removing fields, changing field types, changing required/optional status
+   - Non-breaking definition: adding optional fields, adding enum values, adding optional sections
+   - Notice policy: breaking changes flagged in changelog + communicated to Echelon with minimum 1-sprint notice
+   - Cycle 002 additive fields: normalization_trace, negative_policy_flags, original_hash (non-breaking)
+   - This sprint: `usefulness_score` added to Proposal (additive, non-breaking)
+2. Add stability policy reference to `spec/proposal-ir.json` top-level description
+3. Run `npm run test:all` — expect ≥ 566 tests passing
+
+**Acceptance Criteria:**
+- [ ] `spec/STABILITY.md` exists with all required sections
+- [ ] `spec/proposal-ir.json` description references stability policy
+- [ ] `npm run test:all` passes
+
+---
+
+### Task T-R05: Fix usefulness scoring inconsistency
+
+**Priority:** P1 — SHOULD ADDRESS
+**Effort:** S (largest item in sprint)
+**Goals:** G-2, G-3, G-4
+**Files:** `src/ir/emit.js`, `spec/proposal-ir.json`, `fixtures/forge-snapshots-tremor.json`, `fixtures/forge-snapshots-breath.json`, `fixtures/forge-snapshots-corona.json`, `test/unit/ir.spec.js`
+
+**Description:** Add `usefulness_score` to each proposal object in the IR envelope. The envelope-level `usefulness_scores` map is already consistent — the gap is that individual proposal objects lack the field. Make it required in the schema. Regenerate all golden snapshots.
+
+**Codebase Finding (SDD Section 3.2):** The envelope-level `usefulness_scores` map is already per-proposal across all 3 fixtures. TREMOR has 5 entries for 5 proposals, BREATH has 1 for 1, CORONA has 0 for 0. The actual fix is adding `usefulness_score` on each `proposals[i]` object.
+
+**Implementation:**
+1. In `src/ir/emit.js` `emitEnvelope()`:
+   - Initialize each proposal in `annotated` array with `usefulness_score: null`
+   - When `score_usefulness=true`, set `annotated[i].usefulness_score = score`
+   - Envelope-level `usefulness_scores` map continues to be populated as before (backwards compat)
+2. In `spec/proposal-ir.json`:
+   - Add `usefulness_score` to `$defs.Proposal.properties` with type `["number", "null"]`, min 0, max 1
+   - Add `"usefulness_score"` to `$defs.Proposal.required` array
+3. Regenerate all 3 golden envelope snapshots by running the actual FORGE pipeline (not hand-editing)
+4. Update `test/unit/ir.spec.js`:
+   - Assert `usefulness_score` exists on each proposal when `score_usefulness=true`
+   - Assert `usefulness_score` is `null` on each proposal when `score_usefulness=false`
+5. Run `npm run test:all` — expect ≥ 566 tests passing
+6. Diff old vs new fixtures to confirm only `usefulness_score` field added (no structural changes)
+
+**Acceptance Criteria:**
+- [ ] Every proposal object in emitted envelopes has `usefulness_score` field
+- [ ] `usefulness_score` is a number (0-1) when economic filter invoked, null otherwise
+- [ ] Envelope-level `usefulness_scores` map retained (backwards compatibility)
+- [ ] `spec/proposal-ir.json` marks `usefulness_score` as required at proposal level
+- [ ] All 3 golden envelope snapshots regenerated with per-proposal `usefulness_score`
+- [ ] IR tests updated to assert field presence
+- [ ] `npm run test:all` passes
+
+**Key Risk:** Fixture regeneration could change `proposal_id` values. Mitigation: `proposal_id` is deterministic from `feed_id + template + params` — inputs unchanged, IDs will be identical.
+
+---
+
+### Task T-R06: Document brier_type null rejection
+
+**Priority:** P1 — SHOULD ADDRESS
+**Effort:** XS
+**Goals:** G-2, G-3
+**Files:** `spec/proposal-ir.json`, `test/unit/ir.spec.js`
+
+**Description:** The schema already rejects null for `brier_type` (`enum: ["binary", "multi_class"]`, field is required). This task adds documentation and a validation test.
+
+**Codebase Finding (SDD Section 3.1):** No schema change needed — `brier_type` already has no null in enum and is in the required array.
+
+**Implementation:**
+1. Update `brier_type` description in `spec/proposal-ir.json` to document:
+   - Mapping: cascade → multi_class, all other templates → binary
+   - Null is not valid — all proposals must have a brier_type
+2. Add test in `test/unit/ir.spec.js`:
+   - Iterate all 6 template types
+   - For each, emit an envelope and assert `brier_type` is non-null and is one of `["binary", "multi_class"]`
+   - Assert cascade produces `multi_class`, others produce `binary`
+3. Run `npm run test:all` — expect ≥ 567 tests passing (1 new test)
+
+**Acceptance Criteria:**
+- [ ] `brier_type` description documents cascade→multi_class mapping
+- [ ] Validation test confirms all templates produce valid non-null brier_type
+- [ ] `npm run test:all` passes
+
+---
+
+## E2E Goal Validation
+
+After all 6 tasks complete, validate all goals:
+
+| Goal | Validation | Method |
+|------|-----------|--------|
+| G-1 | All MUST FIX items resolved | T-R01, T-R02, T-R03 committed with passing tests |
+| G-2 | All SHOULD ADDRESS items resolved | T-R04, T-R05, T-R06 committed with passing tests |
+| G-3 | IR compatibility preserved | Diff `spec/proposal-ir.json` — no fields removed, renamed, or type-changed |
+| G-4 | Fork-syncable | No IR field removals; all changes additive |
+
+---
+
+## Goal Mapping
+
+| Goal ID | Contributing Tasks | Sprint |
+|---------|-------------------|--------|
+| G-1 | T-R01, T-R02, T-R03 | Sprint 1 |
+| G-2 | T-R04, T-R05, T-R06 | Sprint 2 |
+| G-3 | T-R02, T-R03, T-R04, T-R05, T-R06 | Both |
+| G-4 | T-R01, T-R02, T-R03, T-R04, T-R05 | Both |
+
+All 4 goals have contributing tasks. No orphan tasks.
+
+---
+
+## Definition of Done
+
+This sprint is complete when:
+
+1. All three MUST FIX items (T-R01, T-R02, T-R03) are resolved and committed
+2. All three SHOULD ADDRESS items (T-R04, T-R05, T-R06) are resolved and committed
+3. `npm run test:all` passes with ≥ 566 tests (558 unit + 6 convergence + any new tests)
+4. No IR schema fields have been removed or renamed (additive changes only)
+5. Changes are ready to communicate back to Tobias so he can sync his fork
 
 ---
 

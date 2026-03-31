@@ -1,7 +1,7 @@
-# Software Design Document: FORGE Pre-002 Holding Sprint
+# Software Design Document: FORGE Tobias Review Response Sprint
 
 **Version:** 1.0
-**Date:** 2026-03-27
+**Date:** 2026-03-30
 **Author:** Architecture Designer Agent
 **Status:** Draft
 **PRD Reference:** grimoires/loa/prd.md
@@ -13,14 +13,13 @@
 1. [Project Architecture](#1-project-architecture)
 2. [Software Stack](#2-software-stack)
 3. [Data Design](#3-data-design)
-4. [Interface Design](#4-interface-design)
-5. [API Specifications](#5-api-specifications)
-6. [Error Handling Strategy](#6-error-handling-strategy)
-7. [Testing Strategy](#7-testing-strategy)
-8. [Development Phases](#8-development-phases)
-9. [Known Risks and Mitigation](#9-known-risks-and-mitigation)
-10. [Open Questions](#10-open-questions)
-11. [Appendix](#11-appendix)
+4. [API Specifications](#4-api-specifications)
+5. [Error Handling Strategy](#5-error-handling-strategy)
+6. [Testing Strategy](#6-testing-strategy)
+7. [Development Phases](#7-development-phases)
+8. [Known Risks and Mitigation](#8-known-risks-and-mitigation)
+9. [Open Questions](#9-open-questions)
+10. [Appendix](#10-appendix)
 
 ---
 
@@ -28,571 +27,341 @@
 
 ### 1.1 System Overview
 
-FORGE (Feed-Adaptive Oracle & Runtime Generator for Echelon) is a headless Node.js pipeline that classifies arbitrary event streams into 5-dimension feed profiles, selects theatre templates via 13 deterministic rules, and emits a versioned Proposal IR consumed by Echelon's admission gate. An optional runtime layer instantiates theatres from proposals, processes evidence bundles with trust-tiered quality scoring, and exports Brier-scored RLMF certificates.
+This is a **fix sprint** — no new architecture, no new features, no new modules. All work operates within the existing FORGE pipeline boundaries. The sprint resolves six review findings from Tobias (Echelon) to clear integration friction before Cycle 002.
 
-This sprint does not add new architecture. It subjects the existing Cycle 001 codebase to formal code review, security audit with adversarial red-teaming, and usefulness heuristic iteration. The SDD documents the system **as-built** to ground that work.
+FORGE's architecture is unchanged: a Node.js 20+ pipeline with zero external runtime dependencies that classifies structured event feeds across five grammar dimensions, selects Theatre templates via rule-based matching, and emits versioned Proposal IR envelopes consumed by Echelon's admission gate.
 
 ### 1.2 Architectural Pattern
 
-**Pattern:** Strict linear pipeline with orthogonal trust enforcement
+**Pattern:** Existing monolithic pipeline (no change)
 
-**Justification:**
-- Determinism requirement: identical input must produce identical output across runs
-- Zero-dependency constraint: no external runtime libraries, only `node:fs` and `node:crypto`
-- Convergence-loop optimization: each pipeline stage is independently testable and scoreable
-- Trust enforcement is orthogonal — applied at bundle processing time, not proposal time — so the classification pipeline remains pure
+**Justification:** This sprint modifies metadata, documentation, and one emitter function. The pipeline architecture (ingest → classify → select → emit) is untouched. No new components, services, or modules are introduced.
 
-### 1.3 Pipeline Architecture
+### 1.3 Change Map
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           FORGE Pipeline                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐            │
-│  │ Ingester │──▶│Classifier│──▶│ Selector │──▶│ IR Emit  │            │
-│  │(generic) │   │(5D gram) │   │(13 rules)│   │(envelope)│            │
-│  └──────────┘   └──────────┘   └──────────┘   └──────────┘            │
-│       │                                              │                  │
-│  fixture.json                                   ProposalEnvelope        │
-│  → NormalizedEvent[]                            (spec v0.1.0)           │
-│                                                      │                  │
-│                              ┌────────────────────────┘                 │
-│                              ▼                                          │
-│                    ┌──────────────────┐                                  │
-│                    │  ForgeRuntime    │  (optional: instantiate=true)    │
-│                    │  ┌────────────┐  │                                  │
-│                    │  │ Theatres   │  │  6 types × 4 lifecycle ops       │
-│                    │  └────────────┘  │                                  │
-│                    │  ┌────────────┐  │                                  │
-│                    │  │  Bundles   │──┤──▶ Trust enforcement             │
-│                    │  └────────────┘  │   (oracle-trust + adversarial)   │
-│                    │  ┌────────────┐  │                                  │
-│                    │  │   RLMF     │  │  Brier-scored certificates       │
-│                    │  └────────────┘  │                                  │
-│                    └──────────────────┘                                  │
-│                                                                         │
-│  ┌──────────────────────────────────────────────────────────────────┐   │
-│  │              Orthogonal Subsystems                                │   │
-│  │  Trust Model: oracle-trust.js (T0-T3 registry, settlement gate) │   │
-│  │  Argus:       adversarial.js  (6 anti-gaming checks)            │   │
-│  │  Usefulness:  usefulness.js   (4-factor economic filter)        │   │
-│  │  Composer:    compose.js      (3 cross-feed composition rules)  │   │
-│  └──────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph "MUST FIX"
+        R01[T-R01: entry_point fix]
+        R02[T-R02: tier key docs]
+        R03[T-R03: domain vocab fix]
+    end
+
+    subgraph "SHOULD ADDRESS"
+        R04[T-R04: stability policy]
+        R05[T-R05: usefulness scoring]
+        R06[T-R06: brier_type null docs]
+    end
+
+    R01 --> C1[spec/construct.json]
+    R02 --> C2[src/trust/oracle-trust.js]
+    R02 --> C3[spec/proposal-ir.json]
+    R03 --> C1
+    R03 --> C4[spec/construct.yaml]
+    R04 --> C5[spec/STABILITY.md - NEW]
+    R04 --> C3
+    R05 --> C6[src/ir/emit.js]
+    R05 --> C3
+    R05 --> C7[fixtures/forge-snapshots-*.json x3]
+    R06 --> C3
+    R06 --> C8[test/unit/ir.spec.js]
 ```
 
-### 1.4 System Components
+### 1.4 Files Modified Per Task
 
-#### Ingester (`src/ingester/generic.js`)
-- **Purpose:** Convert raw or anonymized JSON into `NormalizedEvent[]` using structural heuristics
-- **Responsibilities:** Shape detection (GeoJSON, array-of-objects, array-of-arrays, combined-object, PurpleAir), timestamp extraction, highest-variance value field selection, coordinate detection, URL redaction
-- **Interfaces:** `ingest(rawData)`, `ingestFile(filePath)`
-- **Dependencies:** `src/replay/deterministic.js` (for file loading)
-
-#### Classifier (`src/classifier/`)
-- **Purpose:** Classify event streams into a 5-dimension FeedProfile
-- **Responsibilities:** Q1 cadence, Q2 distribution, Q3 noise, Q4 density, Q5 thresholds
-- **Interfaces:** `classify(events)` + 5 individual dimension classifiers
-- **Dependencies:** None (pure computation)
-
-#### Selector (`src/selector/`)
-- **Purpose:** Match FeedProfile to theatre templates via deterministic rules
-- **Responsibilities:** Evaluate 13 rules in order, produce ranked `Proposal[]`
-- **Interfaces:** `selectTemplates(feedProfile)`, `evaluateRule(rule, profile)`, `RULES`
-- **Dependencies:** None (pure computation)
-
-#### IR Emitter (`src/ir/emit.js`)
-- **Purpose:** Package proposals + profile into a versioned ProposalEnvelope
-- **Responsibilities:** Schema conformance, deterministic proposal IDs (SHA-256), optional usefulness scoring
-- **Interfaces:** `emitEnvelope({ feed_id, feed_profile, proposals, source_metadata, score_usefulness })`
-- **Dependencies:** `src/filter/usefulness.js` (optional), `node:crypto`
-
-#### Processor (`src/processor/`)
-- **Purpose:** Assemble evidence bundles with trust-tiered quality and pricing
-- **Responsibilities:** Quality scoring, doubt pricing, evidence class assignment, bundle assembly
-- **Interfaces:** `buildBundle(rawEvent, config)`, `computeQuality()`, `computeDoubtPrice()`, `assignEvidenceClass()`, `canSettleByClass()`
-- **Dependencies:** None (pure computation)
-
-#### Trust Model (`src/trust/oracle-trust.js`)
-- **Purpose:** Enforce the settlement invariant: only T0/T1 sources may settle theatres
-- **Responsibilities:** Tier lookup (11 known source IDs), settlement authorization, rejection reason population
-- **Interfaces:** `getTrustTier(sourceId)`, `canSettle(tier)`, `validateSettlement(sourceId)`
-- **Dependencies:** None (static registry)
-
-#### Argus Adversarial Gate (`src/trust/adversarial.js`)
-- **Purpose:** Detect manipulation patterns in T2/T3 oracle sources
-- **Responsibilities:** 6 documented checks (5 implemented, 1 documented but not in function body — see §10)
-- **Interfaces:** `checkAdversarial(bundle, context)`, `checkChannelConsistency(channelA, channelB)`
-- **Dependencies:** None (stateless checks)
-
-#### Runtime (`src/runtime/lifecycle.js`)
-- **Purpose:** Orchestrate theatre lifecycle from proposal to RLMF certificate
-- **Responsibilities:** Theatre instantiation, bundle ingestion with adversarial checks, expiry management, settlement with trust enforcement, certificate export
-- **Interfaces:** `ForgeRuntime` class — `instantiate()`, `ingestBundle()`, `checkExpiries()`, `settle()`, `getCertificates()`, `flushCertificates()`
-- **Dependencies:** All 6 theatre modules, `oracle-trust.js`, `adversarial.js`, `rlmf/certificates.js`
-
-#### Theatres (`src/theatres/`)
-- **Purpose:** Implement 6 theatre types with 4 lifecycle operations each
-- **Types:** `threshold_gate`, `cascade`, `divergence`, `regime_shift`, `anomaly`, `persistence`
-- **Operations per type:** `create()`, `process()`, `expire()`, `resolve()`
-- **Dependencies:** None (pure state machines)
-
-#### Usefulness Filter (`src/filter/usefulness.js`)
-- **Purpose:** Economic scoring of proposals — multiplicative 4-factor formula
-- **Factors:** population_impact × regulatory_relevance × predictability × actionability
-- **Interfaces:** `computeUsefulness(proposal, feedProfile, config)`
-- **Dependencies:** None (lookup tables + arithmetic)
-
-#### Composer (`src/composer/compose.js`)
-- **Purpose:** Cross-feed composition for theatre proposals neither feed generates alone
-- **Responsibilities:** Temporal alignment, causal ordering detection, 3 composition rules
-- **Interfaces:** `alignFeeds()`, `detectCausalOrdering()`, `proposeComposedTheatre()`
-- **Dependencies:** None (pure computation)
-
-### 1.5 Data Flow
-
-```
-fixture.json
-  │
-  ▼
-ingestFile(path) ─── readFileSync ──▶ JSON.parse ──▶ detectShape ──▶ parse*()
-  │
-  ▼
-NormalizedEvent[] { timestamp, value, metadata }
-  │
-  ▼
-classify(events) ──▶ FeedProfile { cadence, distribution, noise, density, thresholds }
-  │
-  ▼
-selectTemplates(profile) ──▶ Proposal[] { template, params, confidence }
-  │
-  ▼
-emitEnvelope(...) ──▶ ProposalEnvelope (spec/proposal-ir.json v0.1.0)
-  │
-  ▼ (if instantiate=true)
-ForgeRuntime.instantiate(proposals) ──▶ Theatre[] (open, processing bundles)
-  │
-  ▼ (per evidence bundle)
-buildBundle(rawEvent, config) ──▶ EvidenceBundle { value, quality, doubt_price, evidence_class, ... }
-  │
-  ▼
-ForgeRuntime.ingestBundle(bundle) ──▶ checkAdversarial ──▶ theatre.process()
-  │
-  ▼ (on settlement or expiry)
-ForgeRuntime.settle() / checkExpiries() ──▶ exportCertificate() ──▶ RLMF Certificate
-```
-
-### 1.6 External Integrations
-
-| Service | Purpose | Contract | Status |
-|---------|---------|----------|--------|
-| Echelon | Theatre admission | Proposal IR v0.1.0 (`spec/proposal-ir.json`) | Frozen this sprint |
-
-### 1.7 Security Architecture
-
-**Critical Invariant:** T3 sources (PurpleAir, ThingSpeak) MUST NEVER settle a theatre. Only T0 and T1 may settle.
-
-**Enforcement chain:**
-
-```
-getTrustTier(sourceId)          → tier lookup (11 sources, unknown fallback)
-  ↓
-canSettle(tier)                 → boolean whitelist (T0 || T1 only)
-  ↓
-validateSettlement(sourceId)    → { allowed, tier, reason } (rejection reason populated)
-  ↓
-ForgeRuntime.settle()           → calls validateSettlement before resolving
-```
-
-**Dual-gate consistency:**
-
-```
-assignEvidenceClass(tier)       → 'ground_truth' (T0/T1), 'corroboration' (T2), 'provisional' (T3/unknown)
-canSettleByClass(evidence_class) → true only for 'ground_truth'
-```
-
-Both gates must agree: `canSettle(tier) === canSettleByClass(assignEvidenceClass(tier))` for all tiers.
-
-**Adversarial gate (Argus):** 6 documented checks applied at `ForgeRuntime.ingestBundle()`:
-1. Channel A/B inconsistency (15% divergence threshold)
-2. Frozen/replayed data (5 consecutive identical readings)
-3. Clock drift (>7 days old or >1 hour future)
-4. Location spoofing (>0.45° deviation from registered coords)
-5. Sybil sensors (all peer values identical)
-6. Value out of range — **documented in JSDoc but not implemented** (see §10)
-
-**Key observation:** `checkAdversarial()` is called by `ForgeRuntime.ingestBundle()` (line 223) but is NOT called by `buildBundle()`. The adversarial gate runs at runtime bundle ingestion, not at bundle construction time. This is a review target for FR-1.
+| Task | File | Change Type | Description |
+|------|------|-------------|-------------|
+| T-R01 | `spec/construct.json` | Edit (2 fields) | `entry_point` and `context_files[0]`: `"BUTTERFREEZONE.md"` → `"README.md"` |
+| T-R02 | `src/trust/oracle-trust.js` | Add (comment block) | Echelon provenance mapping documentation above `TRUST_REGISTRY` |
+| T-R02 | `spec/proposal-ir.json` | Edit (description) | Echelon provenance mapping note on `trust_tier` field |
+| T-R03 | `spec/construct.json` | Edit (1 value) | `"feed-characterization"` → `"feed-classification"` in `skills` array |
+| T-R03 | `spec/construct.yaml` | Edit (values) | `feed_characterization` → `feed_classification` in `domain_claims` and `skill_manifest` |
+| T-R04 | `spec/STABILITY.md` | Create (new) | IR schema stability policy document |
+| T-R04 | `spec/proposal-ir.json` | Edit (description) | Stability policy reference in top-level `description` |
+| T-R05 | `src/ir/emit.js` | Edit (emitter logic) | Add `usefulness_score` to each proposal in `annotated` array |
+| T-R05 | `spec/proposal-ir.json` | Edit (schema) | Add `usefulness_score` as required field in `Proposal` definition |
+| T-R05 | `fixtures/forge-snapshots-tremor.json` | Regenerate | Re-run pipeline to include per-proposal `usefulness_score` |
+| T-R05 | `fixtures/forge-snapshots-breath.json` | Regenerate | Re-run pipeline to include per-proposal `usefulness_score` |
+| T-R05 | `fixtures/forge-snapshots-corona.json` | Regenerate | Re-run pipeline to include per-proposal `usefulness_score` |
+| T-R06 | `spec/proposal-ir.json` | Verify + edit (description) | Confirm no `null` in `brier_type` enum; add mapping documentation |
+| T-R06 | `test/unit/ir.spec.js` | Add (1 test) | Test that all templates produce valid non-null `brier_type` |
 
 ---
 
 ## 2. Software Stack
 
-| Category | Technology | Version | Justification |
-|----------|-----------|---------|---------------|
-| Runtime | Node.js | ≥20.0.0 | ES module support, built-in test runner |
-| Module system | ES Modules | — | `"type": "module"` in package.json |
-| Test runner | `node --test` | built-in | Zero-dependency testing |
-| Built-in only | `node:fs`, `node:crypto` | — | Zero external runtime dependencies (security property) |
+### 2.1 Technology (No Changes)
 
-**Explicitly NOT used:**
-- No bundler, transpiler, or build step
-- No external runtime dependencies (`dependencies: {}`)
-- No dev dependencies (`devDependencies: {}`)
-- No test framework (Jest, Vitest, etc.)
-- No HTTP server or REST framework
+| Category | Technology | Version | Notes |
+|----------|------------|---------|-------|
+| Runtime | Node.js | >=20.0.0 | Built-ins only, zero external runtime deps |
+| Language | JavaScript (ESM) | ES2022 | `"type": "module"` in package.json |
+| Testing | `node:test` | Built-in | Node.js native test runner |
+| Crypto | `node:crypto` | Built-in | SHA-256 for proposal_id generation |
+
+**No new dependencies introduced.** This sprint does not add any entries to `dependencies` or `devDependencies`.
 
 ---
 
 ## 3. Data Design
 
-FORGE is stateless between pipeline runs. All data structures are in-memory. No database.
+### 3.1 Schema Changes (IR)
 
-### 3.1 Core Data Types
+The `spec/proposal-ir.json` JSON Schema is the closest equivalent to a data schema. Changes are **additive only**.
 
-#### NormalizedEvent
-```js
+**Addition: `usefulness_score` field in Proposal definition (T-R05)**
+
+Current `$defs.Proposal.properties` does not include `usefulness_score`. After this sprint:
+
+```json
+"usefulness_score": {
+  "type": ["number", "null"],
+  "minimum": 0,
+  "maximum": 1,
+  "description": "Economic usefulness score for this proposal (0-1). Computed from population_impact x regulatory_relevance x predictability x actionability. Null when the economic filter was not invoked (score_usefulness=false). Canonical location for per-proposal usefulness; the envelope-level usefulness_scores map is retained for backwards compatibility."
+}
+```
+
+Added to `$defs.Proposal.required` array. Type is `["number", "null"]` — always present, null when economic filter not invoked.
+
+**Verification: `brier_type` field (T-R06)**
+
+Schema already has `"enum": ["binary", "multi_class"]` with no `null`, and `brier_type` is already in `required`. **No schema change needed for T-R06 — documentation and test only.**
+
+### 3.2 Codebase Finding: Usefulness Score State
+
+The architect agent read the actual fixtures and found:
+
+- **TREMOR**: `usefulness_scores: {"0": 0.0594, ...}` — 5 entries for 5 proposals. Already per-proposal at envelope level.
+- **BREATH**: `usefulness_scores: {"0": 0.34520625}` — 1 entry for 1 proposal. Already per-proposal at envelope level.
+- **CORONA**: `usefulness_scores: {}` — empty, 0 proposals. Correct.
+
+The envelope-level `usefulness_scores` map is already consistent across all three. The actual gap is that `usefulness_score` does not appear on individual proposal objects inside `envelope.proposals[i]`. That is what T-R05 adds.
+
+---
+
+## 4. API Specifications
+
+### 4.1 Runtime API Change (T-R05)
+
+**`emitEnvelope()` output shape change:**
+
+Before:
+```json
 {
-  timestamp: number,    // Unix epoch ms
-  value:     number,    // Primary reading (highest-variance field)
-  metadata:  {          // Structural metadata only
-    shape: string,      // 'geojson_feature', 'object', 'array_row'
-    has_coords: boolean,
-    // ... shape-specific fields
+  "proposals": [
+    { "proposal_id": "...", "template": "...", "params": {}, "confidence": 0.9, "rationale": "...", "brier_type": "binary" }
+  ],
+  "usefulness_scores": { "0": 0.0594 }
+}
+```
+
+After:
+```json
+{
+  "proposals": [
+    { "proposal_id": "...", "template": "...", "params": {}, "confidence": 0.9, "rationale": "...", "brier_type": "binary", "usefulness_score": 0.0594 }
+  ],
+  "usefulness_scores": { "0": 0.0594 }
+}
+```
+
+Envelope-level `usefulness_scores` map is **retained** for backwards compatibility.
+
+### 4.2 Implementation Detail for `src/ir/emit.js`
+
+In `emitEnvelope()`, the `annotated` array construction must be extended:
+
+1. Initialize each proposal with `usefulness_score: null`
+2. When `score_usefulness` is true, set `annotated[i].usefulness_score = score`
+3. Envelope-level `usefulness_scores` map continues to be populated as before
+
+```javascript
+const annotated = proposals.map((p, i) => ({
+  proposal_id: proposalId(feed_id, p.template, p.params),
+  template:    p.template,
+  params:      p.params,
+  confidence:  p.confidence,
+  rationale:   p.rationale,
+  brier_type:  BRIER_TYPE[p.template],
+  usefulness_score: null,
+}));
+
+if (score_usefulness) {
+  const tier = source_metadata?.trust_tier ?? 'unknown';
+  for (let i = 0; i < annotated.length; i++) {
+    const score = computeUsefulness(annotated[i], feed_profile, { source_tier: tier });
+    annotated[i].usefulness_score = score;
+    usefulness_scores[String(i)] = score;
   }
 }
 ```
 
-#### FeedProfile (5 dimensions)
-```js
-{
-  cadence:      { classification: 'seconds'|'minutes'|'hours'|'days'|'event_driven'|'multi_cadence', median_gap_ms, cv },
-  distribution: { type: 'bounded_numeric'|'unbounded_numeric'|'categorical'|'composite', min, max, mean },
-  noise:        { classification: 'smooth'|'noisy'|'spike_driven'|'mixed', spike_ratio },
-  density:      { classification: 'single_point'|'sparse_network'|'dense_network'|'multi_tier', stream_count },
-  thresholds:   { type: 'regulatory'|'statistical'|'physical'|'none', detected_thresholds },
-}
+### 4.3 No Other API Changes
+
+All other public APIs (`ForgeConstruct.analyze()`, `classify()`, `selectTemplates()`, `getTrustTier()`, `canSettle()`, `validateSettlement()`, `computeUsefulness()`) are unchanged.
+
+---
+
+## 5. Error Handling Strategy
+
+### 5.1 No New Error Paths
+
+This sprint does not introduce new error-throwing code paths. The only behavioral change (`usefulness_score` on proposals) follows the existing pattern of attaching computed values to the annotated array.
+
+### 5.2 Validation Test (T-R06)
+
+A new test verifies all six templates produce valid non-null `brier_type`. The existing `BRIER_TYPE` map covers all templates exhaustively — the test confirms defense-in-depth.
+
+---
+
+## 6. Testing Strategy
+
+### 6.1 Test Budget
+
+| Category | Current | After Sprint | Notes |
+|----------|---------|-------------|-------|
+| Unit tests | 558 | 559+ | +1 for T-R06 brier_type validation |
+| Convergence tests | 6 | 6 | Unchanged |
+| **Total** | **566** | **567+** | Must be ≥ 566 |
+
+### 6.2 New Test: brier_type Validation (T-R06)
+
+**File:** `test/unit/ir.spec.js`
+
+```javascript
+it('every template type produces a non-null brier_type', () => {
+  const templates = ['threshold_gate', 'cascade', 'divergence', 'regime_shift', 'anomaly', 'persistence'];
+  for (const template of templates) {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: [{ template, params: {}, confidence: 0.5, rationale: 'test' }],
+    });
+    assert.ok(env.proposals[0].brier_type !== null);
+    assert.ok(['binary', 'multi_class'].includes(env.proposals[0].brier_type));
+  }
+});
 ```
 
-#### Proposal
-```js
-{
-  template:   'threshold_gate'|'cascade'|'divergence'|'regime_shift'|'anomaly'|'persistence',
-  params:     { /* template-specific */ },
-  confidence: number,  // [0, 1]
-  rationale:  string,
-}
-```
+### 6.3 Existing Test Updates (T-R05)
 
-#### EvidenceBundle
-```js
-{
-  value:          number,
-  timestamp:      number,
-  doubt_price:    number,     // [0, 1] — 1 - quality
-  quality:        number,     // [0, 1] — tier baseline blended with freshness
-  evidence_class: 'ground_truth'|'corroboration'|'provisional',
-  source_id:      string|null,
-  theatre_refs:   string[],
-  resolution:     null|object,
-  // Optional passthrough: channel_a, channel_b, lat, lon, frozen_count
-}
-```
+Extend IR tests to assert `usefulness_score` exists on each proposal object when `score_usefulness=true`, and is `null` when `score_usefulness=false`.
 
-#### ProposalEnvelope (Proposal IR v0.1.0)
-See `spec/proposal-ir.json` for the complete JSON Schema. Key fields: `ir_version`, `forge_version`, `emitted_at`, `feed_id`, `feed_profile`, `proposals[]`, `composition`, `usefulness_scores`.
+### 6.4 Golden Envelope Regeneration (T-R05)
 
-### 3.2 Static Registries
-
-| Registry | Location | Size | Purpose |
-|----------|----------|------|---------|
-| `TRUST_REGISTRY` | `oracle-trust.js:31-50` | 11 entries | Source ID → trust tier mapping |
-| `DENSITY_IMPACT` | `usefulness.js:31-36` | 4 entries | Density classification → population impact factor |
-| `THRESHOLD_RELEVANCE` | `usefulness.js:42-47` | 4 entries | Threshold type → regulatory relevance factor |
-| `CADENCE_PREDICTABILITY` | `usefulness.js:53-60` | 6 entries | Cadence classification → predictability factor |
-| `TIER_ACTIONABILITY` | `usefulness.js:67-73` | 5 entries | Trust tier → actionability modifier |
-| `TIER_BASELINE` | `quality.js:19-24` | 4 entries | Trust tier → quality baseline |
-| `TIER_CLASS` | `settlement.js:25-30` | 4 entries | Trust tier → evidence class label |
-| `THEATRE_OPS` | `lifecycle.js:61-98` | 6 entries | Template type → {create, process, expire, resolve} |
-
-### 3.3 Fixture Files
-
-8 fixtures across 3 domains (seismic, air quality, space weather) used for convergence testing. **Frozen this sprint.**
+Regenerate by running the actual FORGE pipeline against each fixture with `score_usefulness: true`. Not hand-edited. Each proposal in each envelope will contain `usefulness_score`. CORONA's empty `proposals: []` remains unchanged.
 
 ---
 
-## 4. Interface Design
+## 7. Development Phases
 
-FORGE is a headless library. No UI.
+### Phase 1: MUST FIX (T-R01, T-R02, T-R03)
 
-The "interface" is the programmatic API consumed in two ways:
-1. **Pipeline consumer:** `ForgeConstruct.analyze(fixturePath, options)` → `ForgeResult`
-2. **Echelon admission gate:** Reads the `ProposalEnvelope` JSON output (Proposal IR v0.1.0)
+#### T-R01: Fix construct.json entry_point
+**Files:** `spec/construct.json` | **Effort:** XS
 
----
+1. `entry_point`: `"BUTTERFREEZONE.md"` → `"README.md"`
+2. `context_files[0]`: `"BUTTERFREEZONE.md"` → `"README.md"`
+3. Verify `README.md` exists at repo root
+4. Run `npm run test:all`
 
-## 5. API Specifications
+#### T-R02: Document settlement tier key distinction
+**Files:** `src/trust/oracle-trust.js`, `spec/proposal-ir.json` | **Effort:** XS
 
-### 5.1 Programmatic API
+1. Add comment block above `TRUST_REGISTRY` documenting string key format, TREMOR orthogonality, and Echelon provenance mapping (T0→signal_initiated high confidence, T1→signal_initiated Brier-discounted, T2→suggestion_promoted, T3→suggestion_unlinked)
+2. Update `trust_tier` description in `spec/proposal-ir.json`
+3. Run `npm run test:all`
 
-#### ForgeConstruct (primary entrypoint)
+#### T-R03: Verify domain claim vocabulary
+**Files:** `spec/construct.json`, `spec/construct.yaml` | **Effort:** S
 
-| Method | Signature | Returns |
-|--------|-----------|---------|
-| `analyze` | `(fixturePath, { feed_id?, instantiate?, score_usefulness?, source_metadata? })` | `Promise<ForgeResult>` |
-| `getRuntime` | `()` | `ForgeRuntime` |
-| `getCertificates` | `()` | `Object[]` (defensive copy) |
-| `flushCertificates` | `()` | `number` (count flushed) |
+1. `spec/construct.json` skills array: `"feed-characterization"` → `"feed-classification"`
+2. `spec/construct.yaml` domain_claims: `feed_characterization` → `feed_classification`
+3. `spec/construct.yaml` skill_manifest entries: `domain: feed_characterization` → `domain: feed_classification`
+4. **Conservative scope:** Only change `feed_characterization`. Flag other potential mismatches (see Open Questions Q1) for Tobias confirmation.
+5. Run `npm run test:all`
 
-#### ForgeRuntime (theatre lifecycle)
+### Phase 2: SHOULD ADDRESS (T-R04, T-R05, T-R06)
 
-| Method | Signature | Returns |
-|--------|-----------|---------|
-| `instantiate` | `(proposals, { feed_id?, now? })` | `string[]` (theatre IDs) |
-| `ingestBundle` | `(bundle, adversarialCtx?)` | `{ processed, rejected, reason? }` |
-| `checkExpiries` | `({ now? })` | `string[]` (expired IDs) |
-| `settle` | `(theatreId, outcome, { source_id?, settlement_class?, now? })` | `{ settled, reason? }` |
-| `getTheatre` | `(id)` | `Object\|null` |
-| `getOpenTheatres` | `()` | `string[]` |
-| `getStats` | `()` | `RuntimeStats` |
-| `getState` | `()` | `Object` |
+#### T-R04: Document IR stability policy
+**Files:** `spec/STABILITY.md` (new), `spec/proposal-ir.json` | **Effort:** XS
 
-### 5.2 Granular Exports
+1. Create `spec/STABILITY.md` covering: current version (0.1.0), stability status, breaking/non-breaking definitions, notice policy, Cycle 002 additive fields
+2. Add stability policy reference to `spec/proposal-ir.json` top-level description
+3. Run `npm run test:all`
 
-`src/index.js` exports 46 functions/classes across 14 modules for testing, debugging, and convergence loop access. See `src/index.js:151-206` for the complete export map.
+#### T-R05: Fix usefulness scoring inconsistency
+**Files:** `src/ir/emit.js`, `spec/proposal-ir.json`, `fixtures/forge-snapshots-*.json` (x3) | **Effort:** S
 
-### 5.3 Proposal IR Contract (v0.1.0)
+1. Extend `emitEnvelope()` to attach `usefulness_score` on each proposal object
+2. Add `usefulness_score` as `["number", "null"]` required field in IR schema
+3. Regenerate all 3 golden envelope snapshots via pipeline execution
+4. Update IR tests to assert `usefulness_score` presence
+5. Run `npm run test:all`
 
-Schema: `spec/proposal-ir.json` — **frozen this sprint**.
+#### T-R06: Document brier_type null rejection
+**Files:** `spec/proposal-ir.json`, `test/unit/ir.spec.js` | **Effort:** XS
 
-Required envelope fields: `ir_version`, `forge_version`, `emitted_at`, `feed_id`, `feed_profile`, `proposals`.
-Optional: `source_metadata`, `composition`, `usefulness_scores`.
-
-Each proposal carries a deterministic `proposal_id` (first 16 hex chars of SHA-256 of `feed_id:template:sorted_params`).
-
----
-
-## 6. Error Handling Strategy
-
-### 6.1 Current Patterns
-
-| Pattern | Location | Behavior |
-|---------|----------|----------|
-| TypeError throws | `compose.js:121-142` | Guard clauses on malformed FeedProfile input |
-| Graceful fallback | `oracle-trust.js:63` | `?? 'unknown'` for unrecognized source IDs |
-| Graceful fallback | `settlement.js:41` | `?? 'provisional'` for unknown tiers |
-| Graceful fallback | `quality.js:66` | `?? DEFAULT_BASELINE` for unknown tiers |
-| Return-value signaling | `adversarial.js:64-129` | `{ clean: false, reason }` for adversarial violations |
-| Return-value signaling | `oracle-trust.js:86-97` | `{ allowed: false, tier, reason }` for settlement rejection |
-| Null return | `compose.js:260` | `null` when no composition rule fires |
-| Console warn | `lifecycle.js:179` | Unknown template type during instantiation |
-| Try-catch | `lifecycle.js:345-351` | Certificate export failure logged, not thrown |
-
-### 6.2 Gaps to Audit (Phase 2)
-
-| Gap | Location | Risk |
-|-----|----------|------|
-| No input validation | `buildBundle()` | `rawEvent.value` could be `undefined`, `NaN`, `Infinity` |
-| No circular reference protection | `ingest()` | Recursive object traversal could stack overflow |
-| No path sanitization | `ingestFile()`, `createReplay()` | `readFileSync` with raw file path — path traversal possible |
-| No payload size limit | `ingest()` | Memory-exceeding JSON could cause OOM |
+1. Update `brier_type` description with cascade→multi_class mapping and null rejection note
+2. Add validation test confirming all templates produce valid brier_type
+3. Run `npm run test:all`
 
 ---
 
-## 7. Testing Strategy
-
-### 7.1 Existing Test Infrastructure
-
-| Category | Count | Runner | Location |
-|----------|-------|--------|----------|
-| Unit tests | 503 | `node --test` | `test/unit/*.spec.js` |
-| Convergence tests | 63 | `node --test` | `test/convergence/*.spec.js` |
-| **Total** | **566** | — | — |
-
-All 566 tests pass (verified: 0 failures, 334ms).
-
-### 7.2 Convergence Testing
-
-3 backing specifications: TREMOR (seismic), CORONA (space weather), BREATH (air quality).
-
-Each convergence test:
-1. Ingests a golden envelope fixture (raw + anonymized mode)
-2. Runs the full pipeline
-3. Scores against expected output: grammar score (5D match), template score (exact param match), false positive count
-4. Produces a `TotalScore` — convergence target is 20.5/20.5
-
-### 7.3 Test Invariants (Must Hold Through Sprint)
-
-- All 566 tests pass after any code change
-- Convergence score remains 20.5/20.5
-- Anonymized fixtures produce identical FeedProfiles to raw fixtures
-- Same input → same output (determinism)
-
-### 7.4 Sprint Review/Audit Methodology
-
-| Phase | Method | Output |
-|-------|--------|--------|
-| Phase 1: Code Review | Targeted review of 5 priority modules + full codebase sweep | Findings with severity ratings |
-| Phase 2A: Security Audit | Supply chain verification, input boundary testing, file I/O audit | Audit findings with dispositions |
-| Phase 2B: Red-Team | Adversarial attack scenarios against 3 targets | Structured report per target |
-| Phase 3: Usefulness | Read-only audit → baseline → interrogation → proposal → document | `FORGE_USEFULNESS_FINDINGS.md` |
-
----
-
-## 8. Development Phases
-
-### Phase 1: Code Review (FR-1 through FR-5)
-
-**Gate:** Tech Lead approval with no open critical/high findings.
-
-- [ ] **FR-1:** Oracle trust model review — `getTrustTier()` gap handling, `canSettle()` correctness, `validateSettlement()` reason population, adversarial check wiring
-- [ ] **FR-2:** Evidence bundle pipeline review — trust enforcement consistency, edge cases in quality/doubt, dual-gate agreement
-- [ ] **FR-3:** Usefulness filter review — 4 dimensions computed, composite is true [0,1], no NaN propagation
-- [ ] **FR-4:** Composition engine review — null return, lag_ms=0 edge, rule ordering
-- [ ] **FR-5:** Deterministic replay review — no non-determinism sources, byte-identical output
-
-### Phase 2A: Security Audit (FR-6 through FR-8)
-
-**Gate:** Security Auditor approval. **Requires:** Phase 1 gate passed.
-
-- [ ] **FR-6:** Supply chain — zero external runtime deps confirmed, no dynamic imports
-- [ ] **FR-7:** Input boundaries — malformed JSON, circular refs, Infinity/NaN/-0, memory limits
-- [ ] **FR-8:** File I/O — path traversal in `ingestFile()`/`createReplay()`, symlink behavior
-
-### Phase 2B: Red-Team (FR-9 through FR-11)
-
-**Requires:** Phase 2A complete.
-
-- [ ] **FR-9:** Oracle trust model — sourceId string manipulation, null/undefined inputs, tier mapping exhaustiveness, `canSettle()` bypass paths
-- [ ] **FR-10:** Argus adversarial checks — all 6 checks verified present, worst-case false negatives/positives, detection thresholds documented
-- [ ] **FR-11:** Evidence bundle spec — quality gaming, doubt price manipulation, dual-gate disagreement, post-construction mutation
-
-### Phase 2C: Critical Fixes
-
-**Conditional:** Only if Phase 2A/2B produce critical or high findings.
-
-- [ ] Fix all critical findings immediately
-- [ ] Disposition all high findings (fix or accepted-risk)
-- [ ] All 566 tests still passing after fixes
-
-### Phase 3: Usefulness Heuristic Iteration (FR-12 through FR-16)
-
-**Gate:** Phase 2 approved. **All-or-nothing:** either T-H01 through T-H05 complete, or entire phase defers.
-
-- [ ] **FR-12 (T-H01):** Read-only audit of current formula, weights, clamping, normalization
-- [ ] **FR-13 (T-H02):** Baseline scoring — all 13 proposals scored with per-dimension breakdown
-- [ ] **FR-14 (T-H03):** Weight interrogation — one paragraph per dimension, assumption analysis
-- [ ] **FR-15 (T-H04):** Weight proposal — implement, compare before/after, keep or revert
-- [ ] **FR-16 (T-H05):** Document findings in `grimoires/pub/FORGE_USEFULNESS_FINDINGS.md`
-
-### Execution Order
-
-```
-Phase 1 ──▶ [approval gate] ──▶ Phase 2A ──▶ Phase 2B ──▶ Phase 2C ──▶ [approval gate] ──▶ Phase 3
-```
-
----
-
-## 9. Known Risks and Mitigation
+## 8. Known Risks and Mitigation
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Critical trust model vulnerability found | Medium | High | Fix immediately in this sprint (PRD: Phase 7 Q1) |
-| Tobias delivers early, interrupting sprint | Medium | Medium | Phase 1+2 take priority; Phase 3 defers as a unit |
-| Usefulness weight iteration worsens scores | Medium | Low | Reversion is valid; document why |
-| Audit discovers scope-expanding issues | Low | High | Document findings; only fix critical/high; defer rest |
-| Red-teaming reveals fundamental trust model redesign needed | Low | High | Document gap; assess Cycle 002 safety |
-| `checkAdversarial` not wired into `buildBundle` found to be a vulnerability | Medium | Medium | Determine if runtime-level enforcement (lifecycle.js:223) is sufficient or if bundle-level enforcement is also needed |
-| Missing Argus Check 6 (value out of range) | High | Medium | Identify and document during FR-10; implement if severity warrants |
+| T-R05 fixture regeneration changes `proposal_id` values | Very Low | High | `proposal_id` is deterministic from `feed_id + template + params`. Inputs unchanged → IDs identical. Diff old vs new. |
+| T-R05 `usefulness_score: null` breaks Tobias's bridge tests | Low | Medium | Adding a new field with null is additive. JSON parsers ignore unknown fields by default. |
+| T-R03 domain changes beyond `feed_characterization` needed | Low | Medium | Conservative: only change the explicitly flagged term. Flag rest for Tobias. |
+| T-R05 convergence tests fail after fixture regeneration | Low | Medium | Convergence tests score pipeline properties, not snapshot values. |
 
 ---
 
-## 10. Open Questions
+## 9. Open Questions
 
 | # | Question | Owner | Status |
 |---|----------|-------|--------|
-| 1 | Argus Check 6 ("value out of range") is documented in `adversarial.js` JSDoc (line 12) but not implemented in the function body. Is this intentional or a gap? | Red-Team (FR-10) | Open |
-| 2 | `buildBundle()` does NOT call `checkAdversarial()`. Adversarial checks run at `ForgeRuntime.ingestBundle()` instead. Is bundle-level enforcement needed, or is runtime-level sufficient? PRD FR-1 says "wired into `buildBundle()`". | Code Review (FR-1) | Open |
-| 3 | The usefulness formula is multiplicative (`pop × reg × pred × act`) but the JSDoc describes "equal weights at 1.0" — weights of 1.0 in a multiplicative formula are identity, not equal weighting. Is the formula intentional? | Phase 3 (T-H03) | Open |
-| 4 | `actionability()` uses a two-step computation (`thresholdBase × tierMod`) unlike the other three single-lookup factors. Is this asymmetry intentional? | Phase 3 (T-H03) | Open |
-| 5 | `generateId()` in `lifecycle.js:106` uses `Date.now()` — this means theatre IDs are non-deterministic. Acceptable for runtime but notable. | Code Review (FR-5) | Open |
-| 6 | Doubt pricing formula is `1 - quality`. Is this derivation documented? Should it be non-linear? | Phase 3 / Governance | Open |
-| 7 | What constitutes "physically plausible bounds" for Check 6? Each domain (seismic, AQI, X-ray flux) has different valid ranges. | Red-Team (FR-10) | Open |
+| Q1 | Should `construct.yaml` domain claims beyond `feed_characterization` align to Echelon vocabulary? Candidates: `prediction_markets`→`market_proposal`, `rlmf_export`→`rlmf_certificate`, `theatre_management`→`theatre_lifecycle`, `oracle_verification`→`oracle_trust`, `settlement_verification`→`settlement_accuracy`, `calibration_analysis`→`calibration_validity` | Tobias / el capitan | Open |
+| Q2 | For T-R05, should `usefulness_score` be `["number", "null"]` (allowing null when filter not invoked) or always computed? **Recommendation: allow null** for backwards compat. | el capitan | Open |
+| Q3 | The actual BREATH fixture already has per-proposal usefulness at envelope level (`{"0": 0.34520625}`). The real gap is absence of `usefulness_score` on proposal objects, not envelope-level inconsistency. Confirm this reading. | el capitan | Open |
 
 ---
 
-## 11. Appendix
+## 10. Appendix
 
-### A. Module Dependency Graph
+### A. File Inventory
 
-```
-src/index.js (ForgeConstruct)
-├── ingester/generic.js
-│   └── replay/deterministic.js (node:fs)
-├── classifier/feed-grammar.js
-│   ├── classifier/cadence.js
-│   ├── classifier/distribution.js
-│   ├── classifier/noise.js
-│   ├── classifier/density.js
-│   └── classifier/thresholds.js
-├── selector/template-selector.js
-│   └── selector/rules.js
-├── ir/emit.js (node:crypto)
-│   └── filter/usefulness.js
-├── runtime/lifecycle.js
-│   ├── theatres/threshold-gate.js
-│   ├── theatres/cascade.js
-│   ├── theatres/divergence.js
-│   ├── theatres/regime-shift.js
-│   ├── theatres/anomaly.js
-│   ├── theatres/persistence.js
-│   ├── trust/oracle-trust.js
-│   ├── trust/adversarial.js
-│   └── rlmf/certificates.js
-├── processor/bundles.js
-│   ├── processor/quality.js
-│   ├── processor/uncertainty.js
-│   └── processor/settlement.js
-└── composer/compose.js
-```
+| File | Action | Tasks |
+|------|--------|-------|
+| `spec/construct.json` | Edit | T-R01, T-R03 |
+| `spec/construct.yaml` | Edit | T-R03 |
+| `src/trust/oracle-trust.js` | Edit (add comments) | T-R02 |
+| `spec/proposal-ir.json` | Edit (schema + descriptions) | T-R02, T-R04, T-R05, T-R06 |
+| `spec/STABILITY.md` | Create (new) | T-R04 |
+| `src/ir/emit.js` | Edit (emitter logic) | T-R05 |
+| `fixtures/forge-snapshots-tremor.json` | Regenerate | T-R05 |
+| `fixtures/forge-snapshots-breath.json` | Regenerate | T-R05 |
+| `fixtures/forge-snapshots-corona.json` | Regenerate | T-R05 |
+| `test/unit/ir.spec.js` | Edit (add tests) | T-R05, T-R06 |
 
-### B. Glossary
+### B. Echelon Provenance Mapping Reference
 
-| Term | Definition |
-|------|------------|
-| Theatre | Structured prediction market on Echelon with locked parameters and Brier-scored RLMF export |
-| Construct | Autonomous agent inside a Theatre with verifiable on-chain P&L |
-| FeedProfile | 5-dimension classification (cadence, distribution, noise, density, thresholds) |
-| Argus | 6-check adversarial gate on evidence bundles (named: hundred-eyed watchman) |
-| RLMF | Reinforcement Learning from Market Feedback — Brier-scored training data |
-| Proposal IR | Versioned JSON contract between FORGE and Echelon's admission gate (v0.1.0) |
-| Golden envelope | Fixture files containing expected FORGE output per backing spec |
-| Backing spec | Reference implementation (TREMOR, CORONA, BREATH) that FORGE must converge to |
-| Settlement invariant | T3 sources MUST NEVER settle a theatre — the attack the trust model exists to prevent |
-| Doubt price | Confidence discount on evidence bundles; `1 - quality` |
+| FORGE Tier | Key Format | Echelon Provenance | Confidence |
+|------------|-----------|-------------------|------------|
+| T0 | String `"T0"` | signal_initiated | High |
+| T1 | String `"T1"` | signal_initiated | Brier-discounted |
+| T2 | String `"T2"` | suggestion_promoted | Needs corroboration |
+| T3 | String `"T3"` | suggestion_unlinked | No settlement evidence |
 
-### C. PRD Traceability
-
-| SDD Section | PRD Source |
-|-------------|-----------|
-| §1.7 Security Architecture | FR-1, FR-9, NFR Settlement Security |
-| §3.1 Core Data Types | FR-2, FR-11 |
-| §5.3 Proposal IR | Technical Considerations §7 |
-| §6.2 Gaps to Audit | FR-7, FR-8 |
-| §7 Testing Strategy | NFR Test Integrity, NFR Determinism |
-| §8 Phase 1 | FR-1 through FR-5 |
-| §8 Phase 2A | FR-6 through FR-8 |
-| §8 Phase 2B | FR-9 through FR-11 |
-| §8 Phase 3 | FR-12 through FR-16 |
-| §10 Open Questions | FR-1 (Q2), FR-10 (Q1, Q7), Phase 3 (Q3, Q4, Q6) |
-
-### D. Change Log
+### C. Change Log
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
-| 1.0 | 2026-03-27 | Initial version — architecture documentation for holding sprint | Architecture Designer Agent |
+| 1.0 | 2026-03-30 | Initial SDD for Tobias Review Response Sprint | Architecture Designer |
 
 ---
 
-*Generated by Architecture Designer Agent — grounded in full codebase exploration of 30 source files, 566 tests, and PRD v1.0*
+*Generated by Architecture Designer Agent*

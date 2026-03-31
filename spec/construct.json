@@ -21,7 +21,7 @@
   "visibility": "public",
 
   "skills": [
-    "feed-characterization",
+    "feed-classification",
     "theatre-proposal",
     "feed-alignment",
     "causal-ordering",
@@ -39,10 +39,10 @@
     "get-certificates"
   ],
 
-  "entry_point": "BUTTERFREEZONE.md",
+  "entry_point": "README.md",
 
   "context_files": [
-    "BUTTERFREEZONE.md",
+    "README.md",
     "src/index.js",
     "spec/construct.json",
     "src/classifier/feed-grammar.js",

@@ -83,7 +83,8 @@
         },
         "confidence": 0.75,
         "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch.",
-        "brier_type": "binary"
+        "brier_type": "binary",
+        "usefulness_score": 0.34520625
       }
     ],
     "composition": null,

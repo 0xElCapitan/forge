@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://forge.constructs.network/schemas/proposal-ir/0.1.0",
   "title": "FORGE Proposal IR",
-  "description": "Intermediate Representation emitted by FORGE and consumed by Echelon's admission gate. Each ProposalEnvelope contains the full classification, one or more theatre proposals, provenance metadata, and optional composition context. Versioned for forward-compatibility.",
+  "description": "Intermediate Representation emitted by FORGE and consumed by Echelon's admission gate. Each ProposalEnvelope contains the full classification, one or more theatre proposals, provenance metadata, and optional composition context. Versioned for forward-compatibility. See spec/STABILITY.md for schema stability policy and breaking change commitments.",
   "version": "0.1.0",
 
   "type": "object",
@@ -42,7 +42,7 @@
       "description": "Optional provenance about the feed source. Not used for matching — informational only.",
       "properties": {
         "source_id":   { "type": ["string", "null"], "description": "Oracle source identifier (e.g. 'usgs_automatic', 'purpleair')." },
-        "trust_tier":  { "enum": ["T0", "T1", "T2", "T3", "unknown"], "description": "FORGE trust tier for this source." },
+        "trust_tier":  { "enum": ["T0", "T1", "T2", "T3", "unknown"], "description": "FORGE trust tier for this source. String keys (T0-T3) represent oracle identity tiers, orthogonal to TREMOR's numeric data maturity levels. Echelon provenance mapping: T0/T1 → signal_initiated (T0 high confidence, T1 Brier-discounted), T2 → suggestion_promoted, T3 → suggestion_unlinked." },
         "domain":      { "type": ["string", "null"], "description": "Feed domain hint (e.g. 'seismic', 'space_weather', 'air_quality'). Caller-supplied, not classifier-inferred. Makes the envelope self-describing for Echelon routing." },
         "endpoint":    { "type": ["string", "null"], "description": "Feed URL (for live adapters)." },
         "poll_interval_ms": { "type": ["integer", "null"], "description": "Recommended poll interval in ms." },
@@ -149,7 +149,7 @@
 
     "Proposal": {
       "type": "object",
-      "required": ["proposal_id", "template", "params", "confidence", "rationale", "brier_type"],
+      "required": ["proposal_id", "template", "params", "confidence", "rationale", "brier_type", "usefulness_score"],
       "additionalProperties": false,
       "properties": {
         "proposal_id": {
@@ -199,7 +199,13 @@
         },
         "brier_type": {
           "enum": ["binary", "multi_class"],
-          "description": "Expected Brier scoring method for RLMF certificates from this theatre. Always present — determined by template type (cascade → multi_class, all others → binary)."
+          "description": "Expected Brier scoring method for RLMF certificates from this theatre. Always present and never null — determined by template type. Mapping: cascade → multi_class (5-bucket resolution), all other templates (threshold_gate, divergence, regime_shift, anomaly, persistence) → binary. FORGE sets this from the BRIER_TYPE lookup in src/ir/emit.js; Echelon may rely on it for certificate validation."
+        },
+        "usefulness_score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Economic usefulness score (0-1) for this individual proposal. Null when the economic filter was not invoked (score_usefulness=false). When present, matches the corresponding entry in the envelope-level usefulness_scores map."
         }
       }
     },

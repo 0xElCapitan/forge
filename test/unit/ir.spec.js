@@ -161,11 +161,36 @@ describe('emitEnvelope', () => {
       source_metadata: { trust_tier: 'T1' },
     });
 
+    // Envelope-level map (backwards compat)
     assert.ok(env.usefulness_scores !== null);
     assert.equal(typeof env.usefulness_scores['0'], 'number');
     assert.equal(typeof env.usefulness_scores['1'], 'number');
     assert.ok(env.usefulness_scores['0'] > 0);
     assert.ok(env.usefulness_scores['0'] <= 1);
+
+    // Per-proposal usefulness_score
+    for (let i = 0; i < env.proposals.length; i++) {
+      assert.equal(typeof env.proposals[i].usefulness_score, 'number',
+        `proposals[${i}].usefulness_score should be a number when scored`);
+      assert.ok(env.proposals[i].usefulness_score >= 0 && env.proposals[i].usefulness_score <= 1,
+        `proposals[${i}].usefulness_score should be 0-1`);
+      assert.equal(env.proposals[i].usefulness_score, env.usefulness_scores[String(i)],
+        `proposals[${i}].usefulness_score should match envelope map`);
+    }
+  });
+
+  it('sets usefulness_score to null when score_usefulness is false', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+    });
+
+    for (let i = 0; i < env.proposals.length; i++) {
+      assert.equal(env.proposals[i].usefulness_score, null,
+        `proposals[${i}].usefulness_score should be null when not scored`);
+    }
+    assert.equal(env.usefulness_scores, null);
   });
 
   it('sets composition to null for single-feed classification', () => {
@@ -197,6 +222,37 @@ describe('emitEnvelope', () => {
     assert.equal(env.composition.feed_a_id, 'purpleair_sf');
     assert.equal(env.composition.causal_order.leader, 'B');
     assert.equal(env.composition.rule_fired, 'threshold_with_arrival_predictor');
+  });
+
+  it('assigns valid non-null brier_type for every template type', () => {
+    const TEMPLATES = [
+      { template: 'threshold_gate', expected: 'binary' },
+      { template: 'cascade',        expected: 'multi_class' },
+      { template: 'divergence',     expected: 'binary' },
+      { template: 'regime_shift',   expected: 'binary' },
+      { template: 'anomaly',        expected: 'binary' },
+      { template: 'persistence',    expected: 'binary' },
+    ];
+
+    for (const { template, expected } of TEMPLATES) {
+      const env = emitEnvelope({
+        feed_id: 'brier_test',
+        feed_profile: TREMOR_PROFILE,
+        proposals: [{
+          template,
+          params: {},
+          confidence: 0.5,
+          rationale: `brier_type test for ${template}`,
+        }],
+      });
+
+      assert.equal(env.proposals[0].brier_type, expected,
+        `${template} should produce brier_type="${expected}"`);
+      assert.ok(env.proposals[0].brier_type !== null,
+        `${template} brier_type must not be null`);
+      assert.ok(['binary', 'multi_class'].includes(env.proposals[0].brier_type),
+        `${template} brier_type must be "binary" or "multi_class"`);
+    }
   });
 
   it('nullifies missing optional profile fields', () => {

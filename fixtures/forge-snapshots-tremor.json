@@ -129,7 +129,8 @@
         },
         "confidence": 0.9,
         "rationale": "Rule 'seismic_threshold_gate' fired (3/3 conditions). Traced to: TREMOR/MagGate.",
-        "brier_type": "binary"
+        "brier_type": "binary",
+        "usefulness_score": 0.0594
       },
       {
         "proposal_id": "4f232e0ac1c9f056",
@@ -142,7 +143,8 @@
         },
         "confidence": 0.85,
         "rationale": "Rule 'seismic_cascade' fired (2/2 conditions). Traced to: TREMOR/AftershockCascade.",
-        "brier_type": "multi_class"
+        "brier_type": "multi_class",
+        "usefulness_score": 0.0594
       },
       {
         "proposal_id": "eceae36eb76065f9",
@@ -155,7 +157,8 @@
         },
         "confidence": 0.8,
         "rationale": "Rule 'seismic_review_divergence' fired (2/2 conditions). Traced to: TREMOR/OracleDivergence.",
-        "brier_type": "binary"
+        "brier_type": "binary",
+        "usefulness_score": 0.0594
       },
       {
         "proposal_id": "9525d2cd7d3ea679",
@@ -167,7 +170,8 @@
         },
         "confidence": 0.75,
         "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch.",
-        "brier_type": "binary"
+        "brier_type": "binary",
+        "usefulness_score": 0.0594
       },
       {
         "proposal_id": "ca56d925623277c6",
@@ -178,7 +182,8 @@
         },
         "confidence": 0.7,
         "rationale": "Rule 'seismic_regime_shift' fired (2/2 conditions). Traced to: TREMOR/DepthRegime.",
-        "brier_type": "binary"
+        "brier_type": "binary",
+        "usefulness_score": 0.0594
       }
     ],
     "composition": null,

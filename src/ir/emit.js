@@ -78,7 +78,7 @@ export function emitEnvelope({
 }) {
   const emitted_at = Date.now();
 
-  // Annotate proposals with brier_type and deterministic proposal_id
+  // Annotate proposals with brier_type, deterministic proposal_id, and usefulness_score
   const annotated = proposals.map(p => ({
     proposal_id: proposalId(feed_id, p.template, p.params),
     template:    p.template,
@@ -86,17 +86,20 @@ export function emitEnvelope({
     confidence:  p.confidence,
     rationale:   p.rationale,
     brier_type:  BRIER_TYPE[p.template],
+    usefulness_score: null,
   }));
 
-  // Optional usefulness scoring
+  // Optional usefulness scoring — populates both per-proposal and envelope-level map
   let usefulness_scores = null;
   if (score_usefulness) {
     usefulness_scores = {};
     const tier = source_metadata?.trust_tier ?? 'unknown';
     for (let i = 0; i < annotated.length; i++) {
-      usefulness_scores[String(i)] = computeUsefulness(
+      const score = computeUsefulness(
         annotated[i], feed_profile, { source_tier: tier },
       );
+      annotated[i].usefulness_score = score;
+      usefulness_scores[String(i)] = score;
     }
   }
 

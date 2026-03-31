@@ -1,36 +1,43 @@
 # Sprint 2 Review: Senior Tech Lead Feedback
 
-**Sprint:** 2 — Security Audit + Red-Team
+**Sprint:** 2 — Tobias Review Response (SHOULD ADDRESS)
 **Reviewer:** Senior Tech Lead
-**Date:** 2026-03-27
+**Date:** 2026-03-31
 **Verdict:** All good (with noted concerns)
 
 ---
 
 ## Overall Assessment
 
-Sprint 2 delivered a thorough, well-structured security audit and red-team report covering all 7 tasks across 3 attack surfaces. The findings register is accurate — I spot-checked RT-01, RT-05, RT-07, RT-09, RT-10, SA-02, and SA-07 against actual source code and all check out. Severity ratings are appropriate with one upgrade recommendation. The attack chain analysis (RT-09 + RT-01) is particularly strong — identifying the composition of two findings that individually are concerning but together constitute a full invariant bypass.
+Sprint 2 delivers all three SHOULD ADDRESS items with one code logic change, comprehensive documentation, and 2 new tests (589 total, 0 failures). The code change in `emit.js` is minimal and surgical — 4 lines added to annotation, 3 lines modified in the scoring loop. Schema change is additive. Fixtures updated correctly.
 
 **Approved for the following reasons:**
-1. All 7 tasks completed with structured findings per target
-2. All 11 acceptance criteria addressed (4 PASS, 7 with documented findings)
-3. Supply chain verified clean — zero external dependencies
-4. Red-team covered all 3 targets with false-negative and false-positive test vectors
-5. No code was changed (correct — this is an audit sprint, not a fix sprint)
-6. 566/566 tests verified passing
+1. T-R04: `spec/STABILITY.md` exists with all required sections (commitment, versioning, breaking changes, notice policy, non-breaking, consumer guidance). `proposal-ir.json:5` references it.
+2. T-R05: `usefulness_score: null` initialized on every proposal (`emit.js:89`), set to computed score when `score_usefulness=true` (`emit.js:101`). Envelope-level map retained (`emit.js:102`). Schema updated (`proposal-ir.json:152,204-209`). All 3 fixtures updated. Tests verify both scored and unscored paths.
+3. T-R06: `brier_type` description updated with full template→type mapping (`proposal-ir.json:201-202`). Validation test covers all 6 templates (`ir.spec.js:227-253`).
+4. 589 tests passing, 0 failures
+5. No IR schema fields removed, renamed, or type-changed (additive only)
 
 ---
 
-## Verification of Key Findings
+## Verification of Changes
 
-| Finding | Spot-Check Result |
-|---------|-------------------|
-| RT-01 (settle bypass) | **CONFIRMED** — `lifecycle.js:315` has `if (opts.source_id)` guard. Omitting source_id skips `validateSettlement()` entirely. Fail-open. |
-| RT-05 (Check 6 missing) | **CONFIRMED** — `adversarial.js:129` returns `{ clean: true }` after Check 5. Check 6 code absent despite JSDoc documentation at line 12. |
-| RT-09 (tier not validated) | **CONFIRMED** — `bundles.js:51` defaults `tier` to `'T3'` but any caller can pass `'T0'`. No cross-check against `getTrustTier(source_id)`. |
-| RT-10 (mutable bundles) | **CONFIRMED** — `bundles.js:81` returns plain object. `Object.freeze()` not called. Post-construction mutation undetectable. |
-| SA-02 (NaN propagation) | **CONFIRMED** — `quality.js:42` computes `1 - age_ms / stale_after_ms`. When `stale_after_ms=0`: `1 - 0/0 = NaN`. `Math.max(0, NaN) = NaN`. |
-| SA-07 (path traversal) | **CONFIRMED** — `deterministic.js:87` calls `readFileSync(fixturePath, 'utf8')` with zero path validation. Publicly exported via `src/index.js:169`. |
+| Task | File | Verified |
+|------|------|----------|
+| T-R04 | `spec/STABILITY.md` | **CONFIRMED** — All required sections present |
+| T-R04 | `spec/proposal-ir.json:5` | **CONFIRMED** — Description references `spec/STABILITY.md` |
+| T-R05 | `src/ir/emit.js:89` | **CONFIRMED** — `usefulness_score: null` in annotated map |
+| T-R05 | `src/ir/emit.js:101` | **CONFIRMED** — `annotated[i].usefulness_score = score` when scored |
+| T-R05 | `src/ir/emit.js:102` | **CONFIRMED** — Envelope-level map still populated |
+| T-R05 | `spec/proposal-ir.json:152` | **CONFIRMED** — `usefulness_score` in required array |
+| T-R05 | `spec/proposal-ir.json:204-209` | **CONFIRMED** — `["number", "null"]`, min 0, max 1 |
+| T-R05 | `fixtures/forge-snapshots-tremor.json` | **CONFIRMED** — 5 proposals each with `usefulness_score: 0.0594` |
+| T-R05 | `fixtures/forge-snapshots-breath.json` | **CONFIRMED** — 1 proposal with `usefulness_score: 0.34520625` |
+| T-R05 | `fixtures/forge-snapshots-corona.json` | **CONFIRMED** — 0 proposals, no change needed |
+| T-R05 | `test/unit/ir.spec.js:155-179` | **CONFIRMED** — Per-proposal score assertions + envelope map match |
+| T-R05 | `test/unit/ir.spec.js:182-194` | **CONFIRMED** — Null assertion when not scored |
+| T-R06 | `spec/proposal-ir.json:201-202` | **CONFIRMED** — cascade→multi_class mapping documented |
+| T-R06 | `test/unit/ir.spec.js:227-253` | **CONFIRMED** — All 6 templates validated |
 
 ---
 
@@ -38,23 +45,23 @@ Sprint 2 delivered a thorough, well-structured security audit and red-team repor
 
 ### Concerns Identified
 
-1. **SA-07 is under-rated at MEDIUM — should be HIGH.** Path traversal in publicly exported functions (`createReplay` at `src/index.js:169`, `ingestFile` at `src/index.js:154`) is CWE-22 (Improper Limitation of a Pathname to a Restricted Directory). These are the public API surface of FORGE — any consumer of the library inherits this vulnerability. The "FORGE is a library, not a server" mitigation reduces exploitability but does not reduce severity of the API design flaw. npm packages with path traversal in public APIs have been CVE'd before. **Recommend upgrading to HIGH for Sprint 3 triage.**
+1. **STABILITY.md claims `usefulness_score` is "non-breaking since all consumers must already handle unknown fields per JSON schema `additionalProperties` policy" — but `Proposal` has `additionalProperties: false` (`proposal-ir.json:153`).** This means consumers validating against the OLD schema would reject envelopes containing the new field. The claim is technically incorrect. In practice this is fine because Tobias would update his schema simultaneously, but the STABILITY.md wording should be corrected to say "non-breaking when schema is updated in lockstep" or simply "additive field requiring schema update." This is **non-blocking** — a documentation correction.
 
-2. **The report does not assess `checkAdversarial` wiring gap from a red-team perspective.** Sprint 1 (HI-02) identified that `checkAdversarial()` runs only at `lifecycle.js:223` (runtime-level), NOT in `buildBundle()`. The Sprint 2 red-team should have explicitly tested: "Can an attacker bypass adversarial detection by calling `buildBundle()` directly instead of going through `ForgeRuntime.ingestBundle()`?" The answer is yes — direct `buildBundle()` callers bypass all adversarial checks. This should appear as a finding in the red-team report for completeness, even though it was already documented in Sprint 1.
+2. **Fixture values were hand-edited rather than pipeline-regenerated.** The reviewer.md acknowledges this limitation. Since the values were copied from the already-consistent envelope-level `usefulness_scores` map (same computation path), and `proposal_id` values are deterministic from unchanged inputs, this is acceptable. However, it means the fixtures have never been validated end-to-end with the new code path. If `computeUsefulness` had changed behavior, the fixture values would be stale. **Non-blocking** — the test suite exercises the live code path and the fixture files are documentation snapshots, not test baselines.
 
-3. **RT-02 (`getTrustTier()` crash on object input) is under-rated at LOW — should be MEDIUM.** `getTrustTier({})` throws `TypeError: {}.toLowerCase is not a function`. If `source_id` can be influenced by external data (e.g., a JSON payload with `source_id: {}` instead of a string), this becomes a crash vector in the trust enforcement hot path. CWE-20 (Improper Input Validation). The fix is trivial (`typeof sourceId !== 'string'` guard), and the severity should reflect that the crash occurs in the trust boundary code.
+3. **The `usefulness_score` field is marked required in the schema but allows null.** This means every producer MUST emit the field (even as null). Any existing code that constructs Proposal objects without `usefulness_score` will fail schema validation. Since FORGE is the only producer and `emitEnvelope()` always sets it, this is safe within FORGE. But if Tobias has any code that constructs Proposal objects directly (not through FORGE), he'll need to add the field. This should be communicated in the Tobias sync summary. **Non-blocking** but notable for fork sync.
 
 ### Assumptions Challenged
 
-- **Assumption**: "Bundle immutability (RT-10) is a HIGH finding requiring `Object.freeze()`."
-- **Risk if wrong**: `Object.freeze()` is shallow — nested objects within bundles (e.g., `metadata`, `resolution`) would still be mutable. A freeze also changes the API contract for any code that sets `bundle.resolution` at settlement time (`lifecycle.js:329` spreads theatre state which includes resolution). Additionally, in V8, `Object.freeze()` on hot objects can de-optimize JIT compilation.
-- **Recommendation**: Before implementing `Object.freeze()` in Sprint 3, verify that no downstream code mutates bundles legitimately. The `resolution: null` field is explicitly populated later at settlement time — freezing would break this. Consider a validation-at-ingestion approach instead: `ingestBundle()` could snapshot the bundle's critical fields (quality, evidence_class, doubt_price) at ingestion time rather than relying on immutability.
+- **Assumption**: "Adding a required-but-nullable field is non-breaking."
+- **Risk if wrong**: Tobias's 163 bridge tests may validate Proposal objects against the schema. If any test constructs a Proposal without `usefulness_score`, it will fail validation after schema update. The field is required, not optional.
+- **Recommendation**: Document in the Tobias sync notes that `usefulness_score: null` must be added to any manually-constructed Proposal objects in his test fixtures. The field was intentionally made required (not optional) so consumers always see a consistent shape.
 
 ### Alternatives Not Considered
 
-- **Alternative**: The red-team could have run dynamic adversarial tests — actually calling `checkAdversarial()` with the false-negative vectors (NaN, Infinity, extreme values, jittered Sybil) and capturing the output, rather than performing static-only analysis.
-- **Tradeoff**: Dynamic testing would have produced executable test vectors that could be added directly to the test suite in Sprint 3. Static analysis provides the same findings but requires the Sprint 3 implementer to write the tests from scratch.
-- **Verdict**: Current approach is correct for Sprint 2 scope (per sprint plan: "this sprint IS the security review"). Sprint 3 should convert the false-negative vectors from the report into actual test cases.
+- **Alternative**: Make `usefulness_score` optional instead of required — omit from `required` array, let it be absent when not scored.
+- **Tradeoff**: More lenient for existing consumers (no update needed for Tobias's fixtures). But creates ambiguity: is the field absent because the filter wasn't run, or because the producer is outdated? The null-when-not-scored pattern is cleaner.
+- **Verdict**: Current approach (required, nullable) is justified. It guarantees a consistent object shape and makes the "not scored" state explicit rather than relying on field absence.
 
 ---
 
@@ -62,14 +69,15 @@ Sprint 2 delivered a thorough, well-structured security audit and red-team repor
 
 | Item | Status |
 |------|--------|
-| CHANGELOG entry | N/A — no code changes in Sprint 2 |
-| sprint-plan.md update | Deferred to approval |
-| NOTES.md update | Not required |
+| STABILITY.md | Created — comprehensive and well-structured |
+| CHANGELOG | N/A — Sprint 2 CHANGELOG entry appropriate post-merge |
+| Code comments | Adequate — emit.js comment updated to mention usefulness_score |
+| Schema descriptions | Updated — brier_type and usefulness_score descriptions are clear |
 
 ---
 
 ## Summary
 
-The security audit is thorough, accurate, and well-structured. The findings register provides Sprint 3 with a clear, actionable triage list. The attack chain analysis (RT-09 + RT-01) is the strongest contribution — it identifies the compositional vulnerability that makes the settlement invariant bypass possible. The two upgrade recommendations (SA-07 → HIGH, RT-02 → MEDIUM) strengthen the prioritization.
+Sprint 2 is clean, minimal, and correct. All three SHOULD ADDRESS items are resolved. The code change is surgical (7 lines modified in emit.js). Schema change is additive. Tests cover both scored and unscored paths. The STABILITY.md wording about `additionalProperties` is slightly inaccurate but non-blocking.
 
-Sprint 2 is **approved**. Proceed to Sprint 3 (Critical Fixes).
+Sprint 2 is **approved**. Proceed to security audit.

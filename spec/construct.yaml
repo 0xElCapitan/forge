@@ -2,7 +2,7 @@ slug: forge
 version: "0.1.0"
 construct_class: theatre
 domain_claims:
-  - feed_characterization
+  - feed_classification
   - prediction_markets
   - rlmf_export
   - theatre_management
@@ -11,9 +11,9 @@ domain_claims:
   - calibration_analysis
 skill_manifest:
   - command: analyze
-    domain: feed_characterization
+    domain: feed_classification
   - command: classify
-    domain: feed_characterization
+    domain: feed_classification
   - command: propose
     domain: prediction_markets
   - command: compose

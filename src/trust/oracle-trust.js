@@ -25,6 +25,21 @@
 // ─── Trust registry ───────────────────────────────────────────────────────────
 
 /**
+ * FORGE trust tier key format: string keys ("T0", "T1", "T2", "T3").
+ *
+ * These represent oracle identity tiers — who the source is and whether it can
+ * settle a theatre. They are orthogonal to TREMOR's numeric data maturity
+ * levels, which describe the maturity stage of a data product. Same tier label,
+ * different axis. Do not conflate the two.
+ *
+ * Echelon provenance mapping (confirmed by Tobias, sprint-10 review):
+ *   T0 → signal_initiated   (high confidence — ground truth settlement)
+ *   T1 → signal_initiated   (Brier-discounted confidence — official source)
+ *   T2 → suggestion_promoted (needs corroborating signals before settlement)
+ *   T3 → suggestion_unlinked (no settlement evidence — never settles)
+ */
+
+/**
  * Known source IDs mapped to trust tiers.
  * Keys are lowercase source identifiers. Lookup normalises input to lowercase.
  */

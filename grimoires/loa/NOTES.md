@@ -50,6 +50,7 @@ Also revert in:
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| 2026-03-30 | Cache: result stored [key: 85a4cc70...] | Source: cache |
 | 2026-02-26 | Cache: result stored [key: integrit...] | Source: cache |
 | 2026-02-26 | Cache: result stored [key: clear-te...] | Source: cache |
 | 2026-02-26 | Cache: result stored [key: clear-te...] | Source: cache |
