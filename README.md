@@ -2,9 +2,11 @@
 
 **Feed-Adaptive Oracle & Runtime Generator**
 
-FORGE takes any live data feed, characterizes its statistical properties, and proposes the right Echelon Theatre templates. Domain expertise encoded once, applied everywhere.
+FORGE is Echelon's automatic Theatre Factory — the feed-native supply side that turns any structured event stream into prediction market proposals without human curation. It classifies live data across five statistical dimensions, selects from six theatre templates, and emits versioned ProposalEnvelopes that Echelon's admission gate consumes directly. Domain expertise encoded once, applied everywhere.
 
 > The Uniswap factory for prediction surfaces.
+
+FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 589 tests, zero external dependencies.
 
 ---
 

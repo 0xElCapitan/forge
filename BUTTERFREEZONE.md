@@ -53,7 +53,7 @@ trust_level: L1-local
 # FORGE
 
 <!-- provenance: OPERATIONAL -->
-FORGE (Feed-Adaptive Oracle & Runtime Generator) is a feed classification and Theatre proposal engine for the Echelon prediction market framework. It ingests any structured event stream, characterizes it across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, and exports Brier-scored RLMF training certificates. The Uniswap factory for prediction surfaces.
+FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre Factory — the feed-native supply side that turns any structured event stream into prediction market proposals without human curation. It classifies feeds across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, and exports Brier-scored RLMF training certificates. FORGE is not one of many possible Theatre Factory inputs — it is the specific component that makes the factory automatic, covering domains where statistical structure in live data is the only reliable signal. The Uniswap factory for prediction surfaces.
 
 ## Key Capabilities
 <!-- provenance: CODE-FACTUAL -->
