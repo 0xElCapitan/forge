@@ -1,6 +1,7 @@
 slug: forge
 version: "0.1.0"
 construct_class: theatre
+entry_point: README.md
 domain_claims:
   - feed_classification
   - prediction_markets

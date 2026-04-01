@@ -229,6 +229,47 @@ describe('classifyDensity: single_point', () => {
   });
 });
 
+// ─── classifyDensity: single_global_instrument ──────────────────────────────
+
+describe('classifyDensity: single_global_instrument', () => {
+  it('returns single_global_instrument when events have coverage: global (single-stream)', () => {
+    const events = makeEvents(10, { shape: 'object', has_coords: false, coverage: 'global' });
+    assert.equal(classifyDensity(events).classification, 'single_global_instrument');
+  });
+
+  it('returns single_global_instrument when events have coverage: global (multi-stream)', () => {
+    // GOES-like: multi-stream, no coords, no sensor grid, global coverage
+    const s0 = makeEvents(50, { shape: 'array_row', col_count: 4, coverage: 'global' }, 0);
+    const s1 = makeEvents(10, { shape: 'object', has_coords: false, coverage: 'global' }, 1);
+    const events = [...s0, ...s1];
+    assert.equal(classifyDensity(events).classification, 'single_global_instrument');
+  });
+
+  it('returns single_point when no coverage metadata is present (same structure)', () => {
+    // Without coverage: global, multi-stream no-grid still returns single_point
+    const s0 = makeEvents(50, { shape: 'array_row', col_count: 4 }, 0);
+    const s1 = makeEvents(10, { shape: 'object', has_coords: false }, 1);
+    const events = [...s0, ...s1];
+    assert.equal(classifyDensity(events).classification, 'single_point');
+  });
+
+  it('only requires one event with coverage: global to trigger', () => {
+    const events = [
+      makeEvent({ shape: 'object', has_coords: false }),
+      makeEvent({ shape: 'object', has_coords: false, coverage: 'global' }),
+    ];
+    assert.equal(classifyDensity(events).classification, 'single_global_instrument');
+  });
+
+  it('does not override multi_tier even with coverage: global', () => {
+    // Multi-tier detection takes priority (earlier in the function)
+    const s0 = makeEvents(20, { shape: 'array_row', col_count: 9, sensor_count: 20, coverage: 'global' }, 0);
+    const s1 = makeEvents(5, { shape: 'object', has_coords: true, coverage: 'global' }, 1);
+    const events = [...s0, ...s1];
+    assert.equal(classifyDensity(events).classification, 'multi_tier');
+  });
+});
+
 // ─── classifyDensity: sparse_network ─────────────────────────────────────────
 
 describe('classifyDensity: sparse_network', () => {

@@ -3,10 +3,11 @@
  * Q4: Density Classifier — characterizes the sensor/source deployment topology.
  *
  * Classifications:
- *   single_point    — single observation point (satellite instrument, point sensor)
- *   sparse_network  — geographically distributed sensors, relatively few
- *   dense_network   — many closely-spaced sensors
- *   multi_tier      — multiple tiers of sensors (raw consumer + official, different quality)
+ *   single_point              — single observation point (local point sensor)
+ *   single_global_instrument  — single device with planetary coverage (e.g. GOES satellite, NOAA Kp)
+ *   sparse_network            — geographically distributed sensors, relatively few
+ *   dense_network             — many closely-spaced sensors
+ *   multi_tier                — multiple tiers of sensors (raw consumer + official, different quality)
  *
  * @module classifier/density
  */
@@ -189,9 +190,14 @@ export function classifyDensity(events) {
     }
   }
 
-  // ── Single point: satellite/remote sensing, or multi-stream without sensor grid ──
-  // Covers:
-  //   - Multi-stream feeds without sensor grid (satellite instruments, CORONA)
-  //   - Single-stream feeds with no geographic coordinates (point sensors)
+  // ── Single global instrument: planetary-scale coverage from a single device ──
+  // A sensor that monitors a planetary-scale phenomenon (e.g. GOES satellite, NOAA Kp)
+  // is not equivalent to a local single_point sensor. Detected via metadata.coverage.
+  const hasGlobalCoverage = events.some(e => e.metadata?.coverage === 'global');
+  if (hasGlobalCoverage) {
+    return { classification: 'single_global_instrument' };
+  }
+
+  // ── Single point: local sensor or multi-stream without sensor grid ──
   return { classification: 'single_point' };
 }

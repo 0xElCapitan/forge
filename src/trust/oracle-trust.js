@@ -40,6 +40,19 @@
  */
 
 /**
+ * Echelon provenance mapping — maps trust tiers to provenance categories.
+ * Confirmed by Tobias, sprint-10 review.
+ *
+ * @type {Readonly<Record<string, { provenance: string, confidence: string }>>}
+ */
+export const ECHELON_PROVENANCE_MAP = Object.freeze({
+  T0: { provenance: 'signal_initiated',    confidence: 'high' },
+  T1: { provenance: 'signal_initiated',    confidence: 'brier_discounted' },
+  T2: { provenance: 'suggestion_promoted', confidence: 'corroboration_required' },
+  T3: { provenance: 'suggestion_unlinked', confidence: 'none' },
+});
+
+/**
  * Known source IDs mapped to trust tiers.
  * Keys are lowercase source identifiers. Lookup normalises input to lowercase.
  */
