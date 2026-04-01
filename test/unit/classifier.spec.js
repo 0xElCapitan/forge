@@ -339,6 +339,37 @@ describe('detectCategorical', () => {
   });
 });
 
+describe('detectMultimodal: categorical-vs-numeric', () => {
+  it('returns true when one stream has no positive values and another does', () => {
+    const events = [
+      // Stream 0: categorical (all values 0)
+      { timestamp: 1700000000000, value: 0, metadata: { stream_index: 0 } },
+      { timestamp: 1700000001000, value: 0, metadata: { stream_index: 0 } },
+      { timestamp: 1700000002000, value: 0, metadata: { stream_index: 0 } },
+      // Stream 1: numeric (positive values)
+      { timestamp: 1700000003000, value: 5.5, metadata: { stream_index: 1 } },
+      { timestamp: 1700000004000, value: 6.2, metadata: { stream_index: 1 } },
+    ];
+    assert.equal(detectMultimodal(events, new Set([0, 1])), true);
+  });
+
+  it('returns false when all streams have no positive values', () => {
+    const events = [
+      { timestamp: 1700000000000, value: 0, metadata: { stream_index: 0 } },
+      { timestamp: 1700000001000, value: 0, metadata: { stream_index: 1 } },
+    ];
+    assert.equal(detectMultimodal(events, new Set([0, 1])), false);
+  });
+
+  it('still detects 100× numeric divergence as composite', () => {
+    const events = [
+      { timestamp: 1700000000000, value: 1e-7, metadata: { stream_index: 0 } },
+      { timestamp: 1700000001000, value: 5, metadata: { stream_index: 1 } },
+    ];
+    assert.equal(detectMultimodal(events, new Set([0, 1])), true);
+  });
+});
+
 // ─── Q2 Distribution: classifyDistribution ───────────────────────────────────
 
 describe('classifyDistribution: bounded_numeric', () => {
@@ -424,6 +455,41 @@ describe('classifyDistribution: composite', () => {
     const profile = classifyDistribution(events);
     assert.notEqual(profile.type, 'composite',
       `streams with similar scales should not be composite; got ${profile.type}`);
+  });
+});
+
+describe('classifyDistribution: composite via categorical-vs-numeric streams', () => {
+  it('classifies categorical (value=0) + numeric streams as composite', () => {
+    // Stream 0: categorical — events with value=0 (no numeric field found by ingester)
+    const categoricalStream = Array.from({ length: 10 }, (_, i) => ({
+      timestamp: 1700000000000 + i * 60_000,
+      value: 0,
+      metadata: { stream_index: 0 },
+    }));
+    // Stream 1: numeric — events with positive values
+    const numericStream = Array.from({ length: 20 }, (_, i) => ({
+      timestamp: 1700000000000 + i * 60_000,
+      value: 5 + Math.random() * 10,
+      metadata: { stream_index: 1 },
+    }));
+    const events = [...categoricalStream, ...numericStream];
+    const profile = classifyDistribution(events);
+    assert.equal(profile.type, 'composite', `expected composite, got ${profile.type}`);
+    assert.ok(profile.sub_types.includes('categorical'), 'sub_types must include categorical');
+    assert.ok(
+      profile.sub_types.includes('bounded_numeric') || profile.sub_types.includes('unbounded_numeric'),
+      'sub_types must include a numeric type'
+    );
+  });
+
+  it('does NOT classify two numeric streams with similar scales as composite', () => {
+    // Both streams have positive numeric values in similar range
+    const stream0 = makeRegularEvents(10, 60_000, 25, 0);
+    const stream1 = makeRegularEvents(5, 3_600_000, 50, 1);
+    const events = [...stream0, ...stream1];
+    const profile = classifyDistribution(events);
+    assert.notEqual(profile.type, 'composite',
+      `two similar-scale numeric streams should not be composite; got ${profile.type}`);
   });
 });
 

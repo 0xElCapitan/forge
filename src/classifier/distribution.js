@@ -80,7 +80,10 @@ export function detectCategorical(values) {
 
 /**
  * Detect if a multi-stream dataset has composite distribution.
- * Composite means: multiple streams with value ranges that differ by ≥ 100×.
+ * Composite means either:
+ *   1. Multiple streams with value ranges that differ by ≥ 100× (numeric divergence)
+ *   2. At least one categorical stream (no positive numeric values) alongside
+ *      at least one numeric stream (categorical-vs-numeric)
  *
  * @param {import('../ingester/generic.js').NormalizedEvent[]} events
  * @param {Set<number>} streamIndices
@@ -89,18 +92,29 @@ export function detectCategorical(values) {
 export function detectMultimodal(events, streamIndices) {
   if (streamIndices.size < 2) return false;
 
-  // Compute value range per stream
+  // Compute value range per stream, tracking categorical (non-numeric) streams
   const streamRanges = {};
+  const categoricalStreams = new Set();
   for (const idx of streamIndices) {
-    const vals = events
-      .filter(e => e.metadata?.stream_index === idx)
+    const streamEvents = events.filter(e => e.metadata?.stream_index === idx);
+    if (streamEvents.length === 0) continue;
+    const vals = streamEvents
       .map(e => Math.abs(e.value))
       .filter(v => Number.isFinite(v) && v > 0);
-    if (vals.length === 0) continue;
+    if (vals.length === 0) {
+      // Stream has events but no positive numeric values → categorical
+      categoricalStreams.add(idx);
+      continue;
+    }
     const maxVal = Math.max(...vals);
     const minVal = Math.min(...vals);
     streamRanges[idx] = { min: minVal, max: maxVal };
   }
+
+  const numericStreamCount = Object.keys(streamRanges).length;
+
+  // Categorical-vs-numeric: ≥1 categorical stream + ≥1 numeric stream → composite
+  if (categoricalStreams.size > 0 && numericStreamCount > 0) return true;
 
   const ranges = Object.values(streamRanges);
   if (ranges.length < 2) return false;
@@ -143,14 +157,20 @@ export function classifyDistribution(events) {
 
   if (streamIndices.size >= 2) {
     if (detectMultimodal(events, streamIndices)) {
-      // Different value scales across streams → composite
+      // Different value scales or categorical-vs-numeric → composite
       const allSubTypes = [];
       for (const idx of streamIndices) {
-        const streamVals = events
-          .filter(e => e.metadata?.stream_index === idx)
+        const streamEvents = events.filter(e => e.metadata?.stream_index === idx);
+        if (streamEvents.length === 0) continue;
+        const streamVals = streamEvents
           .map(e => e.value)
           .filter(v => typeof v === 'number' && Number.isFinite(v));
-        if (streamVals.length === 0) continue;
+        const positiveVals = streamVals.filter(v => v > 0);
+        if (positiveVals.length === 0) {
+          // No positive numeric values → categorical sub-stream
+          allSubTypes.push('categorical');
+          continue;
+        }
         const { min, max } = computeBounds(streamVals);
         // Sub-type heuristic per stream
         if (max <= 600 && min >= 0) {

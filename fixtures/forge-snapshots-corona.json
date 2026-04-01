@@ -5,53 +5,118 @@
       "median_ms": 60000,
       "streams": [
         "0s",
-        "3hr"
+        "3hr",
+        "3hr",
+        "24hr"
       ]
     },
     "distribution": {
-      "type": "bounded_numeric",
-      "bounds": {
-        "min": 0,
-        "max": 3.4154228956140287e-7
-      }
+      "type": "composite",
+      "sub_types": [
+        "unbounded_numeric",
+        "categorical",
+        "bounded_numeric"
+      ]
     },
     "noise": {
       "classification": "mixed",
-      "stream_count": 2
+      "stream_count": 4
     },
     "density": {
       "classification": "single_point"
     },
     "thresholds": {
       "type": "regulatory",
-      "stream_count": 2
+      "stream_count": 4
     }
   },
-  "proposals": [],
+  "proposals": [
+    {
+      "template": "threshold_gate",
+      "params": {
+        "threshold": "M1.0",
+        "window_hours": 24,
+        "base_rate": null,
+        "input_mode": "single",
+        "threshold_type": "regulatory",
+        "settlement_source": null
+      },
+      "confidence": 0.88,
+      "rationale": "Rule 'space_weather_flare_gate' fired (3/3 conditions). Traced to: CORONA/FlareGate."
+    },
+    {
+      "template": "threshold_gate",
+      "params": {
+        "threshold": 5,
+        "window_hours": 72,
+        "base_rate": null,
+        "input_mode": "multi",
+        "threshold_type": "regulatory",
+        "settlement_source": null
+      },
+      "confidence": 0.82,
+      "rationale": "Rule 'space_weather_kp_gate' fired (2/2 conditions). Traced to: CORONA/GeomagGate."
+    },
+    {
+      "template": "cascade",
+      "params": {
+        "trigger_threshold": "M5.0",
+        "bucket_count": 5,
+        "window_hours": 72,
+        "prior_model": null
+      },
+      "confidence": 0.8,
+      "rationale": "Rule 'space_weather_proton_cascade' fired (2/2 conditions). Traced to: CORONA/ProtonCascade."
+    },
+    {
+      "template": "threshold_gate",
+      "params": {
+        "threshold": null,
+        "window_hours": 6,
+        "base_rate": null,
+        "input_mode": "single",
+        "threshold_type": "regulatory",
+        "settlement_source": null
+      },
+      "confidence": 0.76,
+      "rationale": "Rule 'space_weather_cme_gate' fired (3/3 conditions). Traced to: CORONA/CMEArrivalGate."
+    },
+    {
+      "template": "divergence",
+      "params": {
+        "source_a_type": "realtime",
+        "source_b_type": "forecast",
+        "divergence_threshold": null,
+        "resolution_mode": "expiry"
+      },
+      "confidence": 0.75,
+      "rationale": "Rule 'space_weather_solar_wind_divergence' fired (2/2 conditions). Traced to: CORONA/SolarWindDivergence."
+    }
+  ],
   "envelope": {
     "ir_version": "0.1.0",
     "forge_version": "0.1.0",
-    "emitted_at": 1774110469584,
+    "emitted_at": 1775061147854,
     "feed_id": "swpc_goes_xray",
     "feed_profile": {
       "cadence": {
         "classification": "multi_cadence",
-        "median_gap_ms": null,
-        "cv": null
+        "median_ms": 60000,
+        "jitter_coefficient": null
       },
       "distribution": {
-        "type": "bounded_numeric",
+        "type": "composite",
         "min": null,
         "max": null,
         "mean": null
       },
       "noise": {
         "classification": "mixed",
-        "spike_ratio": null
+        "spike_rate": null
       },
       "density": {
         "classification": "single_point",
-        "stream_count": null
+        "sensor_count": null
       },
       "thresholds": {
         "type": "regulatory",
@@ -64,14 +129,97 @@
       "endpoint": "https://services.swpc.noaa.gov/json/goes/primary/xrays-7-day.json",
       "poll_interval_ms": 60000
     },
-    "proposals": [],
+    "proposals": [
+      {
+        "proposal_id": "a41425b8c3db83a0",
+        "template": "threshold_gate",
+        "params": {
+          "threshold": "M1.0",
+          "window_hours": 24,
+          "base_rate": null,
+          "input_mode": "single",
+          "threshold_type": "regulatory",
+          "settlement_source": null
+        },
+        "confidence": 0.88,
+        "rationale": "Rule 'space_weather_flare_gate' fired (3/3 conditions). Traced to: CORONA/FlareGate.",
+        "brier_type": "binary",
+        "usefulness_score": null
+      },
+      {
+        "proposal_id": "ff85657cd7dd7d1b",
+        "template": "threshold_gate",
+        "params": {
+          "threshold": 5,
+          "window_hours": 72,
+          "base_rate": null,
+          "input_mode": "multi",
+          "threshold_type": "regulatory",
+          "settlement_source": null
+        },
+        "confidence": 0.82,
+        "rationale": "Rule 'space_weather_kp_gate' fired (2/2 conditions). Traced to: CORONA/GeomagGate.",
+        "brier_type": "binary",
+        "usefulness_score": null
+      },
+      {
+        "proposal_id": "e419ad9cdc851fd0",
+        "template": "cascade",
+        "params": {
+          "trigger_threshold": "M5.0",
+          "bucket_count": 5,
+          "window_hours": 72,
+          "prior_model": null
+        },
+        "confidence": 0.8,
+        "rationale": "Rule 'space_weather_proton_cascade' fired (2/2 conditions). Traced to: CORONA/ProtonCascade.",
+        "brier_type": "multi_class",
+        "usefulness_score": null
+      },
+      {
+        "proposal_id": "26d22ff733770a99",
+        "template": "threshold_gate",
+        "params": {
+          "threshold": null,
+          "window_hours": 6,
+          "base_rate": null,
+          "input_mode": "single",
+          "threshold_type": "regulatory",
+          "settlement_source": null
+        },
+        "confidence": 0.76,
+        "rationale": "Rule 'space_weather_cme_gate' fired (3/3 conditions). Traced to: CORONA/CMEArrivalGate.",
+        "brier_type": "binary",
+        "usefulness_score": null
+      },
+      {
+        "proposal_id": "2d592c0ca6abc93a",
+        "template": "divergence",
+        "params": {
+          "source_a_type": "realtime",
+          "source_b_type": "forecast",
+          "divergence_threshold": null,
+          "resolution_mode": "expiry"
+        },
+        "confidence": 0.75,
+        "rationale": "Rule 'space_weather_solar_wind_divergence' fired (2/2 conditions). Traced to: CORONA/SolarWindDivergence.",
+        "brier_type": "binary",
+        "usefulness_score": null
+      }
+    ],
     "composition": null,
-    "usefulness_scores": {}
+    "usefulness_scores": null
   },
   "log": {
-    "fixture": "fixtures/swpc-goes-xray.json",
-    "event_count": 773,
-    "proposals_count": 0,
-    "templates_proposed": []
+    "fixture": "fixtures/swpc-goes-xray.json + fixtures/donki-flr-cme.json",
+    "event_count": 819,
+    "proposals_count": 5,
+    "templates_proposed": [
+      "threshold_gate",
+      "threshold_gate",
+      "cascade",
+      "threshold_gate",
+      "divergence"
+    ]
   }
 }
