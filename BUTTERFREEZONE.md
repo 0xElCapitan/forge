@@ -71,7 +71,7 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **detectCausalOrdering** — Mean timestamp offset analysis to detect leading/lagging relationship between two aligned feed streams. Returns `leader` (`'A'`|`'B'`|`'concurrent'`) and `lag_ms`. (`src/composer/compose.js:63`)
 - **proposeComposedTheatre** — Three-rule composition engine. Evaluates two classified feeds + their temporal relationship and proposes the Theatre that neither feed would generate alone. Rules: `threshold_with_arrival_predictor` (bounded + arrival predictor → threshold_gate), `co_bounded_divergence` (two bounded + concurrent → divergence), `cascade_amplifier` (spike_driven + bounded → cascade). Returns null if no rule fires. (`src/composer/compose.js:118`)
 - **emitEnvelope** — Versioned ProposalEnvelope emitter. Annotates proposals with deterministic `proposal_id` (SHA-256 dedup key), `brier_type`, and per-proposal `usefulness_score` (null when economic filter not invoked). Produces the IR contract consumed by Echelon's admission gate. (`src/ir/emit.js:71`)
-- **computeUsefulness** — Scores a Theatre proposal across four dimensions: `market_depth`, `settlement_clarity`, `temporal_fitness`, `novelty`. Returns a 0–1 composite usefulness score. (`src/filter/usefulness.js:113`)
+- **computeUsefulness** — Scores a Theatre proposal across four dimensions: `population_impact`, `regulatory_relevance`, `predictability`, `actionability`. Returns a 0–1 composite usefulness score. (`src/filter/usefulness.js:113`)
 - **buildBundle** — Evidence bundle constructor: computes quality score, doubt price (uncertainty), settlement assessment, and assembles the full bundle object from a raw feed event. (`src/processor/bundles.js:49`)
 - **getTrustTier** / **canSettle** / **validateSettlement** — T0–T3 oracle trust enforcement. `canSettle` returns true only for T0/T1. PurpleAir (T3) enforced as non-settling source. (`src/trust/oracle-trust.js:61`)
 - **exportCertificate** — RLMF training certificate export with Brier score, position history, and calibration bucket. Supports binary and multi-class scoring. (`src/rlmf/certificates.js:91`)
@@ -249,7 +249,7 @@ Directory structure:
 | `src/processor/` | 4 | Evidence bundle pipeline (quality scoring, doubt pricing, settlement assessment, bundle orchestration) |
 | `src/trust/` | 2 | Oracle trust enforcement (T0–T3 model) + adversarial detection (channel consistency, coordinate drift, peer divergence) |
 | `src/rlmf/` | 1 | RLMF certificate export (Brier scoring for binary and multi-class, calibration bucket) |
-| `src/filter/` | 1 | Usefulness scoring across four dimensions: market_depth, settlement_clarity, temporal_fitness, novelty |
+| `src/filter/` | 1 | Usefulness scoring across four dimensions: population_impact, regulatory_relevance, predictability, actionability |
 | `src/composer/` | 1 | Feed composition: temporal alignment (sliding window), causal ordering (mean offset analysis) |
 | `src/replay/` | 1 | Deterministic replay of recorded feed sessions |
 | `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary |
