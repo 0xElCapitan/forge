@@ -6,7 +6,7 @@ FORGE is Echelon's automatic Theatre Factory — the feed-native supply side tha
 
 > The Uniswap factory for prediction surfaces.
 
-FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 589 tests, zero external dependencies.
+FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 594 tests, zero external dependencies.
 
 ---
 
@@ -88,13 +88,13 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (583 tests)
+# Unit tests (588 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (589 tests)
+# Everything (594 tests)
 npm run test:all
 ```
 

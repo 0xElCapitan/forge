@@ -62,7 +62,7 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **classifyCadence** — Cadence classifier: `event_driven` / `seconds` / `minutes` / `hours` / `multi_cadence` / `irregular`. Uses median inter-event delta, jitter coefficient, and bimodal histogram detection. (`src/classifier/cadence.js:129`)
 - **classifyDistribution** — Distribution classifier: `bounded_numeric` / `unbounded_numeric` / `composite` / `categorical`. Uses bounds, max-growth coefficient, and multimodal histogram analysis. (`src/classifier/distribution.js:127`)
 - **classifyNoise** — Noise classifier: `spike_driven` / `steady` / `mixed` / `irregular`. Uses spike detection, lag-1 autocorrelation, and linear trend t-stat. (`src/classifier/noise.js:255`)
-- **classifyDensity** — Density classifier: `sparse_network` / `multi_tier` / `single_point` / `mesh`. Uses sensor count, coordinate events, GeoJSON feature count, and multi-tier detection. (`src/classifier/density.js:140`)
+- **classifyDensity** — Density classifier: `single_point` / `single_global_instrument` / `sparse_network` / `dense_network` / `multi_tier`. Uses sensor count, coverage metadata, coordinate events, GeoJSON feature count, and multi-tier detection. (`src/classifier/density.js:140`)
 - **classifyThresholds** — Threshold classifier: `regulatory` / `physical` / `statistical` / `none`. Matches histogram breakpoints against EPA AQI, NOAA Kp, and NOAA R regulatory tables. (`src/classifier/thresholds.js:199`)
 - **selectTemplates** — Rule-based Theatre template selector. Evaluates all 13 rules against a `FeedProfile` and returns all fired proposals with confidence scores. Uses greedy matching for duplicate template resolution. (`src/selector/template-selector.js:130`)
 - **evaluateRule** — Evaluates a single condition rule against a `FeedProfile` using dot-path field access and six comparison operators (equals, in, gt, lt, gte, lte). (`src/selector/template-selector.js:70`)
@@ -204,6 +204,7 @@ Directory structure:
 | `validateSettlement` | Function | sourceId → `{ allowed, tier, reason? }` |
 | `checkAdversarial` | Function | bundle → adversarial detection result |
 | `checkChannelConsistency` | Function | bundle → channel consistency result |
+| `ECHELON_PROVENANCE_MAP` | Frozen Constant | T0–T3 → provenance + confidence mapping (`src/trust/oracle-trust.js`) |
 | `exportCertificate` | Function | theatre + config → RLMF certificate |
 | `brierScoreBinary` | Function | outcome + probability → Brier score |
 | `brierScoreMultiClass` | Function | outcome_bucket + distribution → Brier score |
@@ -256,20 +257,20 @@ Directory structure:
 | `src/runtime/` | 1 | ForgeRuntime — theatre lifecycle orchestrator (instantiate, ingest, expire, resolve) |
 | `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
 | `spec/` | 4 | Construct spec (construct.json, construct.yaml), Proposal IR schema (proposal-ir.json), stability policy (STABILITY.md) |
-| `test/unit/` | 16 | Unit test suite — 583 tests, 162 suites (node:test, zero dependencies) |
+| `test/unit/` | 16 | Unit test suite — 588 tests, 160 suites (node:test, zero dependencies) |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 583 tests across 162 suites (`node --test test/unit/*.spec.js`)
+- 588 unit tests across 160 suites (`node --test test/unit/*.spec.js`), 594 total with convergence
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 583
+# ℹ pass 588
 # ℹ fail 0
 ```
 
@@ -289,7 +290,7 @@ node --test test/unit/*.spec.js
 
 ```bash
 # No install needed — zero dependencies, Node.js 20+ only
-node --test test/unit/*.spec.js          # Run unit tests (583 tests)
+node --test test/unit/*.spec.js          # Run unit tests (588 tests)
 node --test test/convergence/*.spec.js   # Run convergence tests
 ```
 
@@ -329,7 +330,7 @@ sections:
   architecture: pipeline-ingester-classifier-selector-processor-ir-runtime-rlmf
   interfaces: construct-api-theatre-templates-oracle-trust-model
   module_map: 16-modules
-  verification: 583-tests-162-suites
+  verification: 594-tests-163-suites
   culture: echelon-convergence-loop
   quick_start: zero-deps-node20-composer-preview
 -->
