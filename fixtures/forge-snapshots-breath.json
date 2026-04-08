@@ -1,24 +1,24 @@
 {
   "feed_profile": {
     "cadence": {
-      "classification": "seconds",
+      "classification": "multi_cadence",
       "median_ms": 1,
-      "jitter_coefficient": 0
+      "jitter_coefficient": null
     },
     "distribution": {
       "type": "bounded_numeric",
       "bounds": {
-        "min": 12,
-        "max": 95
+        "min": null,
+        "max": null
       }
     },
     "noise": {
-      "classification": "spike_driven",
-      "spike_rate": 0.05
+      "classification": "mixed",
+      "spike_rate": null
     },
     "density": {
-      "classification": "sparse_network",
-      "sensor_count": 20
+      "classification": "multi_tier",
+      "sensor_count": 2
     },
     "thresholds": {
       "type": "regulatory"
@@ -26,26 +26,51 @@
   },
   "proposals": [
     {
-      "template": "anomaly",
+      "template": "threshold_gate",
       "params": {
-        "baseline_metric": "b-value",
-        "sigma_threshold": null,
-        "window_hours": 168
+        "threshold": 151,
+        "window_hours": 24,
+        "base_rate": null,
+        "input_mode": "single",
+        "threshold_type": "regulatory",
+        "settlement_source": "airnow"
       },
-      "confidence": 0.75,
-      "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch."
+      "confidence": 0.9,
+      "rationale": "Rule 'aqi_threshold_gate' fired (3/3 conditions). Traced to: BREATH/AQIGate."
+    },
+    {
+      "template": "divergence",
+      "params": {
+        "source_a_type": "sensor_a",
+        "source_b_type": "sensor_b",
+        "divergence_threshold": null,
+        "resolution_mode": "expiry"
+      },
+      "confidence": 0.8,
+      "rationale": "Rule 'air_quality_sensor_divergence' fired (3/3 conditions). Traced to: BREATH/SensorDivergence."
+    },
+    {
+      "template": "cascade",
+      "params": {
+        "trigger_threshold": 200,
+        "bucket_count": 5,
+        "window_hours": 72,
+        "prior_model": null
+      },
+      "confidence": 0.8,
+      "rationale": "Rule 'wildfire_cascade' fired (3/3 conditions). Traced to: BREATH/WildfireCascade."
     }
   ],
   "envelope": {
     "ir_version": "0.1.0",
     "forge_version": "0.1.0",
-    "emitted_at": 1774110479548,
-    "feed_id": "airnow_sf_bay",
+    "emitted_at": 1775675352768,
+    "feed_id": "breath_sf_bay",
     "feed_profile": {
       "cadence": {
-        "classification": "seconds",
-        "median_gap_ms": null,
-        "cv": null
+        "classification": "multi_cadence",
+        "median_ms": 1,
+        "jitter_coefficient": null
       },
       "distribution": {
         "type": "bounded_numeric",
@@ -54,12 +79,12 @@
         "mean": null
       },
       "noise": {
-        "classification": "spike_driven",
-        "spike_ratio": null
+        "classification": "mixed",
+        "spike_rate": null
       },
       "density": {
-        "classification": "sparse_network",
-        "stream_count": null
+        "classification": "multi_tier",
+        "sensor_count": 2
       },
       "thresholds": {
         "type": "regulatory",
@@ -74,30 +99,65 @@
     },
     "proposals": [
       {
-        "proposal_id": "d9c5e82c0ebb6621",
-        "template": "anomaly",
+        "proposal_id": "ccaf4cb3e11d95db",
+        "template": "threshold_gate",
         "params": {
-          "baseline_metric": "b-value",
-          "sigma_threshold": null,
-          "window_hours": 168
+          "threshold": 151,
+          "window_hours": 24,
+          "base_rate": null,
+          "input_mode": "single",
+          "threshold_type": "regulatory",
+          "settlement_source": "airnow"
         },
-        "confidence": 0.75,
-        "rationale": "Rule 'seismic_anomaly' fired (2/2 conditions). Traced to: TREMOR/SwarmWatch.",
+        "confidence": 0.9,
+        "rationale": "Rule 'aqi_threshold_gate' fired (3/3 conditions). Traced to: BREATH/AQIGate.",
         "brier_type": "binary",
-        "usefulness_score": 0.34520625
+        "usefulness_score": 0.5232600000000001
+      },
+      {
+        "proposal_id": "34287bf715dac063",
+        "template": "divergence",
+        "params": {
+          "source_a_type": "sensor_a",
+          "source_b_type": "sensor_b",
+          "divergence_threshold": null,
+          "resolution_mode": "expiry"
+        },
+        "confidence": 0.8,
+        "rationale": "Rule 'air_quality_sensor_divergence' fired (3/3 conditions). Traced to: BREATH/SensorDivergence.",
+        "brier_type": "binary",
+        "usefulness_score": 0.5232600000000001
+      },
+      {
+        "proposal_id": "7c4e8292a12efe09",
+        "template": "cascade",
+        "params": {
+          "trigger_threshold": 200,
+          "bucket_count": 5,
+          "window_hours": 72,
+          "prior_model": null
+        },
+        "confidence": 0.8,
+        "rationale": "Rule 'wildfire_cascade' fired (3/3 conditions). Traced to: BREATH/WildfireCascade.",
+        "brier_type": "multi_class",
+        "usefulness_score": 0.5232600000000001
       }
     ],
     "composition": null,
     "usefulness_scores": {
-      "0": 0.34520625
+      "0": 0.5232600000000001,
+      "1": 0.5232600000000001,
+      "2": 0.5232600000000001
     }
   },
   "log": {
-    "fixture": "fixtures/airnow-sf-bay.json",
-    "event_count": 20,
-    "proposals_count": 1,
+    "fixture": "fixtures/purpleair-sf-bay.json + fixtures/airnow-sf-bay.json",
+    "event_count": 40,
+    "proposals_count": 3,
     "templates_proposed": [
-      "anomaly"
+      "threshold_gate",
+      "divergence",
+      "cascade"
     ]
   }
 }
