@@ -1,7 +1,7 @@
 <!-- AGENT-CONTEXT
 name: tremor
 type: construct
-purpose: Seismic intelligence construct for the Echelon prediction market framework. Ingests USGS/EMSC/IRIS real-time earthquake feeds, builds evidence bundles, runs binary and multi-class prediction markets (Theatres), and exports Brier-scored RLMF training data.
+purpose: Seismic intelligence construct for the Echelon prediction market framework. Ingests USGS and EMSC real-time earthquake feeds (IRIS integration planned for v0.2), builds evidence bundles, runs binary and multi-class prediction markets (Theatres), and exports Brier-scored RLMF training data.
 key_files: [src/index.js, src/processor/bundles.js, src/oracles/usgs.js, spec/construct.json, src/skills/seismic.md]
 interfaces:
   core: [TremorConstruct, pollAndIngest, buildBundle, exportCertificate]
@@ -20,7 +20,7 @@ ecosystem:
 capability_requirements:
   - network: read (scope: usgs.gov, seismicportal.eu, iris.edu)
   - filesystem: write (scope: state)
-version: v0.1.0
+version: v0.1.1
 installation_mode: standalone
 trust_level: L1-local
 -->
@@ -40,6 +40,7 @@ TREMOR (Threshold Resolution & Earth Movement Oracle) is a seismic intelligence 
 - **thresholdCrossingProbability** — Normal CDF approximation for probability that true magnitude exceeds a Theatre threshold given the uncertainty model. (`src/processor/magnitude.js:92`)
 - **assessStatusFlip** — Three-tier settlement logic handling USGS review latency: oracle (reviewed), provisional mature (stable + cross-validated), and market freeze. (`src/processor/settlement.js:30`)
 - **crossValidateEMSC** — Queries EMSC for independent magnitude readings. Divergence ≥0.3 triggers Paradox Engine flag. (`src/oracles/emsc.js:16`)
+- **crossValidateGEOFON** — Queries GEOFON GFZ FDSN for independent magnitude readings (pipe-delimited text format). Divergence ≥0.3 triggers Paradox Engine flag. (`src/oracles/geofon.js`)
 - **processMagnitudeGate** — Updates Magnitude Gate Theatre positions using doubt-priced threshold crossing probabilities. (`src/theatres/mag-gate.js:56`)
 - **processAftershockCascade** — Bayesian update blending Omori-law prior with observed aftershock rate to recompute 5-bucket probabilities. (`src/theatres/aftershock.js:151`)
 - **processSwarmWatch** — Recomputes rolling Gutenberg-Richter b-value and escalation signal on each new cluster event. (`src/theatres/swarm.js:150`)
@@ -147,27 +148,50 @@ Directory structure:
 | USGS NEIC | `earthquake.usgs.gov/earthquakes/feed/v1.0/summary/*.geojson` | GeoJSON | None |
 | USGS API | `earthquake.usgs.gov/fdsnws/event/1/query` | GeoJSON | None |
 | EMSC | `seismicportal.eu/fdsnws/event/1/query` | JSON | None |
+| GEOFON GFZ | `geofon.gfz.de/fdsnws/event/1/query` | Text (pipe-delimited) | None |
 
 ## Module Map
 <!-- provenance: DERIVED -->
 
 | Module | Files | Purpose |
 |--------|-------|---------|
-| `src/oracles/` | 2 | OSINT data source adapters (USGS polling, EMSC cross-validation) |
+| `src/oracles/` | 3 | OSINT data source adapters (USGS polling, EMSC + GEOFON cross-validation) |
 | `src/processor/` | 5 | Evidence bundle construction pipeline (quality, magnitude, settlement, regions, bundle orchestration) |
 | `src/theatres/` | 5 | Theatre-specific market logic (magnitude gate, aftershock cascade, swarm watch, depth regime, oracle divergence) |
 | `src/rlmf/` | 1 | RLMF training data export (Brier scoring, temporal analysis, certificate generation) |
 | `src/skills/` | 1 | Construct specialization profile |
 | `spec/` | 1 | Machine-readable construct specification |
-| `test/` | 1 | Test suite (48 tests, 16 suites, node:test) |
+| `test/` | 2 | Baseline + regression test suites (70 tests, 22 suites, node:test) |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 
-- Trust Level: **L1 — Local**
-- 48 tests across 16 suites (node --test, zero dependencies)
+- Trust Level: **L2 — CI Verified**
+- 70 tests across 22 suites (48 baseline + 22 regression)
+- CI/CD: GitHub Actions (test, lint, build on push/PR)
+- Security: SECURITY.md present
+- Governance: CONTRIBUTING.md, CHANGELOG.md present
 - Zero external dependencies (Node.js 20+ built-in fetch + test runner)
 - All OSINT sources are public, free, and require no authentication
+
+## Governance
+<!-- provenance: OPERATIONAL -->
+
+- **SECURITY.md**: Vulnerability disclosure policy, response timeline
+- **CONTRIBUTING.md**: Feature requests, bug reports, testing requirements
+- **CHANGELOG.md**: v0.1.0 release notes, known gaps, v0.2 roadmap
+- **GitHub Actions**: CI/CD pipelines (test, lint, build)
+- **Zero new dependencies**: Hard constraint (maintained)
+
+## Volcanic Routing
+<!-- provenance: CODE-FACTUAL -->
+
+Volcanic events (regime: 'volcanic'): Aftershock Cascade not spawned — Omori-Utsu does not apply to magma-driven swarms. Routing policy: conservative. Swarm Watch recommended; operator decides. Boundary candidates (M≥6.0 volcanic) flagged for manual review. Routing decisions exposed in `getState().routing_decisions`.
+
+## Calibration Status
+<!-- provenance: OPERATIONAL -->
+
+Empirical calibration status as of v0.1.1: regional profiles are DATA-FACTUAL (USGS FDSN catalog). Omori K is backtest-derived for subduction (Pass) and transform (Pass); intraplate is provisional. c, p, bath_delta, and three calibration studies remain TBD pending automatic-stage data access.
 
 ## Culture
 <!-- provenance: OPERATIONAL -->
@@ -211,7 +235,7 @@ sections:
   architecture: pipeline-oracle-processor-theatre-rlmf
   interfaces: construct-api-theatre-templates-osint-feeds
   module_map: 7-modules
-  verification: 48-tests-16-suites
+  verification: 70-tests-22-suites-ci-verified
   culture: echelon-ground-truth-first
   quick_start: zero-deps-node20
 -->

@@ -6,7 +6,7 @@ A seismic intelligence construct for the [Echelon](https://github.com/AITOBIAS04
 
 ## What it does
 
-TREMOR ingests real-time earthquake data from USGS, EMSC, and IRIS, converts it into structured evidence bundles, runs prediction markets (Theatres) on seismic outcomes, and exports Brier-scored training data for the RLMF pipeline.
+TREMOR ingests real-time earthquake data from USGS and EMSC (IRIS integration planned for v0.2), converts it into structured evidence bundles, runs prediction markets (Theatres) on seismic outcomes, and exports Brier-scored training data for the RLMF pipeline.
 
 The prediction market is the factory. The calibrated training data is the product.
 
@@ -14,7 +14,7 @@ The prediction market is the factory. The calibrated training data is the produc
 
 Earthquakes are uniquely good training data for AI prediction markets:
 
-- **Ground truth oracle** — USGS reviewed catalog. No human interpretation, no disputes.
+- **Clean resolution** — USGS reviewed catalog. Machine-readable, no human interpretation needed.
 - **Binary structure** — did the threshold get crossed or not? Clean Brier targets.
 - **Fast cycles** — hours to days, not weeks. ~55 M5.0+ events per month globally.
 - **Exogenous** — no reflexivity. Predictions don't influence earthquakes.
@@ -66,6 +66,26 @@ console.log(tremor.getState());
 const certs = tremor.getCertificates();
 ```
 
+## v0.1.1: Calibration & Safety Release
+
+This release adds empirical calibration with comprehensive safety fixes and governance:
+
+- **5 critical safety fixes**: Race condition prevention, NaN guards, atomic exports, input validation, poll resilience
+- **Comprehensive test suite**: 70 tests across 22 suites (48 baseline + 22 regression tests proving fixes)
+- **All tests passing**: 70/70 ✓
+- **Governance structure**: Security policy, contribution guidelines, GitHub Actions CI
+- **Zero external dependencies**: Node.js 20+ only
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed changes, [SECURITY.md](SECURITY.md) for security policy, [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## Verification
+
+- **70/70 tests passing** (48 baseline + 22 regression)
+- **GitHub Actions CI** on push and PR
+- **Zero external dependencies**
+- **AGPL-3.0 licensed**
+- **Calibration in progress** — see status table below
+
 ## Architecture
 
 ```
@@ -94,12 +114,27 @@ tremor/
 ├── spec/
 │   └── construct.json        # Machine-readable construct spec
 ├── test/
-│   └── tremor.test.js        # Test suite (48 tests, 16 suites)
+│   ├── tremor.test.js        # Baseline test suite (48 tests)
+│   └── post-audit.test.js    # Sprint-1 regression suite (22 tests)
 ├── BUTTERFREEZONE.md          # Agent-facing project interface
 ├── .env.example
 ├── package.json
 └── README.md
 ```
+
+## Calibration Status
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| Regional profiles | Measured from catalog | USGS FDSN catalog, M4.5+, 2021–2026 |
+| Omori K (subduction) | Backtest-derived | Run 5, 3 sequences, mean error 6.9% |
+| Omori K (transform) | Backtest-derived | Run 5, 2 sequences, mean error 16.9% |
+| Omori K (intraplate) | Backtest-derived (provisional) | Run 5, 2 sequences, Marginal — review before production use |
+| Omori K (volcanic/default) | Pending calibration | — |
+| Omori c, p, bath_delta | Pending calibration | — |
+| Doubt-price CI | Blocked by data access | Automatic-stage records not preserved in public API |
+| Settlement discounts | Blocked by data access | Same |
+| Quality weights | Blocked by data access | Same |
 
 ## Three calibration refinements
 

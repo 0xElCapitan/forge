@@ -15,19 +15,29 @@
 /**
  * Modified Omori-law parameters by tectonic regime.
  *
+ * source: Omori (1894), "On the Aftershocks of Earthquakes"; Utsu (1961),
+ * "A statistical study on the occurrence of aftershocks".
  * The Omori-Utsu law: n(t) = K / (t + c)^p
  * where n(t) = aftershock rate at time t after mainshock,
  * K = productivity, c = time offset, p = decay exponent.
  *
- * Bath's law: largest aftershock ≈ mainshock - 1.2
+ * source: Båth (1965) — largest aftershock ≈ mainshock − 1.2
  *
- * These are approximate parameters. In production, calibrate from
- * historical sequences per tectonic regime.
+ * K values: backtest-derived empirical refit from Run 4 (2026-04-06)
+ *   subduction K: source: grimoires/loa/calibration/omori-backtest/k-refit-notes.md
+ *   transform K:  source: grimoires/loa/calibration/omori-backtest/k-refit-notes.md
+ *   intraplate K: PROVISIONAL — 2 sequences only, flag for human review before production merge
+ *                 source: grimoires/loa/calibration/omori-backtest/k-refit-notes.md
+ *   volcanic K:   TBD: empirical calibration needed (robustness-only, no clean calibration data)
+ *   default K:    TBD: empirical calibration needed (1 sequence, insufficient for refit)
+ * c, p, bath_delta: TBD — empirical calibration needed
+ * 0.75 scaling exponent: source: Reasenberg & Jones (1989)
+ *   magnitude-dependence: see k-refit-notes.md — follow-on sprint may be warranted
  */
 const REGIME_PARAMS = {
-  subduction: { K: 25, c: 0.05, p: 1.05, bath_delta: 1.1 },
-  transform:  { K: 15, c: 0.03, p: 1.10, bath_delta: 1.2 },
-  intraplate: { K: 8,  c: 0.08, p: 0.95, bath_delta: 1.3 },
+  subduction: { K: 0.220, c: 0.05, p: 1.05, bath_delta: 1.1 },
+  transform:  { K: 0.291, c: 0.03, p: 1.10, bath_delta: 1.2 },
+  intraplate: { K: 0.240, c: 0.08, p: 0.95, bath_delta: 1.3 },
   volcanic:   { K: 30, c: 0.02, p: 0.90, bath_delta: 1.0 },
   default:    { K: 18, c: 0.05, p: 1.00, bath_delta: 1.2 },
 };
@@ -56,8 +66,10 @@ const BUCKETS = [
 function omoriExpectedCount(params, mainMag, thresholdMag, windowHours) {
   const { K, c, p } = params;
 
-  // Scale productivity by magnitude difference (Reasenberg & Jones 1989)
-  // Higher mainshock → more aftershocks above threshold
+  // Scale productivity by magnitude difference.
+  // source: Reasenberg & Jones (1989), "Earthquake Hazard After a
+  // Mainshock in California", Science 243(4895). 0.75 exponent from
+  // their productivity scaling relation.
   const magDiff = mainMag - thresholdMag;
   const scaledK = K * Math.pow(10, 0.75 * (magDiff - 1));
 
@@ -122,16 +134,61 @@ function logFactorial(n) {
 
 /**
  * Infer tectonic regime from depth and location.
- * Rough heuristic — in production use a proper tectonic regionalization.
+ *
+ * TBD: empirical calibration needed — all depth thresholds (30/50/100 km)
+ * and bounding-box bounds below are rough engineering heuristics, not
+ * sourced from a tectonic regionalization dataset. In production this
+ * should be replaced with a proper regionalization (e.g. Hayes et al.
+ * Slab2 for subduction zones, PB2002 plate boundaries for transform).
+ * See grimoires/loa/calibration/
  */
 function inferRegime(depth_km, lat, lon) {
   if (depth_km > 100) return 'subduction';
   if (depth_km > 50) return 'subduction';
+
+  // South America Andes subduction zone
+  // TBD: empirical calibration needed — bounding box is approximate;
+  // see grimoires/loa/calibration/
+  if (lon >= -82 && lon <= -65 && lat >= -55 && lat <= 12) {
+    return depth_km > 20 ? 'subduction' : 'transform';
+  }
+
+  // Indonesia/Philippines subduction zone
+  // TBD: empirical calibration needed — bounding box is approximate;
+  // see grimoires/loa/calibration/
+  if (lon >= 95 && lon <= 145 && lat >= -10 && lat <= 20) {
+    return depth_km > 20 ? 'subduction' : 'transform';
+  }
+
+  // Caribbean plate boundary (transform-dominated)
+  // TBD: empirical calibration needed — bounding box is approximate;
+  // see grimoires/loa/calibration/
+  if (lon >= -85 && lon <= -60 && lat >= 10 && lat <= 25) {
+    return 'transform';
+  }
+
+  // TBD: hand-rolled intraplate approximation — production use requires proper
+  // stable-craton regionalization (e.g., USGS tectonic summary regions or Flinn-Engdahl zones)
+  if (depth_km < 30) {
+    // Eastern North America (stable craton)
+    if (lon >= -100 && lon <= -60 && lat >= 25 && lat <= 55) return 'intraplate';
+    // Basin and Range / Intermountain West (extensional, not transform)
+    // lat >= 36 excludes southern CA transform zones (e.g., Ridgecrest at 35.8°N)
+    if (lon >= -120 && lon <= -100 && lat >= 36 && lat <= 50) return 'intraplate';
+    // Australian craton
+    if (lon >= 113 && lon <= 155 && lat >= -45 && lat <= -10) return 'intraplate';
+    // Stable African craton (excludes East African Rift)
+    if (lon >= 15 && lon <= 45 && lat >= -30 && lat <= 15) return 'intraplate';
+    // Indian subcontinent interior (away from Himalayan collision zone)
+    if (lon >= 68 && lon <= 88 && lat >= 10 && lat <= 28) return 'intraplate';
+  }
+
   // Pacific ring of fire rough bounds
   if ((lon < -100 && lon > -180 && lat > -60 && lat < 60) ||
       (lon > 100 && lat > -60 && lat < 60)) {
-    return depth_km > 30 ? 'subduction' : 'transform';
+    return depth_km > 20 ? 'subduction' : 'transform';
   }
+
   // Mid-ocean ridge zones
   if (Math.abs(lat) < 10 && (lon > -50 && lon < -10)) return 'transform';
   return 'default';
@@ -162,22 +219,42 @@ export function createAftershockCascade({
   const mainMag = mainshockBundle.payload.magnitude.value;
   const loc = mainshockBundle.payload.location;
 
-  if (mainMag < 6.0) return null;
+  if (mainMag < 6.0) return skipResult('magnitude_below_threshold', { mainMag });
 
   const now = Date.now();
   const inferredRegime = regime || inferRegime(loc.depth_km, loc.latitude, loc.longitude);
+
+  // Volcanic routing check (conservative policy): volcanic events skip
+  // Aftershock Cascade. Operator decides on Swarm Watch.
+  const routing = assessAftershockApplicability({
+    regime: inferredRegime, mag: mainMag,
+    lat: loc.latitude, lon: loc.longitude, depth_km: loc.depth_km,
+  });
+  if (!routing.omoriApplicable) {
+    console.warn(
+      `[TREMOR] Aftershock Cascade skipped — ${routing.reason}. ` +
+      `Swarm Watch recommended. Manual review: ${routing.manualReview}`,
+    );
+    return skipResult('volcanic_routing', routing);
+  }
   const params = REGIME_PARAMS[inferredRegime] || REGIME_PARAMS.default;
 
   // Compute initial bucket probabilities from Omori model
   const expectedCount = omoriExpectedCount(params, mainMag, threshold_mag, window_hours);
   const initialProbs = countToBucketProbabilities(expectedCount);
 
-  // Rupture length estimate for spatial matching (Wells & Coppersmith 1994)
-  // log10(L) = -3.22 + 0.69*M → L in km
+  // Rupture length estimate for spatial matching.
+  // source: Wells & Coppersmith (1994), "New Empirical Relationships
+  // among Magnitude, Rupture Length, Rupture Width, Rupture Area, and
+  // Surface Displacement", BSSA 84(4). log10(L) = -3.22 + 0.69*M → L in km.
   const ruptureLength = Math.pow(10, -3.22 + 0.69 * mainMag);
-  const matchRadius = ruptureLength * 1.5; // 1.5× rupture length
+  // TBD: empirical calibration needed — the 1.5× match-radius multiplier
+  // is an engineering heuristic; see grimoires/loa/calibration/
+  const matchRadius = ruptureLength * 1.5;
 
-  // Convert to approximate degree radius
+  // Convert km → degrees (~111 km per degree of latitude).
+  // TBD: equatorial approximation, distorts at high latitudes;
+  // see grimoires/loa/calibration/
   const degreeRadius = matchRadius / 111;
 
   return {
@@ -289,11 +366,17 @@ export function processAftershockCascade(theatre, bundle) {
   const remaining = Math.max(1, (theatre.closes_at - Date.now()) / (1000 * 60 * 60));
   const totalWindow = (theatre.closes_at - theatre.opens_at) / (1000 * 60 * 60);
 
-  // Observed rate extrapolation
+  // Observed rate extrapolation.
+  // TBD: empirical calibration needed — the 0.7 Omori-decay correction
+  // and the blending formula below are engineering heuristics;
+  // see grimoires/loa/calibration/
   const rate = elapsed > 0 ? newCount / elapsed : newCount;
-  const projectedTotal = newCount + rate * remaining * 0.7; // 0.7 = Omori decay correction
+  const projectedTotal = newCount + rate * remaining * 0.7;
 
-  // Blend Omori prior with observed projection
+  // Blend Omori prior with observed projection.
+  // TBD: empirical calibration needed — the max(0.1, ...) blending floor
+  // ensures the Omori prior never fully disappears, but the specific value
+  // is unsourced; see grimoires/loa/calibration/
   const omoriWeight = Math.max(0.1, 1 - (elapsed / totalWindow));
   const obsWeight = 1 - omoriWeight;
   const blendedExpected =
@@ -354,4 +437,49 @@ export function resolveAftershockCascade(theatre) {
   };
 }
 
-export { BUCKETS, REGIME_PARAMS };
+/**
+ * Assess whether Omori aftershock modelling applies to an event.
+ * Routing policy: conservative — volcanic events skip Aftershock Cascade,
+ * operator decides on Swarm Watch.
+ *
+ * @param {Object} params
+ * @param {string} params.regime - output of inferRegime()
+ * @param {number} params.mag - mainshock magnitude
+ * @param {number} params.lat
+ * @param {number} params.lon
+ * @param {number} params.depth_km
+ * @returns {{ omoriApplicable: boolean, routeTo: string, manualReview: boolean, volcanicSubtype: string|null, reason: string }}
+ */
+export function assessAftershockApplicability({ regime, mag, lat, lon, depth_km }) {
+  if (regime === 'volcanic') {
+    // Tectonic-volcanic boundary heuristic: M≥6.0 in a volcanic regime is used as a conservative
+    // operational proxy for events that may have real mainshock-aftershock structure.
+    // This is a routing heuristic, not a geophysical classification claim.
+    // Flag for manual review rather than auto-routing.
+    const isBoundaryCandidate = mag >= 6.0;
+    return {
+      omoriApplicable: false,
+      routeTo: 'swarm_watch',
+      manualReview: isBoundaryCandidate,
+      volcanicSubtype: isBoundaryCandidate ? 'boundary' : 'swarm',
+      reason: isBoundaryCandidate
+        ? 'volcanic_boundary_candidate — Omori may apply, manual review required'
+        : 'volcanic_swarm_non_omori — magma-driven swarm, Omori not applicable',
+    };
+  }
+
+  return {
+    omoriApplicable: true,
+    routeTo: 'aftershock_cascade',
+    manualReview: false,
+    volcanicSubtype: null,
+    reason: 'standard_tectonic',
+  };
+}
+
+// Internal helper — not exported
+function skipResult(reason, detail = null) {
+  return { skipped: true, reason, detail };
+}
+
+export { BUCKETS, REGIME_PARAMS, omoriExpectedCount, countToBucketProbabilities, inferRegime };

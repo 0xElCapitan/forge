@@ -16,7 +16,7 @@ import { buildBundle } from '../src/processor/bundles.js';
 import { brierScoreBinary, brierScoreMultiClass, calibrationBucket, exportCertificate } from '../src/rlmf/certificates.js';
 import { createMagnitudeGate, processMagnitudeGate, expireMagnitudeGate } from '../src/theatres/mag-gate.js';
 import { createOracleDivergence, resolveOracleDivergence } from '../src/theatres/paradox.js';
-import { createAftershockCascade, processAftershockCascade, resolveAftershockCascade } from '../src/theatres/aftershock.js';
+import { createAftershockCascade, processAftershockCascade, resolveAftershockCascade, assessAftershockApplicability } from '../src/theatres/aftershock.js';
 import { createSwarmWatch, processSwarmWatch, expireSwarmWatch, computeBValue } from '../src/theatres/swarm.js';
 import { createDepthRegime, processDepthRegime, expireDepthRegime } from '../src/theatres/depth.js';
 
@@ -437,10 +437,11 @@ describe('Aftershock Cascade', () => {
     assert.ok(Math.abs(sum - 1) < 0.01, `Probabilities sum to ${sum}, expected ~1`);
   });
 
-  it('returns null for M<6.0 events', () => {
+  it('returns structured skip for M<6.0 events', () => {
     const smallBundle = buildBundle(makeFeature({ properties: { mag: 5.5 } }));
-    const t = createAftershockCascade({ mainshockBundle: smallBundle });
-    assert.equal(t, null);
+    const result = createAftershockCascade({ mainshockBundle: smallBundle });
+    assert.equal(result?.skipped, true);
+    assert.equal(result.reason, 'magnitude_below_threshold');
   });
 
   it('increments aftershock count on threshold-crossing events', () => {
@@ -468,6 +469,47 @@ describe('Aftershock Cascade', () => {
     const resolved = resolveAftershockCascade(t);
     assert.equal(resolved.state, 'resolved');
     assert.equal(resolved.outcome, 0); // 0 aftershocks → bucket 0 ("0-2")
+  });
+
+  it('returns structured skip for volcanic regime events', () => {
+    const bundle = makeMainshockBundle();
+    // Force volcanic regime via location near a volcanic zone
+    const result = createAftershockCascade({ mainshockBundle: bundle, regime: 'volcanic' });
+    assert.equal(result?.skipped, true);
+    assert.equal(result.reason, 'volcanic_routing');
+    assert.equal(result.detail.omoriApplicable, false);
+    assert.equal(result.detail.routeTo, 'swarm_watch');
+  });
+});
+
+describe('assessAftershockApplicability', () => {
+  it('returns omoriApplicable=false for volcanic swarm (M<6)', () => {
+    const result = assessAftershockApplicability({
+      regime: 'volcanic', mag: 5.5, lat: 19.4, lon: -155.3, depth_km: 5,
+    });
+    assert.equal(result.omoriApplicable, false);
+    assert.equal(result.routeTo, 'swarm_watch');
+    assert.equal(result.manualReview, false);
+    assert.equal(result.volcanicSubtype, 'swarm');
+  });
+
+  it('flags volcanic boundary candidate (M≥6.0) for manual review', () => {
+    const result = assessAftershockApplicability({
+      regime: 'volcanic', mag: 6.5, lat: 19.4, lon: -155.3, depth_km: 10,
+    });
+    assert.equal(result.omoriApplicable, false);
+    assert.equal(result.manualReview, true);
+    assert.equal(result.volcanicSubtype, 'boundary');
+  });
+
+  it('returns standard_tectonic for non-volcanic regimes', () => {
+    const result = assessAftershockApplicability({
+      regime: 'subduction', mag: 7.0, lat: 37.0, lon: -122.0, depth_km: 15,
+    });
+    assert.equal(result.omoriApplicable, true);
+    assert.equal(result.routeTo, 'aftershock_cascade');
+    assert.equal(result.manualReview, false);
+    assert.equal(result.volcanicSubtype, null);
   });
 });
 

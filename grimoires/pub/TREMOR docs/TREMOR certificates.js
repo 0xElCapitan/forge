@@ -9,11 +9,20 @@
  *   - Full position history with evidence references
  *   - Calibration bucket assignment
  *   - Paradox Engine event count
- *   - On-chain P&L attribution
+ *   - On-chain P&L attribution (aspirational — see on_chain option below)
  *
  * This is the product. The prediction market is the factory.
  * The training data is what comes out.
+ *
+ * Disk persistence (writeCertificate) is atomic and idempotent: writes go
+ * through a temp file + rename, and any write whose final path already
+ * exists is skipped. Combined with the deterministic certificate_id
+ * (derived from the event ID and resolution timestamp), this makes retry
+ * after a crash safe — no duplicates, no partial files.
  */
+
+import fs from 'node:fs';
+import path from 'node:path';
 
 /**
  * Compute Brier score for a binary outcome.
@@ -71,7 +80,10 @@ export function calibrationBucket(forecast) {
  * @param {object} theatre - Resolved theatre with position history
  * @param {object} options - Optional overrides
  * @param {string} options.construct_id - Construct identifier
- * @param {object} options.on_chain - On-chain P&L data {tx_hash, pnl_bera, gas_cost}
+ * @param {object} [options.on_chain] - reserved for v0.2 — on-chain P&L
+ *   attribution not yet implemented. If provided today, it is passed
+ *   through verbatim onto the certificate but no on-chain verification,
+ *   settlement, or audit is performed.
  * @returns {object} RLMF certificate
  */
 export function exportCertificate(theatre, options = {}) {
@@ -84,6 +96,23 @@ export function exportCertificate(theatre, options = {}) {
   const openingPosition = history[0]?.p ?? 0.5;
   const closingPosition = theatre.current_position;
   const outcome = theatre.outcome;
+
+  // Fail-closed on Brier-critical inputs (sprint 1b invariant).
+  // For binary theatres, closingPosition must be a finite probability.
+  // For multi-class theatres (aftershock), it is an array of probabilities.
+  if (typeof closingPosition === 'number') {
+    if (!Number.isFinite(closingPosition)) {
+      throw new Error(
+        `Cannot export certificate for ${theatre.id}: closing_position is not finite`,
+      );
+    }
+  } else if (Array.isArray(closingPosition)) {
+    if (!closingPosition.every((p) => Number.isFinite(p))) {
+      throw new Error(
+        `Cannot export certificate for ${theatre.id}: closing_position contains non-finite values`,
+      );
+    }
+  }
 
   // Compute Brier score
   const brierRaw = brierScoreBinary(closingPosition, outcome);
@@ -104,7 +133,10 @@ export function exportCertificate(theatre, options = {}) {
   ).length;
 
   return {
-    certificate_id: `tremor-rlmf-${theatre.id}-${constructId}`,
+    // Deterministic ID derived from theatre + resolution timestamp.
+    // Two exports of the same resolved theatre produce the same ID, which
+    // is what makes disk writes idempotent under retry (sprint 1a).
+    certificate_id: certificateIdFor(theatre, constructId),
     construct: constructId,
     version: '0.1.0',
     exported_at: Date.now(),
@@ -147,8 +179,94 @@ export function exportCertificate(theatre, options = {}) {
       time_weighted_brier: computeTimeWeightedBrier(history, outcome, theatre.opens_at, theatre.resolved_at ?? Date.now()),
     },
 
+    // on_chain: reserved for v0.2 — on-chain P&L attribution not yet implemented
     on_chain: options.on_chain ?? null,
   };
+}
+
+// =========================================================================
+// Deterministic ID + atomic idempotent disk write (sprint 1a + 1c)
+// =========================================================================
+
+/**
+ * Compute a deterministic certificate_id for a resolved theatre.
+ *
+ * Derived from the theatre id + resolution timestamp. For an aftershock
+ * cascade the theatre id already encodes the mainshock event id; for other
+ * templates the theatre id is stable across the resolution. Re-exporting a
+ * given resolution produces the exact same id, which is how retry after a
+ * crash avoids duplicate certificates on disk.
+ *
+ * @param {object} theatre - Resolved theatre
+ * @param {string} constructId - Construct identifier (e.g. 'TREMOR')
+ * @returns {string} Deterministic certificate id
+ */
+export function certificateIdFor(theatre, constructId = 'TREMOR') {
+  const resolvedAt = theatre.resolved_at ?? 0;
+  // Keep the legacy tremor-rlmf prefix so downstream consumers still match.
+  return `tremor-rlmf-${theatre.id}-${constructId}-${resolvedAt}`;
+}
+
+/**
+ * Atomic + idempotent certificate write.
+ *
+ * Guarantees:
+ *   1. If the final path already exists, skip the write (idempotent —
+ *      protects against retry after a crash that happened after a prior
+ *      successful write but before state was committed).
+ *   2. Write goes to a temp file in the same directory first, then
+ *      fs.renameSync to the final path. On POSIX this is atomic; on
+ *      Windows renameSync over an existing path is not atomic but the
+ *      idempotency check above keeps us safe.
+ *   3. If serialization or the temp write throws, the final path is
+ *      never touched and any partial temp file is best-effort cleaned up.
+ *
+ * @param {object} cert - Certificate object (from exportCertificate)
+ * @param {string} dir - Output directory (created if missing)
+ * @returns {{written: boolean, skipped: boolean, path: string}}
+ */
+export function writeCertificate(cert, dir) {
+  if (!cert || !cert.certificate_id) {
+    throw new Error('writeCertificate: cert.certificate_id is required');
+  }
+  if (!dir) {
+    throw new Error('writeCertificate: output directory is required');
+  }
+
+  fs.mkdirSync(dir, { recursive: true });
+
+  // Sanitize id for use as filename (no path separators).
+  const safeId = cert.certificate_id.replace(/[\\/:*?"<>|]/g, '_');
+  const finalPath = path.join(dir, `${safeId}.json`);
+
+  // Idempotency: if the final file already exists, skip.
+  if (fs.existsSync(finalPath)) {
+    return { written: false, skipped: true, path: finalPath };
+  }
+
+  // Write to a unique temp file in the same directory, then rename.
+  const tempPath = path.join(
+    dir,
+    `.${safeId}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`,
+  );
+
+  let serialized;
+  try {
+    serialized = JSON.stringify(cert, null, 2);
+  } catch (err) {
+    throw new Error(`writeCertificate: serialization failed for ${cert.certificate_id}: ${err.message}`);
+  }
+
+  try {
+    fs.writeFileSync(tempPath, serialized, { encoding: 'utf8', flag: 'wx' });
+    fs.renameSync(tempPath, finalPath);
+  } catch (err) {
+    // Best-effort cleanup of the partial temp file.
+    try { fs.unlinkSync(tempPath); } catch { /* ignore */ }
+    throw err;
+  }
+
+  return { written: true, skipped: false, path: finalPath };
 }
 
 // --- Temporal analysis helpers ---

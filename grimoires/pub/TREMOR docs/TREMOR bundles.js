@@ -7,7 +7,7 @@
  */
 
 import { computeQuality } from './quality.js';
-import { buildMagnitudeUncertainty } from './magnitude.js';
+import { buildMagnitudeUncertainty, NonFiniteMagnitudeError } from './magnitude.js';
 import { assessStatusFlip } from './settlement.js';
 
 /**
@@ -23,17 +23,64 @@ export function buildBundle(feature, config = {}) {
   // Skip non-earthquakes and deleted/null-magnitude events
   if (feature.properties.type !== 'earthquake') return null;
   if (feature.properties.status === 'deleted') return null;
-  if (feature.properties.mag === null) return null;
+  if (feature.properties.mag === null || feature.properties.mag === undefined) return null;
 
+  // Core structural validation — required for magnitude + probability math.
+  // Fail closed (sprint 1b): return null with a structured warning rather
+  // than let NaN propagate through doubt_price / Brier.
+  if (
+    !feature.geometry ||
+    !Array.isArray(feature.geometry.coordinates) ||
+    feature.geometry.coordinates.length < 3
+  ) {
+    console.warn(
+      `[TREMOR:bundle] reject event=${feature.id} reason=missing_coordinates`,
+    );
+    return null;
+  }
   const [lon, lat, depth] = feature.geometry.coordinates;
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+    console.warn(
+      `[TREMOR:bundle] reject event=${feature.id} reason=non_finite_coordinates`,
+    );
+    return null;
+  }
+
   const now = Date.now();
   const eventAge = (now - feature.properties.time) / 1000;
 
   // Build quality score (includes density normalization)
   const quality = computeQuality(feature);
 
-  // Build magnitude uncertainty (includes doubt pricing)
-  const magnitude = buildMagnitudeUncertainty(feature);
+  // Build magnitude uncertainty (includes doubt pricing).
+  // Fail closed on non-finite core inputs (sprint 1b): reject the bundle
+  // and log the specific field that failed validation.
+  let magnitude;
+  try {
+    magnitude = buildMagnitudeUncertainty(feature);
+  } catch (err) {
+    if (err instanceof NonFiniteMagnitudeError) {
+      console.warn(
+        `[TREMOR:bundle] reject event=${feature.id} reason=${err.message}`,
+      );
+      return null;
+    }
+    throw err;
+  }
+
+  // Final invariant check at the bundle boundary — doubt_price must be a
+  // finite probability in [0, 1]. If it isn't, something corrupted the
+  // computation path above; reject rather than emit a poisoned bundle.
+  if (
+    !Number.isFinite(magnitude.doubt_price) ||
+    magnitude.doubt_price < 0 ||
+    magnitude.doubt_price > 1
+  ) {
+    console.warn(
+      `[TREMOR:bundle] reject event=${feature.id} reason=doubt_price_invalid value=${magnitude.doubt_price}`,
+    );
+    return null;
+  }
 
   // Cross-validation placeholder (populated async by EMSC oracle)
   const crossValidation = config.crossValidation ?? null;
