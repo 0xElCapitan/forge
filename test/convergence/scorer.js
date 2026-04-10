@@ -100,9 +100,14 @@ function scoreParams(templateType, specParams, proposedParams) {
     }
   }
 
+  // When the spec declares all scoreable params as null (e.g. TREMOR
+  // regime_shift's state_boundary/zone_prior — under-specified placeholders),
+  // there are no fields to grade. Treat that as trivially passing (score 1)
+  // rather than trivially failing (score 0): an under-specified spec must not
+  // penalize a proposal that correctly identifies the template type.
   const mean = scores.length > 0
     ? scores.reduce((a, b) => a + b, 0) / scores.length
-    : 0;
+    : 1;
 
   return { score: mean, detail };
 }
