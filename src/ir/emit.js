@@ -66,6 +66,11 @@ function proposalId(feed_id, template, params) {
  * @param {Object}   [opts.source_metadata] - Optional source provenance
  * @param {Object}   [opts.composition]     - Output of proposeComposedTheatre() context
  * @param {boolean}  [opts.score_usefulness=false] - Run economic filter
+ * @param {number}   [opts.now=Date.now()] - Injectable wall-clock for emitted_at.
+ *                   Defaults to Date.now() so existing callers are unaffected.
+ *                   Pass a fixed value to obtain a deterministic envelope (used
+ *                   by tests and by any caller that needs envelope-level hash
+ *                   stability across identical inputs).
  * @returns {Object} ProposalEnvelope conforming to spec/proposal-ir.json
  */
 export function emitEnvelope({
@@ -75,8 +80,9 @@ export function emitEnvelope({
   source_metadata = null,
   composition     = null,
   score_usefulness = false,
+  now             = Date.now(),
 }) {
-  const emitted_at = Date.now();
+  const emitted_at = now;
 
   // Annotate proposals with brier_type, deterministic proposal_id, and usefulness_score
   const annotated = proposals.map(p => ({

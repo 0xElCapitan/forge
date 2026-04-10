@@ -277,4 +277,25 @@ describe('emitEnvelope', () => {
     assert.equal(env.feed_profile.density.sensor_count, null);
     assert.equal(env.feed_profile.thresholds.detected_thresholds, null);
   });
+
+  it('produces a deterministic envelope when `now` is injected', () => {
+    // Identical inputs + identical injected `now` must produce byte-equal
+    // envelopes. Without an injectable clock, emitted_at would diverge
+    // between calls and any envelope-level hash would be non-deterministic.
+    const t = 1700000000000;
+    const params = {
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+    };
+
+    const e1 = emitEnvelope({ ...params, now: t });
+    const e2 = emitEnvelope({ ...params, now: t });
+
+    // Full envelope equality — not just timestamp
+    assert.deepStrictEqual(e1, e2);
+    // Injected timestamp is honoured
+    assert.strictEqual(e1.emitted_at, t);
+    assert.strictEqual(e2.emitted_at, t);
+  });
 });
