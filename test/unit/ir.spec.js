@@ -282,6 +282,11 @@ describe('emitEnvelope', () => {
     // Identical inputs + identical injected `now` must produce byte-equal
     // envelopes. Without an injectable clock, emitted_at would diverge
     // between calls and any envelope-level hash would be non-deterministic.
+    //
+    // Pass deep-cloned inputs to each call so the test stays mutation-blind:
+    // a shallow spread would still share `feed_profile` / `proposals` references
+    // between e1 and e2, so any internal mutation of params would be invisible
+    // to deepStrictEqual (both envelopes would reflect the same mutation).
     const t = 1700000000000;
     const params = {
       feed_id: 'usgs_m4.5_hour',
@@ -289,8 +294,8 @@ describe('emitEnvelope', () => {
       proposals: TREMOR_PROPOSALS,
     };
 
-    const e1 = emitEnvelope({ ...params, now: t });
-    const e2 = emitEnvelope({ ...params, now: t });
+    const e1 = emitEnvelope(structuredClone({ ...params, now: t }));
+    const e2 = emitEnvelope(structuredClone({ ...params, now: t }));
 
     // Full envelope equality — not just timestamp
     assert.deepStrictEqual(e1, e2);
