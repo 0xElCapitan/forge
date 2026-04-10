@@ -167,6 +167,30 @@ describe('score: output structure', () => {
   });
 });
 
+// ─── Unknown template type guard ─────────────────────────────────────────────
+
+describe('score: unknown template type guard', () => {
+  it('throws when an expected template type is not in CORE_PARAMS', () => {
+    // A future template type that hasn't been added to CORE_PARAMS yet.
+    // Without the guard, the empty-scores fallback would silently return 1.0
+    // (trivially perfect) and the gap would be invisible.
+    const fakeSpec = {
+      expected_profile: tremorSpec.expected_profile,
+      expected_templates: [
+        { template: 'mystery_template', params: { some_field: 1 } },
+      ],
+      template_count: 1,
+    };
+    const proposals = [
+      { template: 'mystery_template', params: { some_field: 1 } },
+    ];
+    assert.throws(
+      () => score(proposals, EMPTY_PROFILE, fakeSpec),
+      /Unknown template type 'mystery_template' — add to CORE_PARAMS before scoring/
+    );
+  });
+});
+
 // ─── CORONA: duplicate template matching ─────────────────────────────────────
 
 describe('score: CORONA duplicate threshold_gate matching', () => {

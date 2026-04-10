@@ -47,7 +47,16 @@ const CONTEXT_PARAMS = {
  * @returns {string[]}
  */
 function getScoredFields(templateType, specParams) {
-  const core = CORE_PARAMS[templateType] ?? [];
+  // Guard: an unknown template type would silently return an empty field list,
+  // which combines with the empty-scores fallback in scoreParams to produce a
+  // trivially-perfect score (1.0). Make the gap visible instead of hidden so
+  // future template types are explicitly added to CORE_PARAMS before scoring.
+  if (!(templateType in CORE_PARAMS)) {
+    throw new Error(
+      `Unknown template type '${templateType}' — add to CORE_PARAMS before scoring`
+    );
+  }
+  const core = CORE_PARAMS[templateType];
   const ctx = CONTEXT_PARAMS[templateType] ?? [];
   const ctxPresent = ctx.filter(f => specParams[f] !== undefined && specParams[f] !== null);
   return [...core, ...ctxPresent];
