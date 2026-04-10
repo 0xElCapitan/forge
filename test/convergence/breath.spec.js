@@ -67,7 +67,8 @@ describe(`BREATH convergence — iteration ${ITERATION}`, () => {
 
     assert.ok(result.event_count > 0, 'must produce events from PurpleAir + AirNow fixture');
     assert.ok(typeof scoreResult.total === 'number', 'total score must be a number');
-    assert.ok(scoreResult.total >= 0, 'score must be non-negative');
+    assert.strictEqual(scoreResult.total, 5.5,
+      `BREATH ${result.mode} score must be 5.5/5.5, got ${scoreResult.total}`);
 
     process.stdout.write(JSON.stringify(result) + '\n');
   });
@@ -89,7 +90,8 @@ describe(`BREATH convergence — iteration ${ITERATION}`, () => {
 
     assert.ok(result.event_count > 0, 'anonymized fixture must still produce events');
     assert.ok(typeof scoreResult.total === 'number', 'total score must be a number');
-    assert.ok(scoreResult.total >= 0, 'score must be non-negative');
+    assert.strictEqual(scoreResult.total, 5.5,
+      `BREATH ${result.mode} score must be 5.5/5.5, got ${scoreResult.total}`);
 
     process.stdout.write(JSON.stringify({ ...result, mode: 'anonymized' }) + '\n');
   });

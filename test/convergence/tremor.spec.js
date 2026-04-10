@@ -63,7 +63,8 @@ describe(`TREMOR convergence — iteration ${ITERATION}`, () => {
     // Structural assertions (always true regardless of classifier quality)
     assert.ok(result.event_count > 0, 'must produce at least one event from USGS fixture');
     assert.ok(typeof scoreResult.total === 'number', 'total score must be a number');
-    assert.ok(scoreResult.total >= 0, 'score must be non-negative');
+    assert.strictEqual(scoreResult.total, 7.5,
+      `TREMOR ${result.mode} score must be 7.5/7.5, got ${scoreResult.total}`);
 
     // Emit structured log
     process.stdout.write(JSON.stringify(result) + '\n');
@@ -86,7 +87,8 @@ describe(`TREMOR convergence — iteration ${ITERATION}`, () => {
 
     assert.ok(result.event_count > 0, 'anonymized fixture must still produce events');
     assert.ok(typeof scoreResult.total === 'number', 'total score must be a number');
-    assert.ok(scoreResult.total >= 0, 'score must be non-negative');
+    assert.strictEqual(scoreResult.total, 7.5,
+      `TREMOR ${result.mode} score must be 7.5/7.5, got ${scoreResult.total}`);
 
     process.stdout.write(JSON.stringify({ ...result, mode: 'anonymized' }) + '\n');
   });
