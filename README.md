@@ -77,23 +77,12 @@ FORGE is data-pure. It owns everything up to the **Proposal IR envelope** — cl
 
 It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes. Receipts provide an independent verification path via `forge-verify`.
 
-```mermaid
-graph LR
-    subgraph FORGE
-        F1[feed] --> F2[classify] --> F3[propose] --> F4[emit IR envelope]
-        F4 --> F5[receipt + sign]
-    end
-
-    subgraph Echelon
-        E1[admission gate] --> E2[instantiation] --> E3[resolution] --> E4[RLMF]
-    end
-
-    subgraph Verify
-        V1[receipt + input] --> V2[forge-verify] --> V3{MATCH / MISMATCH}
-    end
-
-    F4 -->|ProposalEnvelope| E1
-    F5 -->|ProposalReceipt| V1
+```
+FORGE    feed → classify → propose → emit envelope → receipt → sign
+                                          │                  │
+Echelon  admission gate → instantiation → resolution → RLMF │
+                                                             │
+Verify   receipt + input → forge-verify → MATCH / MISMATCH ◄┘
 ```
 
 ## Requirements
