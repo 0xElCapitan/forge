@@ -54,30 +54,21 @@ console.log(forge.getCertificates());             // RLMF certificates after res
 
 ## Pipeline
 
-```
-feed (fixture or live)
-    │
-    ▼
-ingestFile() / ingest()     — parse JSON into normalized events
-    │
-    ▼
-classify()                  — characterize statistical properties → FeedProfile
-    │  cadence · distribution · noise · density · thresholds
-    ▼
-selectTemplates()           — match profile against rules → Proposals
-    │
-    ▼
-emitEnvelope()              — versioned ProposalEnvelope (IR spec)
-    │
-    ├──▶ (receipt: true)
-    │    buildReceipt()         — ProposalReceipt with input/output/policy hashes
-    │    signReceipt()          — ed25519 signature (optional)
-    │
-    ▼ (optional)
-ForgeRuntime.instantiate()  — proposals → running theatres
-    │
-    ▼
-ingestBundle() → settle()   — evidence processing → RLMF certificates
+```mermaid
+graph TD
+    A[feed - fixture or live] --> B[ingestFile / ingest\nparse JSON → normalized events]
+    B --> C[classify\ncharacterize statistical properties → FeedProfile\ncadence · distribution · noise · density · thresholds]
+    C --> D[selectTemplates\nmatch profile against rules → Proposals]
+    D --> E[emitEnvelope\nversioned ProposalEnvelope - IR spec]
+    E --> F{receipt: true?}
+    F -->|yes| G[buildReceipt\nProposalReceipt with input/output/policy hashes]
+    G --> H[signReceipt\ned25519 signature - optional]
+    F -->|no| I{instantiate?}
+    H --> I
+    I -->|yes| J[ForgeRuntime.instantiate\nproposals → running theatres]
+    J --> K[ingestBundle → settle\nevidence processing → RLMF certificates]
+    I -->|no| L[done]
+    K --> L
 ```
 
 ## The Seam
@@ -86,10 +77,23 @@ FORGE is data-pure. It owns everything up to the **Proposal IR envelope** — cl
 
 It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes. Receipts provide an independent verification path via `forge-verify`.
 
-```
-FORGE:   feed → classify → propose → emit IR envelope [→ receipt → sign]
-Echelon: admission gate → instantiation → resolution → RLMF
-Verify:  receipt + input → forge-verify → MATCH / MISMATCH
+```mermaid
+graph LR
+    subgraph FORGE
+        F1[feed] --> F2[classify] --> F3[propose] --> F4[emit IR envelope]
+        F4 --> F5[receipt + sign]
+    end
+
+    subgraph Echelon
+        E1[admission gate] --> E2[instantiation] --> E3[resolution] --> E4[RLMF]
+    end
+
+    subgraph Verify
+        V1[receipt + input] --> V2[forge-verify] --> V3{MATCH / MISMATCH}
+    end
+
+    F4 -->|ProposalEnvelope| E1
+    F5 -->|ProposalReceipt| V1
 ```
 
 ## Requirements
@@ -276,12 +280,20 @@ Echelon integration: `forge-verify` maps to a future `echelon-verify forge` subc
 
 ## Trust Tiers
 
-| Tier | Sources | Can Settle? |
-|------|---------|-------------|
-| T0 | EPA AQS, USGS (reviewed), GFZ Kp | ✅ Yes |
-| T1 | AirNow, USGS (automatic), SWPC/NOAA GOES | ✅ Yes (with Brier discount) |
-| T2 | OpenAQ, EMSC | ❌ Corroboration only |
-| T3 | PurpleAir, ThingSpeak | ❌ Signal only — never settles |
+```mermaid
+graph TD
+    T0["T0 — EPA AQS · USGS reviewed · GFZ Kp\n✅ Can Settle"]
+    T1["T1 — AirNow · USGS automatic · SWPC/NOAA GOES\n✅ Can Settle — with Brier discount"]
+    T2["T2 — OpenAQ · EMSC\n❌ Corroboration only"]
+    T3["T3 — PurpleAir · ThingSpeak\n❌ Signal only — never settles"]
+
+    T0 --> T1 --> T2 --> T3
+
+    style T0 fill:#1a3a1a,stroke:#4caf50,color:#fff
+    style T1 fill:#1a3a1a,stroke:#4caf50,color:#fff
+    style T2 fill:#3a2a1a,stroke:#ff9800,color:#fff
+    style T3 fill:#3a1a1a,stroke:#f44336,color:#fff
+```
 
 ## RLMF Certificates
 
