@@ -20,6 +20,7 @@
 
 import { createHash } from 'node:crypto';
 import { computeUsefulness } from '../filter/usefulness.js';
+import { buildReceipt } from '../receipt/receipt-builder.js';
 
 const IR_VERSION    = '0.1.0';
 const FORGE_VERSION = '0.1.0';
@@ -71,7 +72,12 @@ function proposalId(feed_id, template, params) {
  *                   Pass a fixed value to obtain a deterministic envelope (used
  *                   by tests and by any caller that needs envelope-level hash
  *                   stability across identical inputs).
- * @returns {Object} ProposalEnvelope conforming to spec/proposal-ir.json
+ * @param {any}      [opts.rawInput=null] - Pre-ingest payload for receipt input_hash.
+ *                   Only used when `receipt: true`.
+ * @param {boolean}  [opts.receipt=false] - When true, return `{ envelope, receipt }`
+ *                   instead of just the envelope.
+ * @param {Function} [opts.sign=null] - Signing function for receipt (Sprint 5).
+ * @returns {Object} ProposalEnvelope (or { envelope, receipt } when receipt: true)
  */
 export function emitEnvelope({
   feed_id,
@@ -81,6 +87,9 @@ export function emitEnvelope({
   composition     = null,
   score_usefulness = false,
   now             = Date.now(),
+  rawInput        = null,
+  receipt         = false,
+  sign            = null,
 }) {
   const emitted_at = now;
 
@@ -109,7 +118,7 @@ export function emitEnvelope({
     }
   }
 
-  return {
+  const envelope = {
     ir_version:    IR_VERSION,
     forge_version: FORGE_VERSION,
     emitted_at,
@@ -120,6 +129,13 @@ export function emitEnvelope({
     composition:   composition ?? null,
     usefulness_scores,
   };
+
+  if (receipt && rawInput != null) {
+    const receiptObj = buildReceipt({ rawInput, envelope, sign });
+    return { envelope, receipt: receiptObj };
+  }
+
+  return envelope;
 }
 
 /**
