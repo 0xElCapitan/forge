@@ -102,39 +102,89 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 <!-- provenance: DERIVED -->
 FORGE follows a linear pipeline: fixture files flow through an ingester, then a 5-dimension classifier, then a rule-based selector that emits Theatre proposals. A parallel processor layer handles evidence bundle construction and trust enforcement. Feed pairs enter the composer for composed Theatre proposals. All resolved theatres export RLMF certificates.
 
-```
-  fixture file
-       │
-  ┌────▼────────┐
-  │   Ingester  │  generic.js — any structured JSON event stream
-  └────┬────────┘
-       │  events[]
-  ┌────▼────────────────────────────┐
-  │          Classifier             │
-  │  cadence → distribution →       │
-  │  noise → density → thresholds   │  feed-grammar.js orchestrates all 5
-  └────┬────────────────────────────┘
-       │  FeedProfile
-  ┌────▼────────────────┐     ┌──────────────────┐
-  │      Selector       │     │    Composer       │
-  │  13 rules → Proposals│     │  alignFeeds       │
-  │  evaluateRule (×13) │     │  detectCausal     │  two feeds → one proposal
-  └────┬────────────────┘     └──────────────────┘
-       │  Proposal[]
-  ┌────▼──────────┐     ┌─────────────────────┐
-  │   Processor   │     │   Trust / Filter     │
-  │  buildBundle  │     │  getTrustTier        │
-  │  quality →    │     │  canSettle           │
-  │  uncertainty  │     │  computeUsefulness   │
-  │  → settlement │     └─────────────────────┘
-  └────┬──────────┘
-       │
-  ┌────▼──────────┐     ┌─────────────────────┐
-  │     RLMF      │     │     Receipt          │
-  │  exportCert   │     │  canonicalize        │
-  └───────────────┘     │  buildReceipt        │  input hash, output hash,
-                        │  signReceipt         │  policy hash, code identity,
-                        └─────────────────────┘  ed25519 signature
+```mermaid
+flowchart TD
+    input["Fixture / Live Feed"]
+
+    subgraph ingest["Ingester"]
+        generic["generic.js — any structured JSON event stream"]
+    end
+
+    subgraph classify["Classifier"]
+        grammar["feed-grammar.js orchestrates all 5"]
+        cadence["cadence"]
+        distribution["distribution"]
+        noise["noise"]
+        density["density"]
+        thresholds["thresholds"]
+        cadence --> distribution --> noise --> density --> thresholds
+    end
+
+    subgraph select["Selector"]
+        rules["13 rules × evaluateRule"]
+    end
+
+    subgraph compose["Composer"]
+        align["alignFeeds"]
+        causal["detectCausalOrdering"]
+        composed["proposeComposedTheatre"]
+        align --> causal --> composed
+    end
+
+    subgraph emit["IR Emitter"]
+        envelope["emitEnvelope → ProposalEnvelope"]
+    end
+
+    subgraph receipt_layer["Receipt Layer"]
+        direction LR
+        canon["canonicalize"]
+        build_r["buildReceipt"]
+        sign_r["signReceipt"]
+        canon --> build_r --> sign_r
+    end
+
+    subgraph process["Processor"]
+        bundle["buildBundle"]
+        quality["computeQuality"]
+        doubt["computeDoubtPrice"]
+        settle["assignEvidenceClass"]
+        bundle --> quality --> doubt --> settle
+    end
+
+    subgraph trust["Trust / Filter"]
+        tier["getTrustTier · canSettle"]
+        useful["computeUsefulness"]
+    end
+
+    subgraph runtime["ForgeRuntime"]
+        instantiate["instantiate → theatres"]
+        lifecycle["ingestBundle → settle → expire"]
+    end
+
+    subgraph rlmf["RLMF"]
+        cert["exportCertificate"]
+        brier["brierScoreBinary · brierScoreMultiClass"]
+    end
+
+    verify["forge-verify CLI"]
+
+    input --> ingest
+    ingest -- "events[]" --> classify
+    classify -- "FeedProfile" --> select
+    classify -- "FeedProfile (×2)" --> compose
+    select -- "Proposal[]" --> emit
+    compose -- "Proposal" --> emit
+    emit -- "ProposalEnvelope" --> receipt_layer
+    emit -- "receipt: false" --> runtime
+    receipt_layer -- "ProposalReceipt" --> verify
+    trust -. "settlement gate" .-> process
+    runtime --> process
+    process --> rlmf
+
+    style receipt_layer fill:#1a1a2e,stroke:#e94560,color:#fff
+    style verify fill:#1a1a2e,stroke:#e94560,color:#fff
+    style emit fill:#0f3460,stroke:#16213e,color:#fff
+    style trust fill:#533483,stroke:#2b2d42,color:#fff
 ```
 
 Directory structure:
