@@ -41,11 +41,14 @@ const EXIT_ERROR    = 2;
  * @param {Object} opts
  * @param {Object}  opts.receipt     - Parsed ProposalReceipt object
  * @param {any}     opts.inputData   - Raw pre-ingest input data
+ * @param {Object}  [opts.envelope]  - Original ProposalEnvelope for direct hash verification.
+ *   When provided, output_hash is verified by hashing this envelope directly
+ *   (no replay needed). When omitted, falls back to pipeline replay.
  * @param {string}  [opts.keyringPath] - Path to public keyring
  * @param {boolean} [opts.verbose=false]
  * @returns {{ verdict: string, exit_code: number, details: Object }}
  */
-export function verifyReceipt({ receipt, inputData, keyringPath, verbose = false }) {
+export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, keyringPath, verbose = false }) {
   const details = {
     schema: receipt.schema,
     checks: {},
@@ -115,12 +118,26 @@ export function verifyReceipt({ receipt, inputData, keyringPath, verbose = false
     }
   }
 
-  // 5. Replay pipeline
-  //    Use a fixed timestampBase to ensure deterministic ingestion.
-  //    The exact value doesn't matter for hash comparison — what matters is
-  //    that both the original run and the replay use the same one.
-  //    We use emitted_at from the envelope if available via the receipt,
-  //    otherwise a fixed constant.
+  // 5. Verify output hash
+  //    Two modes:
+  //    a) Direct: when the original envelope is provided, hash it and compare
+  //    b) Replay: re-run the pipeline and compare (requires matching feed_id/timestamps)
+  if (originalEnvelope) {
+    // Direct verification — hash the provided envelope
+    const envelopeHash = sha256(canonicalize(originalEnvelope));
+    if (envelopeHash === receipt.output_hash) {
+      details.checks.output_hash = 'pass';
+      details.checks.output_hash_mode = 'direct';
+      return result('MATCH', EXIT_MATCH, details);
+    }
+    details.checks.output_hash = {
+      expected: receipt.output_hash,
+      computed: envelopeHash,
+    };
+    return result('MISMATCH', EXIT_MISMATCH, details, 'Output hash mismatch (direct envelope verification)');
+  }
+
+  // Replay verification — re-run pipeline with fixed timestamps
   const REPLAY_TIMESTAMP_BASE = 1700000000000;
   const events = ingest(inputData, { timestampBase: REPLAY_TIMESTAMP_BASE });
   const profile = classify(events);
@@ -132,12 +149,11 @@ export function verifyReceipt({ receipt, inputData, keyringPath, verbose = false
     now: REPLAY_TIMESTAMP_BASE + 1000,
   });
 
-  // 6. Hash the replayed envelope
   const replayedOutputHash = sha256(canonicalize(envelope));
 
-  // 7. Compare
   if (replayedOutputHash === receipt.output_hash) {
     details.checks.output_hash = 'pass';
+    details.checks.output_hash_mode = 'replay';
     details.replayed_output_hash = replayedOutputHash;
     return result('MATCH', EXIT_MATCH, details);
   }
@@ -165,20 +181,24 @@ function main() {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
-      input:   { type: 'string', short: 'i' },
-      keyring: { type: 'string', short: 'k' },
-      verbose: { type: 'boolean', short: 'v', default: false },
-      help:    { type: 'boolean', short: 'h', default: false },
+      input:    { type: 'string', short: 'i' },
+      envelope: { type: 'string', short: 'e' },
+      keyring:  { type: 'string', short: 'k' },
+      verbose:  { type: 'boolean', short: 'v', default: false },
+      help:     { type: 'boolean', short: 'h', default: false },
     },
   });
 
   if (values.help || positionals.length === 0) {
-    console.log(`Usage: forge-verify <receipt.json> --input <input.json> [--keyring <path>] [--verbose]
+    console.log(`Usage: forge-verify <receipt.json> --input <input.json> [--envelope <envelope.json>] [--keyring <path>] [--verbose]
 
 Exit codes:
-  0  MATCH    Replayed output hash matches receipt
-  1  MISMATCH Replayed output hash differs
-  2  ERROR    Verification could not complete`);
+  0  MATCH    Output hash matches receipt
+  1  MISMATCH Output hash differs
+  2  ERROR    Verification could not complete
+
+When --envelope is provided, output hash is verified directly (no replay).
+When omitted, the pipeline is replayed to produce the output hash.`);
     process.exit(values.help ? 0 : 2);
   }
 
@@ -190,7 +210,7 @@ Exit codes:
     process.exit(EXIT_ERROR);
   }
 
-  let receipt, inputData;
+  let receipt, inputData, envelope;
   try {
     receipt = JSON.parse(readFileSync(receiptPath, 'utf8'));
   } catch (e) {
@@ -205,9 +225,19 @@ Exit codes:
     process.exit(EXIT_ERROR);
   }
 
+  if (values.envelope) {
+    try {
+      envelope = JSON.parse(readFileSync(values.envelope, 'utf8'));
+    } catch (e) {
+      console.error(JSON.stringify({ verdict: 'ERROR', exit_code: 2, reason: `Failed to read envelope: ${e.message}` }));
+      process.exit(EXIT_ERROR);
+    }
+  }
+
   const output = verifyReceipt({
     receipt,
     inputData,
+    envelope,
     keyringPath: values.keyring,
     verbose: values.verbose,
   });
