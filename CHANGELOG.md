@@ -22,7 +22,7 @@ All notable changes to FORGE will be documented in this file.
 ### Changed
 - `emitEnvelope()` now returns `{ envelope, receipt }` when called with `receipt: true` and `rawInput`.
 - `ingest()` accepts `timestampBase` option for reproducible timestamps.
-- Total test count: 599 → 699 (690 unit + 9 integration).
+- Total test count: 599 → 699 (684 unit + 6 convergence + 9 integration).
 
 ## [0.2.4] - 2026-03-28
 

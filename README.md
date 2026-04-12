@@ -106,7 +106,7 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (690 tests)
+# Unit tests (684 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
