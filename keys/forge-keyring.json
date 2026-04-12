@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "keys": [
+    {
+      "key_id": "forge-test-001",
+      "algorithm": "ed25519",
+      "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA0ZrtrPqiWvocp6Pm3yNtZ1Mh5L7Oe7xba1Twg8w3aig=\n-----END PUBLIC KEY-----",
+      "added": "2026-04-11",
+      "environment": "test"
+    }
+  ]
+}
