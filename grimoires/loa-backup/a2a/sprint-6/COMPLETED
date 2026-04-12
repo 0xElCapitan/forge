@@ -1,7 +1,0 @@
-Sprint 6 — Selector Convergence
-Completed: 2026-03-20
-Auditor verdict: APPROVED - LETS FUCKING GO
-Score at completion: 20.0/20.5 (true ceiling — TREMOR regime_shift spec has all-null params)
-Tests: 302 unit + 6 convergence = 308 total, all passing
-False positives: 0 across all six convergence iterations
-Rules: 13 total (TREMOR×5, CORONA×5, BREATH×3)
