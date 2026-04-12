@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "forge-receipt/v0",
+  "title": "ProposalReceipt v0",
+  "description": "Signed receipt proving a FORGE proposal envelope was produced from a specific input under a specific policy and code version.",
+  "type": "object",
+  "required": [
+    "schema",
+    "input_hash",
+    "input_canonicalization",
+    "code_version",
+    "policy_hash",
+    "rule_set_hash",
+    "output_hash",
+    "computed_at",
+    "signer",
+    "key_id",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "forge-receipt/v0",
+      "description": "Schema version identifier"
+    },
+    "input_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the canonicalized raw pre-ingest input"
+    },
+    "input_canonicalization": {
+      "type": "string",
+      "const": "jcs-subset/v0",
+      "description": "Canonicalization algorithm used for input hashing"
+    },
+    "code_version": {
+      "type": "object",
+      "required": ["git_sha", "package_lock_sha", "node_version"],
+      "properties": {
+        "git_sha": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Git commit SHA at build time (null if not in git repo)"
+        },
+        "package_lock_sha": {
+          "type": "null",
+          "description": "Reserved for future dependency fingerprinting (null at v0)"
+        },
+        "node_version": {
+          "type": "string",
+          "description": "Node.js version without 'v' prefix (e.g., '20.11.1')"
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of all policy inputs (rules + regulatory data)"
+    },
+    "rule_set_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the canonicalized RULES array"
+    },
+    "policy_version_tag": {
+      "type": ["string", "null"],
+      "description": "Human-readable policy version tag (e.g., 'forge-policy/v0.1.0')"
+    },
+    "output_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the canonicalized proposal envelope"
+    },
+    "computed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of receipt generation (metadata, not in signed payload)"
+    },
+    "http_transcript_receipts": {
+      "type": "null",
+      "description": "Reserved for chain-of-custody HTTP transcript receipts (null at v0)"
+    },
+    "signer": {
+      "type": "string",
+      "description": "Signer identity (e.g., 'forge-production', 'forge-test')"
+    },
+    "key_id": {
+      "type": ["string", "null"],
+      "description": "Key identifier from the keyring (null if unsigned)"
+    },
+    "signature": {
+      "type": ["string", "null"],
+      "description": "ed25519 signature of the canonical signed payload (null if unsigned, 'ed25519:' prefixed when signed)"
+    }
+  },
+  "additionalProperties": false
+}

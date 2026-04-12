@@ -24,7 +24,9 @@
  * @module index
  */
 
+import { readFileSync }    from 'node:fs';
 import { ingestFile }      from './ingester/generic.js';
+import { ingest }          from './ingester/generic.js';
 import { classify }        from './classifier/feed-grammar.js';
 import { selectTemplates } from './selector/template-selector.js';
 import { emitEnvelope }    from './ir/emit.js';
@@ -74,6 +76,10 @@ export class ForgeConstruct {
    * @param {boolean} [options.instantiate=false] - Create running theatres from proposals
    * @param {boolean} [options.score_usefulness=false] - Run economic filter
    * @param {Object} [options.source_metadata]  - Source provenance for IR envelope
+   * @param {boolean} [options.receipt=false]    - When true, generate a ProposalReceipt
+   * @param {number}  [options.timestampBase=null] - Fixed timestamp base for deterministic ingestion
+   * @param {number}  [options.now]              - Fixed wall-clock for emitEnvelope (deterministic envelope)
+   * @param {Function} [options.sign]            - Signing function for receipt
    * @returns {Promise<ForgeResult>}
    */
   async analyze(fixturePath, options = {}) {
@@ -82,19 +88,39 @@ export class ForgeConstruct {
       instantiate      = false,
       score_usefulness = false,
       source_metadata  = null,
+      receipt          = false,
+      timestampBase    = null,
+      now              = undefined,
+      sign             = null,
     } = options;
 
-    const events       = ingestFile(fixturePath);
+    // Read raw input before ingestion when receipt is requested
+    const rawInput = receipt ? JSON.parse(readFileSync(fixturePath, 'utf8')) : null;
+
+    const events       = timestampBase != null
+      ? ingest(rawInput ?? JSON.parse(readFileSync(fixturePath, 'utf8')), { timestampBase })
+      : ingestFile(fixturePath);
     const feed_profile = classify(events);
     const proposals    = selectTemplates(feed_profile);
 
-    const envelope = emitEnvelope({
+    const emitOpts = {
       feed_id,
       feed_profile,
       proposals,
       source_metadata,
       score_usefulness,
-    });
+    };
+    if (now !== undefined) emitOpts.now = now;
+    if (receipt && rawInput != null) {
+      emitOpts.rawInput = rawInput;
+      emitOpts.receipt = true;
+      emitOpts.sign = sign;
+    }
+
+    const emitResult = emitEnvelope(emitOpts);
+
+    // When receipt mode, emitEnvelope returns { envelope, receipt }
+    const envelope = receipt ? emitResult.envelope : emitResult;
 
     const log = {
       fixture:            fixturePath,
@@ -104,6 +130,9 @@ export class ForgeConstruct {
     };
 
     const result = { feed_profile, proposals, envelope, log };
+    if (receipt) {
+      result.receipt = emitResult.receipt;
+    }
 
     // Optionally instantiate theatres
     if (instantiate) {
