@@ -1,9 +1,210 @@
+# FORGE project-specific
 .claude/.skills-disabled/
 grimoires/pub/FORGE_USEFULNESS_FINDINGS.md
 grimoires/pub/FORGE/FORGE_LEARNINGS_updated2.md
 grimoires/pub/FORGE/FORGE_THESIS_updated2.md
+
+# Key material — prevent accidental commits (cycle-028 FR-1)
+tests/fixtures/*.pem
+tests/fixtures/*.key
+
+# Dependencies
 node_modules/
-grimoires/loa/context/FORGE/
-grimoires/loa/context/FORGE/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+*.log
+
+# Production builds
+build/
+dist/
+out/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and Editor
+.vscode/
+.idea/
+
+# Claude Code config (local workspace settings, prompts, scratchpad)
+.claude/config/
+
+# GPT review context (dynamically generated based on config)
+.claude/context/gpt-review-active.md
+
+# Local settings overrides (user-specific feedback trace configuration)
+# Contains opt-in trace collection settings - never commit to repository
+.claude/settings.local.json
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Package manager
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Skill backup files (local-only rollback safety net)
+# Use git tags for rollback reference instead of committed .bak files
+.claude/skills/**/*.bak*
+
+# Loa Framework State (Legacy - v0.14.0 and earlier)
+.loa-setup-complete
+
+# Run Mode state (v0.18.0)
+.run/
+
+# Framework migration/eject backups
+.claude.backup.*
+
+# Loa Memory Stack persistent state
+.loa-state/
+
+# User context files (discovery inputs, uploaded docs, extracted content)
+grimoires/loa/context/*
+!grimoires/loa/context/README.md
+
+# ck semantic search state
+.ck/
+
+# Agent trajectory logs
+grimoires/loa/a2a/trajectory/*.jsonl
+
+# Pending feedback
+grimoires/loa/analytics/pending-feedback.json
+
+# Permission audit log
+grimoires/loa/analytics/permission-requests.jsonl
+
+# Server audit reports
+grimoires/loa/deployment/SERVER-REALITY-AUDIT.md
+
+# Memory schema files
+grimoires/loa/memory/*
+!grimoires/loa/memory/README.md
+
+# =============================================================================
+# LOA TEMPLATE EXCLUSIONS
+# =============================================================================
+
+# Generated documentation artifacts
+grimoires/loa/prd*.md
+grimoires/loa/sdd*.md
+grimoires/loa/sprint*.md
+grimoires/loa/NOTES.md
+grimoires/loa/BEAUVOIR.md
+grimoires/loa/SOUL.md
+grimoires/loa/decisions.yaml
+
+# User config
+.loa.config.yaml
+!evals/fixtures/**/.loa.config.yaml
+
+# Sprint Ledger
+grimoires/loa/ledger.json
+grimoires/loa/ledger.json.bak
+
+# Archived development cycles
+grimoires/loa/archive/
+
+# Agent-to-Agent communication
+grimoires/loa/a2a/*
+!grimoires/loa/a2a/README.md
+!grimoires/loa/a2a/trajectory/
+grimoires/loa/a2a/trajectory/*
+!grimoires/loa/a2a/trajectory/README.md
+!grimoires/loa/a2a/compound/
+grimoires/loa/a2a/compound/*.json
+grimoires/loa/a2a/compound/review-markers/*
+!grimoires/loa/a2a/compound/.gitkeep
+!grimoires/loa/a2a/compound/review-markers/.gitkeep
+
+# Deployment artifacts
+grimoires/loa/deployment/*
+!grimoires/loa/deployment/README.md
+
+# Reality extraction
+grimoires/loa/reality/*
+!grimoires/loa/reality/README.md
+
+# Analytics
+grimoires/loa/analytics/*
+!grimoires/loa/analytics/README.md
+
+# Research files
+grimoires/loa/research/*
+!grimoires/loa/research/README.md
+
+# Ground truth
+grimoires/loa/ground-truth/*
+!grimoires/loa/ground-truth/README.md
+
+# Vision registry
+grimoires/loa/visions/entries/*
+!grimoires/loa/visions/entries/.gitkeep
+grimoires/loa/visions/index.md
+
+# Feedback files
+grimoires/loa/feedback/*
+!grimoires/loa/feedback/README.md
+
+# Invariants
+grimoires/loa/invariants.yaml
+
+# Public grimoires
+grimoires/pub/**/*
+!grimoires/pub/**/README.md
+!grimoires/pub/research/
+grimoires/pub/research/*
+!grimoires/pub/research/README.md
+!grimoires/pub/research/*.md
+
+# =============================================================================
+# LOA CONSTRUCTS
+# =============================================================================
+.claude/constructs/
+
+# Development-specific docs
+docs/planning/
+docs/proposals/
+docs/research/
+docs/mockups/
+docs/screenshots/
+
+# =============================================================================
+# PROJECT-SPECIFIC EXCLUSIONS
+# =============================================================================
+.beads/
+
+# Eval results
+evals/results/*
+!evals/results/.gitkeep
+
+# Application artifacts (app/)
+app/src/
+app/tests/
+app/config/
+app/package.json
+app/package-lock.json
+app/tsconfig.json
+app/ecosystem.config.js
+
+# Claude worktrees
 .claude/worktrees/
-grimoires/loa/
