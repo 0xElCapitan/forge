@@ -164,9 +164,10 @@ function stripSourceIdentifiers(v) {
 /**
  * Parse GeoJSON FeatureCollection.
  * @param {Object} data
+ * @param {number|null} [timestampBase] - If provided, used as deterministic fallback base
  * @returns {NormalizedEvent[]}
  */
-function parseGeoJSON(data) {
+function parseGeoJSON(data, timestampBase = null) {
   const features = data.features;
   if (features.length === 0) return [];
 
@@ -176,12 +177,12 @@ function parseGeoJSON(data) {
   const tsField = tsResult?.fieldPath ?? null;
   const valueField = findValueField(leafMaps, tsField);
 
-  return features.map(f => {
+  return features.map((f, i) => {
     const leaves = collectLeaves(f);
 
     // Timestamp
     const tsEntry = findTimestampField(leaves);
-    const timestamp = tsEntry?.epochMs ?? Date.now();
+    const timestamp = tsEntry?.epochMs ?? (timestampBase != null ? timestampBase + i : Date.now());
 
     // Value
     const value = valueField ? (leaves[valueField] ?? 0) : 0;
@@ -206,9 +207,10 @@ function parseGeoJSON(data) {
 /**
  * Parse array of objects (e.g. SWPC X-ray, AirNow).
  * @param {Object[]} data
+ * @param {number|null} [timestampBase] - If provided, used as deterministic fallback base
  * @returns {NormalizedEvent[]}
  */
-function parseArrayOfObjects(data) {
+function parseArrayOfObjects(data, timestampBase = null) {
   if (data.length === 0) return [];
 
   const leafMaps = data.map(item => collectLeaves(item));
@@ -220,7 +222,7 @@ function parseArrayOfObjects(data) {
   return data.map((item, i) => {
     const leaves = collectLeaves(item);
     const tsEntry = findTimestampField(leaves);
-    const timestamp = tsEntry?.epochMs ?? (Date.now() + i);
+    const timestamp = tsEntry?.epochMs ?? (timestampBase != null ? timestampBase + i : Date.now() + i);
     const value = valueField ? (leaves[valueField] ?? 0) : 0;
 
     const coordMeta = coordResult
@@ -243,9 +245,10 @@ function parseArrayOfObjects(data) {
  * First row may be headers (strings) or data (numbers/dates).
  * @param {any[][]} data
  * @param {string[]|null} [headers] - Optional external header array
+ * @param {number|null} [timestampBase] - If provided, used as deterministic fallback base
  * @returns {NormalizedEvent[]}
  */
-function parseArrayOfArrays(data, headers = null) {
+function parseArrayOfArrays(data, headers = null, timestampBase = null) {
   if (data.length === 0) return [];
 
   let dataRows = data;
@@ -314,7 +317,7 @@ function parseArrayOfArrays(data, headers = null) {
 
   return dataRows.map((row, i) => {
     const tsVal = tsCol >= 0 ? tryTimestamp(row[tsCol]) : null;
-    const timestamp = tsVal ?? (Date.now() + i);
+    const timestamp = tsVal ?? (timestampBase != null ? timestampBase + i : Date.now() + i);
     const value = valueCol >= 0 ? (row[valueCol] ?? 0) : 0;
 
     return {
@@ -332,9 +335,10 @@ function parseArrayOfArrays(data, headers = null) {
  * Parse a combined object (e.g. swpc-goes-xray.json, donki-flr-cme.json).
  * Each top-level array-valued key is parsed as its own sub-stream.
  * @param {Object} data
+ * @param {number|null} [timestampBase] - If provided, used as deterministic fallback base
  * @returns {NormalizedEvent[]}
  */
-function parseCombinedObject(data) {
+function parseCombinedObject(data, timestampBase = null) {
   const allEvents = [];
 
   for (const [streamKey, streamData] of Object.entries(data)) {
@@ -349,12 +353,12 @@ function parseCombinedObject(data) {
       }
       const shape = Array.isArray(firstItem) ? 'array_of_arrays' : 'array_of_objects';
       events = shape === 'array_of_arrays'
-        ? parseArrayOfArrays(streamData)
-        : parseArrayOfObjects(streamData);
+        ? parseArrayOfArrays(streamData, null, timestampBase)
+        : parseArrayOfObjects(streamData, timestampBase);
     } else if (streamData && typeof streamData === 'object') {
       // Nested object — recurse via ingest() to handle PurpleAir-style sub-objects
       // (e.g. { api_version, fields, data: [[...]] })
-      events = ingest(streamData);
+      events = ingest(streamData, { timestampBase });
     } else {
       continue;
     }
@@ -401,14 +405,18 @@ function isPurpleAirShape(data) {
  * Uses structural heuristics only — no field names.
  *
  * @param {any} rawData - Parsed JSON (any shape)
+ * @param {Object} [opts]
+ * @param {number|null} [opts.timestampBase] - If provided, events without parseable
+ *   timestamps use `timestampBase + index` instead of `Date.now()`. Pass a fixed
+ *   value to obtain deterministic output across repeated calls.
  * @returns {NormalizedEvent[]}
  */
-export function ingest(rawData) {
+export function ingest(rawData, { timestampBase = null } = {}) {
   // PurpleAir: {fields: [...], data: [[...], ...]}
   if (isPurpleAirShape(rawData)) {
     // Treat data as array-of-arrays with external header from fields key
     // But to keep no source field names in metadata, we use positional detection
-    const events = parseArrayOfArrays(rawData.data);
+    const events = parseArrayOfArrays(rawData.data, null, timestampBase);
     // Annotate with sensor count (number of rows = sensor reading count)
     for (const ev of events) {
       ev.metadata.sensor_count = rawData.data.length;
@@ -421,7 +429,7 @@ export function ingest(rawData) {
   // so we also scan for any object-valued entry whose value is "FeatureCollection"
   // paired with an array field whose items have geometry-like structure.
   if (rawData?.type === 'FeatureCollection' && Array.isArray(rawData.features)) {
-    return parseGeoJSON(rawData);
+    return parseGeoJSON(rawData, timestampBase);
   }
   if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
     // Try to detect anonymized GeoJSON: one field = "FeatureCollection", one field = large object array
@@ -429,15 +437,15 @@ export function ingest(rawData) {
     const typeEntry = entries.find(([, v]) => v === 'FeatureCollection');
     const featuresEntry = entries.find(([, v]) => Array.isArray(v) && v.length > 0 && typeof v[0] === 'object');
     if (typeEntry && featuresEntry) {
-      return parseGeoJSON({ type: 'FeatureCollection', features: featuresEntry[1] });
+      return parseGeoJSON({ type: 'FeatureCollection', features: featuresEntry[1] }, timestampBase);
     }
   }
 
   // Array root
   if (Array.isArray(rawData)) {
     if (rawData.length === 0) return [];
-    if (Array.isArray(rawData[0])) return parseArrayOfArrays(rawData);
-    return parseArrayOfObjects(rawData);
+    if (Array.isArray(rawData[0])) return parseArrayOfArrays(rawData, null, timestampBase);
+    return parseArrayOfObjects(rawData, timestampBase);
   }
 
   // Combined object (multiple streams)
@@ -449,9 +457,9 @@ export function ingest(rawData) {
       v !== null && typeof v === 'object' && !Array.isArray(v));
     if (arrayKeys.length === 1 && objectKeys.length === 0) {
       const [, arr] = arrayKeys[0];
-      return ingest(arr); // Recurse on the single array
+      return ingest(arr, { timestampBase }); // Recurse on the single array
     }
-    return parseCombinedObject(rawData);
+    return parseCombinedObject(rawData, timestampBase);
   }
 
   return [];
@@ -460,21 +468,24 @@ export function ingest(rawData) {
 /**
  * Ingest a fixture file by path.
  * @param {string} filePath
+ * @param {Object} [opts]
+ * @param {number|null} [opts.timestampBase] - If provided, events without parseable
+ *   timestamps use `timestampBase + index` instead of `Date.now()`.
  * @returns {NormalizedEvent[]}
  */
-export function ingestFile(filePath) {
+export function ingestFile(filePath, { timestampBase = null } = {}) {
   const { events, shape } = createReplay(filePath);
 
   if (shape === 'geojson_feature_collection') {
     // events are already features — parse as GeoJSON
-    return parseGeoJSON({ type: 'FeatureCollection', features: events });
+    return parseGeoJSON({ type: 'FeatureCollection', features: events }, timestampBase);
   }
   if (shape === 'combined_object') {
     // events are {_stream, _data} — re-parse original file
     const raw = readFileSync(filePath, 'utf8');
-    return ingest(JSON.parse(raw));
+    return ingest(JSON.parse(raw), { timestampBase });
   }
 
   // array_of_objects or array_of_arrays
-  return ingest(events);
+  return ingest(events, { timestampBase });
 }
