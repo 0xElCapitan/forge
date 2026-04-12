@@ -1,7 +1,7 @@
 {
   "name": "forge",
-  "version": "0.1.1",
-  "description": "Feed-Adaptive Oracle & Runtime Generator for Echelon",
+  "version": "0.3.0",
+  "description": "Feed-Adaptive Oracle & Runtime Generator for Echelon — with ProposalReceipt signing and forge-verify",
   "type": "module",
   "engines": {
     "node": ">=20.0.0"

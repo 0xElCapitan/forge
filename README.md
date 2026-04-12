@@ -6,7 +6,9 @@ FORGE is Echelon's automatic Theatre Factory — the feed-native supply side tha
 
 > The Uniswap factory for prediction surfaces.
 
-FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 599 tests, zero external dependencies.
+FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 699 tests, zero external dependencies.
+
+v0.3.0 adds **ProposalReceipt v0** — a signed, independently verifiable proof that a given proposal envelope was produced from a specific input under a specific policy and code version. Ed25519 signing, JCS-subset canonicalization, and the `forge-verify` replay verifier CLI.
 
 ---
 
@@ -25,6 +27,17 @@ const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
 
 console.log(result.envelope);   // Versioned ProposalEnvelope (spec/proposal-ir.json)
 console.log(result.proposals);  // Raw proposals array
+
+// With ProposalReceipt — signed proof of deterministic output
+const signed = await forge.analyze('fixtures/usgs-m4.5-day.json', {
+  feed_id: 'usgs_m4.5_day',
+  source_metadata: { source_id: 'usgs_automatic', trust_tier: 'T1', domain: 'seismic' },
+  receipt: true,
+  sign: mySigningFunction,      // ed25519 signer (or omit for unsigned)
+});
+
+console.log(signed.envelope);   // ProposalEnvelope (same as above)
+console.log(signed.receipt);    // ProposalReceipt (spec/receipt-v0.json)
 
 // With theatre lifecycle — instantiate running theatres from proposals
 const live = await forge.analyze('fixtures/usgs-m4.5-day.json', {
@@ -54,6 +67,10 @@ selectTemplates()           — match profile against rules → Proposals
     ▼
 emitEnvelope()              — versioned ProposalEnvelope (IR spec)
     │
+    ├──▶ (receipt: true)
+    │    buildReceipt()         — ProposalReceipt with input/output/policy hashes
+    │    signReceipt()          — ed25519 signature (optional)
+    │
     ▼ (optional)
 ForgeRuntime.instantiate()  — proposals → running theatres
     │
@@ -63,13 +80,14 @@ ingestBundle() → settle()   — evidence processing → RLMF certificates
 
 ## The Seam
 
-FORGE is data-pure. It owns everything up to the **Proposal IR envelope** — classification, template selection, evidence bundle assembly, theatre lifecycle, and RLMF certificate export.
+FORGE is data-pure. It owns everything up to the **Proposal IR envelope** — classification, template selection, evidence bundle assembly, theatre lifecycle, RLMF certificate export, and (optionally) ProposalReceipt generation with ed25519 signing.
 
-It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes.
+It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes. Receipts provide an independent verification path via `forge-verify`.
 
 ```
-FORGE:   feed → classify → propose → emit IR envelope
+FORGE:   feed → classify → propose → emit IR envelope [→ receipt → sign]
 Echelon: admission gate → instantiation → resolution → RLMF
+Verify:  receipt + input → forge-verify → MATCH / MISMATCH
 ```
 
 ## Requirements
@@ -88,13 +106,13 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (593 tests)
+# Unit tests (690 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (599 tests)
+# Everything (699 tests — unit + convergence + integration)
 npm run test:all
 ```
 
@@ -113,10 +131,12 @@ npm run test:all
 | `src/composer/` | Temporal feed alignment and causal ordering |
 | `src/replay/` | Deterministic replay for convergence testing |
 | `src/ir/` | Proposal IR envelope emitter — the Echelon integration boundary |
+| `src/receipt/` | ProposalReceipt — canonicalization, hashing, signing, verification |
 | `src/runtime/` | ForgeRuntime — theatre lifecycle orchestrator |
 | `src/adapter/` | Live feed adapters (USGS seismic) |
 | `src/theatres/` | Theatre templates — threshold_gate, cascade, divergence, regime_shift, anomaly, persistence |
-| `spec/` | Proposal IR JSON Schema + construct spec |
+| `bin/` | `forge-verify` — independent replay verifier CLI |
+| `spec/` | Proposal IR JSON Schema, Receipt v0 schema, construct spec |
 
 ## Granular Exports
 
@@ -171,6 +191,15 @@ import {
   // Adapter
   USGSLiveAdapter, classifyUSGSFeed,
 } from './src/index.js';
+
+// Receipt internals (not re-exported — used via analyze({ receipt: true }) or forge-verify)
+import { canonicalize }     from './src/receipt/canonicalize.js';
+import { sha256 }           from './src/receipt/hash.js';
+import { buildReceipt }     from './src/receipt/receipt-builder.js';
+import { signReceipt, verifySignature } from './src/receipt/sign.js';
+import { loadKeyring, getPublicKey }    from './src/receipt/keyring.js';
+import { getCodeIdentity }  from './src/receipt/code-identity.js';
+import { computePolicyHash } from './src/receipt/policy-hasher.js';
 ```
 
 ## Proposal IR
@@ -193,6 +222,55 @@ const envelope = emitEnvelope({
 // envelope.proposals[0].brier_type  → 'binary' | 'multi_class'
 // envelope.usefulness_scores        → { '0': 0.82, '1': 0.71, ... }
 ```
+
+## ProposalReceipt
+
+A ProposalReceipt is a signed proof that a specific ProposalEnvelope was produced from a specific input, under a specific policy configuration and code version. It enables independent verification without trusting the FORGE operator.
+
+```js
+const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
+  feed_id: 'usgs_m4.5_day',
+  source_metadata: { source_id: 'usgs_automatic', trust_tier: 'T1', domain: 'seismic' },
+  receipt: true,
+  timestampBase: 1700000000000,  // deterministic ingestion
+  now: 1700000000000,            // deterministic envelope timestamp
+  sign: mySigningFunction,       // ed25519 — see docs/key-management.md
+});
+
+// result.receipt:
+// {
+//   schema: 'forge-receipt/v0',
+//   input_hash: 'sha256:abc...',        // hash of canonicalized raw input
+//   code_version: '0.1.0',              // FORGE version at build time
+//   policy_hash: 'sha256:def...',       // hash of rules + regulatory tables
+//   output_hash: 'sha256:789...',       // hash of canonicalized envelope
+//   signer: 'forge-production',
+//   key_id: 'forge-production-001',
+//   signature: 'ed25519:...',           // base64 ed25519 signature
+//   computed_at: '2023-11-14T...',
+// }
+```
+
+Receipt schema: `spec/receipt-v0.json`. Canonicalization: JCS-subset/v0 (see `docs/canonicalization.md`). Key management: `docs/key-management.md`. Retention: `docs/retention-policy.md`.
+
+## forge-verify
+
+Independent replay verifier CLI. Re-runs the FORGE pipeline on the original input and compares the output hash against the receipt.
+
+```bash
+# Verify a receipt against its original input
+node bin/forge-verify.js receipt.json --input input.json
+
+# Verbose mode — shows intermediate hashes
+node bin/forge-verify.js receipt.json --input input.json --verbose
+
+# Direct envelope verification (no receipt file needed)
+node bin/forge-verify.js --envelope envelope.json --input input.json
+```
+
+Exit codes: `0` = MATCH, `1` = MISMATCH, `2` = ERROR.
+
+Echelon integration: `forge-verify` maps to a future `echelon-verify forge` subcommand at the admission gate. See `docs/echelon-integration.md`.
 
 ## Trust Tiers
 
@@ -254,6 +332,15 @@ Real `forge.analyze()` IR output for each backing spec, used by Echelon's bridge
 | `fixtures/forge-snapshots-tremor.json` | Seismic | 5 proposals |
 | `fixtures/forge-snapshots-corona.json` | Space weather | 5 proposals |
 | `fixtures/forge-snapshots-breath.json` | Air quality | 1 proposal |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| `docs/canonicalization.md` | JCS-subset/v0 canonical JSON spec |
+| `docs/key-management.md` | Ed25519 key format, rotation, environment variables |
+| `docs/retention-policy.md` | 90-day retention window, git-retained vs caller-retained |
+| `docs/echelon-integration.md` | Admission gate integration path for receipts |
 
 ## License
 

@@ -2,6 +2,28 @@
 
 All notable changes to FORGE will be documented in this file.
 
+## [0.3.0] - 2026-04-11
+
+### Added
+- **ProposalReceipt v0** — signed, independently verifiable proof that a proposal envelope was produced from a specific input under a specific policy and code version. Schema: `spec/receipt-v0.json`.
+- `forge-verify` CLI (`bin/forge-verify.js`) — independent replay verifier. Re-runs the FORGE pipeline on original input and compares output hash against receipt. Exit codes: 0=MATCH, 1=MISMATCH, 2=ERROR.
+- JCS-subset/v0 canonical JSON serializer (`src/receipt/canonicalize.js`) — deterministic key ordering, type-safe value encoding.
+- Ed25519 signing and verification (`src/receipt/sign.js`) — fail-closed design, `ed25519:` prefixed base64 signatures.
+- Keyring management (`src/receipt/keyring.js`, `keys/forge-keyring.json`) — key loading, rotation support, environment variable overrides (`FORGE_SIGNING_KEY`, `FORGE_KEY_ID`).
+- Policy hashing (`src/receipt/policy-hasher.js`) — hashes active rule set and regulatory tables for receipt `policy_hash` field.
+- Code identity (`src/receipt/code-identity.js`) — embeds FORGE version in receipt for reproducibility.
+- SHA-256 hash utility (`src/receipt/hash.js`) — `sha256:` prefixed hashes for all receipt fields.
+- `ForgeConstruct.analyze()` now accepts `receipt: true` option — returns `{ envelope, receipt }` with optional `sign` function and `timestampBase`/`now` for deterministic output.
+- `timestampBase` option in ingester for deterministic ingestion timestamps.
+- 9 integration tests (`test/integration/receipt-pipeline.spec.js`) — TREMOR/CORONA/BREATH round-trip receipt verification.
+- 91 unit tests across 7 new test files (canonicalize, hash, code-identity, policy-hasher, receipt-builder, sign, forge-verify, determinism-gate).
+- Documentation: `docs/canonicalization.md`, `docs/key-management.md`, `docs/retention-policy.md`, `docs/echelon-integration.md`.
+
+### Changed
+- `emitEnvelope()` now returns `{ envelope, receipt }` when called with `receipt: true` and `rawInput`.
+- `ingest()` accepts `timestampBase` option for reproducible timestamps.
+- Total test count: 599 → 699 (690 unit + 9 integration).
+
 ## [0.2.4] - 2026-03-28
 
 ### Security

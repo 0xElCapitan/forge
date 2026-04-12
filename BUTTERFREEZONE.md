@@ -5,8 +5,9 @@ purpose: >
   Feed-adaptive oracle factory for the Echelon prediction market framework.
   Classifies any structured event feed across five grammar dimensions (cadence,
   distribution, noise, density, thresholds), selects Theatre templates via
-  rule-based matching, proposes composed theatres from feed pairs, and exports
-  Brier-scored RLMF certificates. The Uniswap factory for prediction surfaces.
+  rule-based matching, proposes composed theatres from feed pairs, exports
+  Brier-scored RLMF certificates, and generates signed ProposalReceipts with
+  ed25519 verification via the forge-verify CLI. The Uniswap factory for prediction surfaces.
 key_files:
   - README.md
   - src/index.js
@@ -14,7 +15,11 @@ key_files:
   - src/selector/rules.js
   - src/selector/template-selector.js
   - src/composer/compose.js
+  - src/receipt/receipt-builder.js
+  - src/receipt/sign.js
+  - bin/forge-verify.js
   - spec/construct.json
+  - spec/receipt-v0.json
 interfaces:
   core:
     - ForgeConstruct        # src/index.js:37
@@ -31,6 +36,13 @@ interfaces:
     - regime_shift          # src/theatres/regime-shift.js
     - anomaly               # src/theatres/anomaly.js
     - persistence           # src/theatres/persistence.js
+  receipts:
+    - buildReceipt          # src/receipt/receipt-builder.js:24
+    - signReceipt           # src/receipt/sign.js
+    - verifySignature       # src/receipt/sign.js
+    - canonicalize          # src/receipt/canonicalize.js
+    - loadKeyring           # src/receipt/keyring.js
+    - forge-verify (CLI)    # bin/forge-verify.js
   oracles:
     - oracle-trust (T0-T3)  # src/trust/oracle-trust.js:61
 dependencies: []
@@ -45,7 +57,7 @@ ecosystem:
     protocol: echelon-theatres@0.1.0
 capability_requirements:
   - filesystem: read (scope: fixture files)
-version: v0.1.0
+version: v0.3.0
 installation_mode: standalone
 trust_level: L1-local
 -->
@@ -53,7 +65,7 @@ trust_level: L1-local
 # FORGE
 
 <!-- provenance: OPERATIONAL -->
-FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre Factory — the feed-native supply side that turns any structured event stream into prediction market proposals without human curation. It classifies feeds across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, and exports Brier-scored RLMF training certificates. FORGE is not one of many possible Theatre Factory inputs — it is the specific component that makes the factory automatic, covering domains where statistical structure in live data is the only reliable signal. The Uniswap factory for prediction surfaces.
+FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre Factory — the feed-native supply side that turns any structured event stream into prediction market proposals without human curation. It classifies feeds across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, exports Brier-scored RLMF training certificates, and generates signed ProposalReceipts that prove a specific envelope was produced from a specific input under a specific policy and code version. Receipts are independently verifiable via the `forge-verify` CLI. FORGE is not one of many possible Theatre Factory inputs — it is the specific component that makes the factory automatic, covering domains where statistical structure in live data is the only reliable signal. The Uniswap factory for prediction surfaces.
 
 ## Key Capabilities
 <!-- provenance: CODE-FACTUAL -->
@@ -76,7 +88,15 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **getTrustTier** / **canSettle** / **validateSettlement** — T0–T3 oracle trust enforcement. `canSettle` returns true only for T0/T1. PurpleAir (T3) enforced as non-settling source. (`src/trust/oracle-trust.js:61`)
 - **exportCertificate** — RLMF training certificate export with Brier score, position history, and calibration bucket. Supports binary and multi-class scoring. (`src/rlmf/certificates.js:91`)
 - **createReplay** — Deterministic replay of a recorded feed session. Loads a fixture, replays events with configurable speed, and produces reproducible pipeline output. (`src/replay/deterministic.js:84`)
-- **ForgeConstruct** — Top-level construct class. `.analyze(fixturePath)` runs the full pipeline (ingest → classify → select). `.getCertificates()` returns accumulated RLMF state (defensive copy). (`src/index.js:37`)
+- **buildReceipt** — Orchestrates receipt construction: canonicalizes raw input, computes input/output/policy hashes, assembles code identity, and optionally signs. Returns a ProposalReceipt conforming to `spec/receipt-v0.json`. (`src/receipt/receipt-builder.js:24`)
+- **canonicalize** — JCS-subset/v0 canonical JSON serializer. Deterministic key ordering, type-safe value encoding (no `undefined`, `NaN`, `Infinity`). (`src/receipt/canonicalize.js`)
+- **sha256** — SHA-256 hash with `sha256:` prefix for receipt fields. (`src/receipt/hash.js`)
+- **signReceipt** / **verifySignature** — Ed25519 signing and verification. Fail-closed: throws if no signing key available. Signature format: `ed25519:` prefixed base64. (`src/receipt/sign.js`)
+- **loadKeyring** / **getPublicKey** — Keyring management for receipt verification. Loads `keys/forge-keyring.json`. (`src/receipt/keyring.js`)
+- **getCodeIdentity** — Returns FORGE version string for receipt `code_version` field. (`src/receipt/code-identity.js`)
+- **computePolicyHash** — Hashes the active rule set and regulatory tables to produce the receipt `policy_hash`. (`src/receipt/policy-hasher.js`)
+- **forge-verify** — Independent replay verifier CLI. Re-runs the pipeline on original input and compares output hash against receipt. Exit codes: 0=MATCH, 1=MISMATCH, 2=ERROR. (`bin/forge-verify.js`)
+- **ForgeConstruct** — Top-level construct class. `.analyze(fixturePath)` runs the full pipeline (ingest → classify → select). `.analyze(path, { receipt: true })` adds a ProposalReceipt to the result. `.getCertificates()` returns accumulated RLMF state (defensive copy). (`src/index.js:37`)
 
 ## Architecture
 <!-- provenance: DERIVED -->
@@ -109,10 +129,12 @@ FORGE follows a linear pipeline: fixture files flow through an ingester, then a 
   │  → settlement │     └─────────────────────┘
   └────┬──────────┘
        │
-  ┌────▼──────────┐
-  │     RLMF      │
-  │  exportCert   │  Brier score, position history, calibration bucket
-  └───────────────┘
+  ┌────▼──────────┐     ┌─────────────────────┐
+  │     RLMF      │     │     Receipt          │
+  │  exportCert   │     │  canonicalize        │
+  └───────────────┘     │  buildReceipt        │  input hash, output hash,
+                        │  signReceipt         │  policy hash, code identity,
+                        └─────────────────────┘  ed25519 signature
 ```
 
 Directory structure:
@@ -160,15 +182,26 @@ Directory structure:
 ./src/replay/deterministic.js
 ./src/ir
 ./src/ir/emit.js
+./src/receipt
+./src/receipt/canonicalize.js
+./src/receipt/code-identity.js
+./src/receipt/hash.js
+./src/receipt/keyring.js
+./src/receipt/policy-hasher.js
+./src/receipt/receipt-builder.js
+./src/receipt/sign.js
 ./src/runtime
 ./src/runtime/lifecycle.js
 ./src/adapter
 ./src/adapter/usgs-live.js
 ./src/adapter/swpc-live.js
 ./spec
+./bin
+./bin/forge-verify.js
 ./spec/construct.json
 ./spec/construct.yaml
 ./spec/proposal-ir.json
+./spec/receipt-v0.json
 ./spec/STABILITY.md
 ./test
 ./test/unit
@@ -209,7 +242,13 @@ Directory structure:
 | `brierScoreBinary` | Function | outcome + probability → Brier score |
 | `brierScoreMultiClass` | Function | outcome_bucket + distribution → Brier score |
 | `computeUsefulness` | Function | proposal + feedProfile → usefulness score (0–1) |
-| `emitEnvelope` | Function | feed_id + feed_profile + proposals + options → ProposalEnvelope (IR contract) |
+| `emitEnvelope` | Function | feed_id + feed_profile + proposals + options → ProposalEnvelope (IR contract). With `receipt: true`, returns `{ envelope, receipt }` |
+| `buildReceipt` | Function | rawInput + envelope + options → ProposalReceipt (spec/receipt-v0.json) |
+| `signReceipt` | Function | canonicalPayload + privateKeyPem → `{ signature, key_id }` (ed25519) |
+| `verifySignature` | Function | canonicalPayload + signature + publicKeyPem → boolean |
+| `canonicalize` | Function | any JS value → deterministic canonical JSON string (JCS-subset/v0) |
+| `loadKeyring` / `getPublicKey` | Functions | Keyring I/O for receipt verification |
+| `forge-verify` | CLI | `node bin/forge-verify.js receipt.json --input input.json` → exit 0 (MATCH) / 1 (MISMATCH) / 2 (ERROR) |
 | `ForgeRuntime` | Class | Theatre lifecycle orchestrator. `.instantiate(proposals)` → theatre IDs. `.ingestBundle()` → process evidence. `.getCertificates()` → RLMF state |
 | `createReplay` | Function | fixturePath + options → deterministic replay session |
 | `ingest` / `ingestFile` | Functions | Raw data / file path → events[] |
@@ -253,24 +292,27 @@ Directory structure:
 | `src/filter/` | 1 | Usefulness scoring across four dimensions: population_impact, regulatory_relevance, predictability, actionability |
 | `src/composer/` | 1 | Feed composition: temporal alignment (sliding window), causal ordering (mean offset analysis) |
 | `src/replay/` | 1 | Deterministic replay of recorded feed sessions |
-| `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary |
+| `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary. Receipt generation wired here |
+| `src/receipt/` | 7 | ProposalReceipt pipeline: canonicalization (JCS-subset/v0), SHA-256 hashing, policy hashing, code identity, receipt builder, ed25519 signing/verification, keyring management |
 | `src/runtime/` | 1 | ForgeRuntime — theatre lifecycle orchestrator (instantiate, ingest, expire, resolve) |
 | `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
-| `spec/` | 4 | Construct spec (construct.json, construct.yaml), Proposal IR schema (proposal-ir.json), stability policy (STABILITY.md) |
-| `test/unit/` | 16 | Unit test suite — 593 tests, 160 suites (node:test, zero dependencies) |
+| `bin/` | 1 | `forge-verify` — independent replay verifier CLI for ProposalReceipts |
+| `spec/` | 5 | Construct spec, Proposal IR schema, Receipt v0 schema (`receipt-v0.json`), stability policy |
+| `test/unit/` | 23 | Unit test suite — 690 tests (node:test, zero dependencies) |
+| `test/integration/` | 1 | Receipt pipeline E2E tests — round-trip verify for all 3 backing specs |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 593 unit tests across 165 suites (`node --test test/unit/*.spec.js`), 599 total with convergence
+- 690 unit tests (`node --test test/unit/*.spec.js`), 699 total with convergence + integration
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 593
+# ℹ pass 690
 # ℹ fail 0
 ```
 
@@ -321,16 +363,16 @@ const causal = detectCausalOrdering(pairs);
 ```
 
 <!-- ground-truth-meta
-head_sha: f3f244e
-generated_at: 2026-03-31T00:00:00Z
-generator: claude-opus-4-6 / tobias-review-sprint
+head_sha: 1cace7a
+generated_at: 2026-04-11T00:00:00Z
+generator: claude-opus-4-6 / doc-refresh-post-receipt-merge
 sections:
-  agent_context: forge-v0.1.0
-  capabilities: 19-entries-code-factual
-  architecture: pipeline-ingester-classifier-selector-processor-ir-runtime-rlmf
-  interfaces: construct-api-theatre-templates-oracle-trust-model
-  module_map: 16-modules
-  verification: 599-tests-165-suites
+  agent_context: forge-v0.3.0
+  capabilities: 28-entries-code-factual
+  architecture: pipeline-ingester-classifier-selector-processor-ir-receipt-runtime-rlmf
+  interfaces: construct-api-theatre-templates-oracle-trust-model-receipt-pipeline-forge-verify
+  module_map: 19-modules
+  verification: 699-tests
   culture: echelon-convergence-loop
-  quick_start: zero-deps-node20-composer-preview
+  quick_start: zero-deps-node20-receipt-verify
 -->
