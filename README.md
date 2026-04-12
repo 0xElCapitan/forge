@@ -29,11 +29,13 @@ console.log(result.envelope);   // Versioned ProposalEnvelope (spec/proposal-ir.
 console.log(result.proposals);  // Raw proposals array
 
 // With ProposalReceipt — signed proof of deterministic output
+// Production: sign with ed25519 key (see docs/key-management.md)
+// Dev/test: omit `sign` to generate unsigned receipts for local verification
 const signed = await forge.analyze('fixtures/usgs-m4.5-day.json', {
   feed_id: 'usgs_m4.5_day',
   source_metadata: { source_id: 'usgs_automatic', trust_tier: 'T1', domain: 'seismic' },
   receipt: true,
-  sign: mySigningFunction,      // ed25519 signer (or omit for unsigned)
+  sign: signReceipt,            // ed25519 — see docs/key-management.md
 });
 
 console.log(signed.envelope);   // ProposalEnvelope (same as above)
@@ -241,7 +243,7 @@ const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
 // {
 //   schema: 'forge-receipt/v0',
 //   input_hash: 'sha256:abc...',        // hash of canonicalized raw input
-//   code_version: '0.1.0',              // FORGE version at build time
+//   code_version: { git_sha: 'abc...', package_lock_sha: null, node_version: '20.11.0' },
 //   policy_hash: 'sha256:def...',       // hash of rules + regulatory tables
 //   output_hash: 'sha256:789...',       // hash of canonicalized envelope
 //   signer: 'forge-production',

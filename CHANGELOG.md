@@ -11,7 +11,7 @@ All notable changes to FORGE will be documented in this file.
 - Ed25519 signing and verification (`src/receipt/sign.js`) — fail-closed design, `ed25519:` prefixed base64 signatures.
 - Keyring management (`src/receipt/keyring.js`, `keys/forge-keyring.json`) — key loading, rotation support, environment variable overrides (`FORGE_SIGNING_KEY`, `FORGE_KEY_ID`).
 - Policy hashing (`src/receipt/policy-hasher.js`) — hashes active rule set and regulatory tables for receipt `policy_hash` field.
-- Code identity (`src/receipt/code-identity.js`) — embeds FORGE version in receipt for reproducibility.
+- Code identity (`src/receipt/code-identity.js`) — embeds `{ git_sha, package_lock_sha, node_version }` triple in receipt for reproducibility.
 - SHA-256 hash utility (`src/receipt/hash.js`) — `sha256:` prefixed hashes for all receipt fields.
 - `ForgeConstruct.analyze()` now accepts `receipt: true` option — returns `{ envelope, receipt }` with optional `sign` function and `timestampBase`/`now` for deterministic output.
 - `timestampBase` option in ingester for deterministic ingestion timestamps.
