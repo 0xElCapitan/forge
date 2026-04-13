@@ -379,6 +379,7 @@ export class PRReviewTemplate {
   buildConvergenceUserPrompt(
     item: ReviewItem,
     truncated: TruncationResult,
+    crossRepoSection?: string,
   ): string {
     const lines: string[] = [];
 
@@ -393,6 +394,15 @@ export class PRReviewTemplate {
     }
 
     lines.push(...this.renderPRMetadata(item));
+
+    // A4 (#464): inject cross-repo context after PR metadata, before files.
+    // Section is pre-rendered + pre-truncated by the caller (main.ts) so
+    // the template stays a pure formatter. Empty/undefined → no-op.
+    if (crossRepoSection && crossRepoSection.trim().length > 0) {
+      lines.push("");
+      lines.push(crossRepoSection);
+      lines.push("");
+    }
 
     const totalFiles = truncated.included.length + truncated.excluded.length;
     lines.push(`## Files Changed (${totalFiles} files)`);
@@ -490,8 +500,26 @@ export class PRReviewTemplate {
   }
 
   private buildEnrichmentPromptFromOptions(opts: EnrichmentOptions): PromptPair {
-    const { findingsJSON, item, persona, truncationContext, personaMetadata, ecosystemContext } = opts;
-    const systemPrompt = this.buildSystemPrompt(persona);
+    const {
+      findingsJSON,
+      item,
+      persona,
+      truncationContext,
+      personaMetadata,
+      ecosystemContext,
+      loreEntries,
+      multiModelConfig,
+    } = opts;
+    // A5 (#464): when lore entries are provided, build the *enriched* system
+    // prompt so the depth_5.lore_active_weaving flag actually does something.
+    // Falls back to the standard system prompt when no lore is provided —
+    // preserves the legacy single-model enrichment path unchanged.
+    const systemPrompt = loreEntries && loreEntries.length > 0
+      ? this.buildEnrichedSystemPrompt(persona, {
+          loreEntries: loreEntries as LoreEntry[],
+          multiModelConfig,
+        })
+      : this.buildSystemPrompt(persona);
 
     const lines: string[] = [];
     lines.push("## Pull Request Context");

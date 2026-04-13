@@ -5,6 +5,9 @@ import { ReviewPipeline, PRReviewTemplate, BridgebuilderContext, } from "./core/
 import { createLocalAdapters } from "./adapters/index.js";
 import { parseCLIArgs, resolveConfig, resolveRepos, formatEffectiveConfig, loadMultiModelConfig, validateApiKeys, } from "./config.js";
 import { executeMultiModelReview } from "./core/multi-model-pipeline.js";
+import { DEFAULT_LORE_PATH, loadLoreEntries } from "./core/lore-loader.js";
+import { detectRefs, parseManualRefs, fetchCrossRepoContext } from "./core/cross-repo.js";
+import { renderCrossRepoSection } from "./core/cross-repo-render.js";
 import { ProgressReporter } from "./core/progress.js";
 import { buildRatingPrompt, storeRating, createRatingEntry, readRatingWithTimeout, } from "./core/rating.js";
 import { truncateFiles } from "./core/truncation.js";
@@ -223,15 +226,92 @@ async function main() {
             progress.registerModel(entry.provider, entry.model_id);
         }
         progress.setPhase("review");
+        // A5 (#464): load lore entries once per run when active weaving is enabled.
+        // Loader degrades gracefully — missing file → [] + warning log, never throws
+        // on an absent or empty patterns.yaml.
+        let loreEntries = [];
+        const loreActiveWeaving = config.multiModel.depth?.lore_active_weaving === true;
+        if (loreActiveWeaving) {
+            const lorePath = config.multiModel.depth?.lore_path ?? DEFAULT_LORE_PATH;
+            try {
+                loreEntries = await loadLoreEntries(lorePath, adapters.logger);
+                adapters.logger.info(`[bridgebuilder] Loaded ${loreEntries.length} lore entries from ${lorePath}`);
+            }
+            catch (err) {
+                // Throwing only happens on truly unexpected conditions (yq fail with
+                // a non-empty file). Log and continue with no lore — review proceeds.
+                adapters.logger.warn(`[bridgebuilder] Lore loading failed: ${err instanceof Error ? err.message : String(err)} — continuing without lore`);
+            }
+        }
         // Resolve review items then execute multi-model review for each
         const items = await template.resolveItems();
+        // A4 (#464): pre-resolve manual cross-repo refs once per run.
+        // Bridgebuilder pass-1 FIND-002: also pre-FETCH manual refs once per run
+        // since they're loop-invariant. Previously a run with N PRs and M manual
+        // refs made N×M redundant network calls. Auto-detected refs still vary
+        // per-item and are fetched inside the loop.
+        const manualRefsRaw = config.multiModel.cross_repo?.manual_refs ?? [];
+        const manualRefs = manualRefsRaw.length > 0 ? parseManualRefs(manualRefsRaw) : [];
+        const autoDetectEnabled = config.multiModel.cross_repo?.auto_detect === true;
+        let manualRefContext = null;
+        if (manualRefs.length > 0) {
+            const manualFetchStart = Date.now();
+            manualRefContext = await fetchCrossRepoContext(manualRefs, adapters.logger);
+            adapters.logger.info(`[bridgebuilder] cross-repo (manual, hoisted): fetched ${manualRefContext.context.length}/${manualRefs.length} refs ` +
+                `(${manualRefContext.errors.length} errors) in ${Date.now() - manualFetchStart}ms`);
+        }
         for (const item of items) {
             // Use convergence prompt so models return findings JSON parseable by
             // extractFindingsFromContent() (bug-20260413-9f9b39).
             const truncated = truncateFiles(item.files, config);
             const systemPrompt = template.buildConvergenceSystemPrompt();
-            const userPrompt = template.buildConvergenceUserPrompt(item, truncated);
-            const mmResult = await executeMultiModelReview(item, systemPrompt, userPrompt, config, { poster: adapters.poster, sanitizer: adapters.sanitizer, logger: adapters.logger }, { template, persona });
+            // A4 (#464): per-item cross-repo wiring. Manual refs were fetched once
+            // before the loop (FIND-002 fix); here we only fetch the auto-detected
+            // refs (which vary per PR) and merge with the cached manual context.
+            let crossRepoSection = "";
+            if (autoDetectEnabled || manualRefContext) {
+                const currentRepo = `${item.owner}/${item.repo}`;
+                // PullRequest carries title but not body in this skill's port type.
+                // Auto-detection scans the title (PR titles commonly include refs
+                // like "fix(auth): close #123" or "ports forge/x#456 fix").
+                const detected = autoDetectEnabled
+                    ? detectRefs(item.pr.title, currentRepo)
+                    : [];
+                // Dedupe detected against manual to avoid double-fetching the same ref.
+                const manualKeys = new Set(manualRefs.map((r) => `${r.owner}/${r.repo}#${r.number ?? ""}`));
+                const detectedNew = detected.filter((r) => !manualKeys.has(`${r.owner}/${r.repo}#${r.number ?? ""}`));
+                let detectedContext = null;
+                if (detectedNew.length > 0) {
+                    const fetchStart = Date.now();
+                    detectedContext = await fetchCrossRepoContext(detectedNew, adapters.logger);
+                    adapters.logger.info(`[bridgebuilder] cross-repo (auto, per-item): fetched ${detectedContext.context.length}/${detectedNew.length} refs ` +
+                        `(${detectedContext.errors.length} errors) in ${Date.now() - fetchStart}ms`);
+                }
+                // Merge cached manual + per-item detected into a single result.
+                const merged = {
+                    refs: [
+                        ...(manualRefContext?.refs ?? []),
+                        ...(detectedContext?.refs ?? []),
+                    ],
+                    context: [
+                        ...(manualRefContext?.context ?? []),
+                        ...(detectedContext?.context ?? []),
+                    ],
+                    errors: [
+                        ...(manualRefContext?.errors ?? []),
+                        ...(detectedContext?.errors ?? []),
+                    ],
+                };
+                if (merged.refs.length > 0) {
+                    crossRepoSection = renderCrossRepoSection(merged);
+                }
+            }
+            const userPrompt = template.buildConvergenceUserPrompt(item, truncated, crossRepoSection);
+            const mmResult = await executeMultiModelReview(item, systemPrompt, userPrompt, config, { poster: adapters.poster, sanitizer: adapters.sanitizer, logger: adapters.logger }, 
+            // A5 (#464): pass loreEntries through enrichment context. Empty array
+            // when active weaving is disabled — template inclusion is gated by
+            // depth_5.lore_active_weaving, so passing [] is a safe no-op.
+            { template, persona, loreEntries });
             for (const mr of mmResult.modelResults) {
                 progress.updateModel(mr.provider, mr.model, {
                     phase: mr.error ? "error" : "complete",

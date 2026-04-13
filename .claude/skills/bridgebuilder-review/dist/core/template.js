@@ -284,7 +284,7 @@ export class PRReviewTemplate {
      * Build convergence user prompt: PR metadata + diffs + findings-only format instructions.
      * Reuses the existing PR metadata/diff rendering but replaces the output format section (SDD 3.2).
      */
-    buildConvergenceUserPrompt(item, truncated) {
+    buildConvergenceUserPrompt(item, truncated, crossRepoSection) {
         const lines = [];
         if (truncated.loaBanner) {
             lines.push(truncated.loaBanner);
@@ -295,6 +295,14 @@ export class PRReviewTemplate {
             lines.push("");
         }
         lines.push(...this.renderPRMetadata(item));
+        // A4 (#464): inject cross-repo context after PR metadata, before files.
+        // Section is pre-rendered + pre-truncated by the caller (main.ts) so
+        // the template stays a pure formatter. Empty/undefined → no-op.
+        if (crossRepoSection && crossRepoSection.trim().length > 0) {
+            lines.push("");
+            lines.push(crossRepoSection);
+            lines.push("");
+        }
         const totalFiles = truncated.included.length + truncated.excluded.length;
         lines.push(`## Files Changed (${totalFiles} files)`);
         lines.push("");
@@ -348,8 +356,17 @@ export class PRReviewTemplate {
         return this.buildEnrichmentPromptFromOptions(opts);
     }
     buildEnrichmentPromptFromOptions(opts) {
-        const { findingsJSON, item, persona, truncationContext, personaMetadata, ecosystemContext } = opts;
-        const systemPrompt = this.buildSystemPrompt(persona);
+        const { findingsJSON, item, persona, truncationContext, personaMetadata, ecosystemContext, loreEntries, multiModelConfig, } = opts;
+        // A5 (#464): when lore entries are provided, build the *enriched* system
+        // prompt so the depth_5.lore_active_weaving flag actually does something.
+        // Falls back to the standard system prompt when no lore is provided —
+        // preserves the legacy single-model enrichment path unchanged.
+        const systemPrompt = loreEntries && loreEntries.length > 0
+            ? this.buildEnrichedSystemPrompt(persona, {
+                loreEntries: loreEntries,
+                multiModelConfig,
+            })
+            : this.buildSystemPrompt(persona);
         const lines = [];
         lines.push("## Pull Request Context");
         lines.push(`**Repo**: ${item.owner}/${item.repo}#${item.pr.number}`);
