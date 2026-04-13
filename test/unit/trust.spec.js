@@ -281,6 +281,164 @@ describe('checkAdversarial — Sybil sensors', () => {
   });
 });
 
+// ─── Pre-002 Hardening: NaN/non-finite guards (H-3) ─────────────────────────
+
+describe('checkAdversarial — NaN hardening: channel_a/channel_b', () => {
+  it('NaN channel_a is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: NaN, channel_b: 10 }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_a'));
+  });
+
+  it('Infinity channel_a is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: Infinity, channel_b: 10 }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_a'));
+  });
+
+  it('-Infinity channel_a is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: -Infinity, channel_b: 10 }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_a'));
+  });
+
+  it('NaN channel_b is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: 10, channel_b: NaN }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_b'));
+  });
+
+  it('Infinity channel_b is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: 10, channel_b: Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_b'));
+  });
+});
+
+describe('checkAdversarial — NaN hardening: frozen_count', () => {
+  it('NaN frozen_count is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, frozen_count: NaN }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_frozen_count'));
+  });
+
+  it('Infinity frozen_count is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, frozen_count: Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_frozen_count'));
+  });
+
+  it('-Infinity frozen_count is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, frozen_count: -Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_frozen_count'));
+  });
+});
+
+describe('checkAdversarial — NaN hardening: timestamp', () => {
+  it('NaN timestamp is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NaN }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_timestamp'));
+  });
+
+  it('Infinity timestamp is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_timestamp'));
+  });
+
+  it('-Infinity timestamp is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: -Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_timestamp'));
+  });
+});
+
+describe('checkAdversarial — NaN hardening: lat/lon', () => {
+  it('NaN lat is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lat: NaN }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lat'));
+  });
+
+  it('Infinity lat is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lat: Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lat'));
+  });
+
+  it('-Infinity lat is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lat: -Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lat'));
+  });
+
+  it('NaN lon is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lon: NaN }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lon'));
+  });
+
+  it('Infinity lon is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lon: Infinity }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lon'));
+  });
+});
+
+describe('checkAdversarial — NaN hardening: peer_values', () => {
+  it('NaN in peer_values is rejected', () => {
+    const r = checkAdversarial(cleanBundle, { now: NOW, peer_values: [50, NaN, 48] });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_peer_value'));
+  });
+
+  it('Infinity in peer_values is rejected', () => {
+    const r = checkAdversarial(cleanBundle, { now: NOW, peer_values: [50, Infinity] });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_peer_value'));
+  });
+
+  it('-Infinity in peer_values is rejected', () => {
+    const r = checkAdversarial(cleanBundle, { now: NOW, peer_values: [50, -Infinity] });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_peer_value'));
+  });
+
+  it('undefined in peer_values is rejected', () => {
+    const r = checkAdversarial(cleanBundle, { now: NOW, peer_values: [50, undefined, 48] });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_peer_value'));
+  });
+});
+
+describe('checkAdversarial — NaN hardening: string coercion', () => {
+  it('string channel_a is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, channel_a: '42', channel_b: 10 }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_channel_a'));
+  });
+
+  it('string timestamp is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: '1000' }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_timestamp'));
+  });
+
+  it('string lat is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, lat: '37' }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_lat'));
+  });
+
+  it('string frozen_count is rejected', () => {
+    const r = checkAdversarial({ value: 10, timestamp: NOW, frozen_count: '5' }, { now: NOW });
+    assert.equal(r.clean, false);
+    assert.ok(r.reason.includes('invalid_frozen_count'));
+  });
+});
+
 // ─── Sprint 3: Check 6 — value out of range (RT-05/CR-01 fix) ───────────────
 
 describe('checkAdversarial — Check 6: value out of range (Sprint 3)', () => {

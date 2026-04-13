@@ -34,7 +34,7 @@ import { canonicalize } from 'forge/src/receipt/canonicalize.js';
 import { sha256 } from 'forge/src/receipt/hash.js';
 
 const envelopeHash = sha256(canonicalize(envelope));
-assert(envelopeHash === receipt.output_hash);
+assert(envelopeHash === receipt.subject.digest);
 ```
 
 This confirms the envelope hasn't been tampered with since receipt generation.
@@ -92,7 +92,7 @@ The verifier returns structured JSON suitable for programmatic consumption:
 | `verdict` | string | `MATCH`, `MISMATCH`, or `ERROR` |
 | `exit_code` | number | 0, 1, or 2 |
 | `reason` | string/null | Human-readable explanation (null on MATCH) |
-| `details.checks` | object | Per-check results (schema, input_hash, signature, output_hash) |
+| `details.checks` | object | Per-check results (schema, input_hash, signature, output_hash) — keys are diagnostic labels, not receipt field names |
 | `details.warnings` | array | Non-blocking warnings (e.g., node version mismatch) |
 
 Echelon's admission gate can use `verdict` for accept/reject decisions and `details` for audit logging.

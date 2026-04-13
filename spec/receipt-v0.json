@@ -2,16 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "forge-receipt/v0",
   "title": "ProposalReceipt v0",
-  "description": "Signed receipt proving a FORGE proposal envelope was produced from a specific input under a specific policy and code version.",
+  "description": "Signed receipt proving a FORGE proposal envelope was produced from a specific input under a specific policy and code version. Fields are grouped into attestation-aligned structures (subject, materials, policy, builder) with a predicateType discriminator.",
   "type": "object",
   "required": [
     "schema",
-    "input_hash",
-    "input_canonicalization",
-    "code_version",
-    "policy_hash",
-    "rule_set_hash",
-    "output_hash",
+    "predicateType",
+    "subject",
+    "materials",
+    "policy",
+    "builder",
     "computed_at",
     "signer",
     "key_id",
@@ -23,20 +22,81 @@
       "const": "forge-receipt/v0",
       "description": "Schema version identifier"
     },
-    "input_hash": {
+    "predicateType": {
       "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$",
-      "description": "SHA-256 hash of the canonicalized raw pre-ingest input"
+      "const": "https://forge.echelon.build/attestation/v0",
+      "description": "Attestation type discriminator — identifies this as a FORGE attestation programmatically"
     },
-    "input_canonicalization": {
-      "type": "string",
-      "const": "jcs-subset/v0",
-      "description": "Canonicalization algorithm used for input hashing"
-    },
-    "code_version": {
+    "subject": {
       "type": "object",
-      "required": ["git_sha", "package_lock_sha", "node_version"],
+      "description": "The output artifact (what was produced)",
+      "required": ["digest"],
       "properties": {
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of the canonicalized proposal envelope"
+        },
+        "uri": {
+          "type": ["string", "null"],
+          "description": "Optional URI identifier for the output (null at v0)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "materials": {
+      "type": "object",
+      "description": "The input artifact (what was consumed)",
+      "required": ["digest", "canonicalization"],
+      "properties": {
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of the canonicalized raw pre-ingest input"
+        },
+        "canonicalization": {
+          "type": "string",
+          "const": "jcs-subset/v0",
+          "description": "Canonicalization algorithm used for input hashing"
+        },
+        "uri": {
+          "type": ["string", "null"],
+          "description": "Optional URI identifier for the input (null at v0)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "description": "Policy inputs: rules and regulatory data",
+      "required": ["policy_hash", "rule_set_hash"],
+      "properties": {
+        "policy_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of all policy inputs (rules + regulatory data)"
+        },
+        "rule_set_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "description": "SHA-256 hash of the canonicalized RULES array"
+        },
+        "version_tag": {
+          "type": ["string", "null"],
+          "description": "Human-readable policy version tag (e.g., 'forge-policy/v0.1.0')"
+        }
+      },
+      "additionalProperties": false
+    },
+    "builder": {
+      "type": "object",
+      "description": "Code identity: who/what built this receipt",
+      "required": ["uri", "git_sha", "package_lock_sha", "node_version"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "Builder identity URI"
+        },
         "git_sha": {
           "type": ["string", "null"],
           "pattern": "^[0-9a-f]{40}$",
@@ -52,25 +112,6 @@
         }
       },
       "additionalProperties": false
-    },
-    "policy_hash": {
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$",
-      "description": "SHA-256 hash of all policy inputs (rules + regulatory data)"
-    },
-    "rule_set_hash": {
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$",
-      "description": "SHA-256 hash of the canonicalized RULES array"
-    },
-    "policy_version_tag": {
-      "type": ["string", "null"],
-      "description": "Human-readable policy version tag (e.g., 'forge-policy/v0.1.0')"
-    },
-    "output_hash": {
-      "type": "string",
-      "pattern": "^sha256:[0-9a-f]{64}$",
-      "description": "SHA-256 hash of the canonicalized proposal envelope"
     },
     "computed_at": {
       "type": "string",

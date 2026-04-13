@@ -61,11 +61,11 @@ export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, 
   }
   details.checks.schema = 'pass';
 
-  // 2. Verify input hash
+  // 2. Verify input hash (materials.digest)
   const canonicalInput = canonicalize(inputData);
   const computedInputHash = sha256(canonicalInput);
-  if (computedInputHash !== receipt.input_hash) {
-    details.checks.input_hash = { expected: receipt.input_hash, computed: computedInputHash };
+  if (computedInputHash !== receipt.materials.digest) {
+    details.checks.input_hash = { expected: receipt.materials.digest, computed: computedInputHash };
     return result('MISMATCH', EXIT_MISMATCH, details, 'Input hash mismatch');
   }
   details.checks.input_hash = 'pass';
@@ -81,13 +81,11 @@ export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, 
       }
       const signedPayload = canonicalize({
         schema: receipt.schema,
-        input_hash: receipt.input_hash,
-        input_canonicalization: receipt.input_canonicalization,
-        code_version: receipt.code_version,
-        policy_hash: receipt.policy_hash,
-        rule_set_hash: receipt.rule_set_hash,
-        policy_version_tag: receipt.policy_version_tag,
-        output_hash: receipt.output_hash,
+        predicateType: receipt.predicateType,
+        subject: receipt.subject,
+        materials: receipt.materials,
+        policy: receipt.policy,
+        builder: receipt.builder,
         http_transcript_receipts: receipt.http_transcript_receipts,
         signer: receipt.signer,
       });
@@ -109,29 +107,29 @@ export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, 
   }
 
   // 4. Check node version
-  if (receipt.code_version?.node_version) {
+  if (receipt.builder?.node_version) {
     const currentNode = process.version.replace(/^v/, '');
-    if (currentNode !== receipt.code_version.node_version) {
+    if (currentNode !== receipt.builder.node_version) {
       details.warnings.push(
-        `Node version mismatch: receipt=${receipt.code_version.node_version}, current=${currentNode}`
+        `Node version mismatch: receipt=${receipt.builder.node_version}, current=${currentNode}`
       );
     }
   }
 
-  // 5. Verify output hash
+  // 5. Verify output hash (subject.digest)
   //    Two modes:
   //    a) Direct: when the original envelope is provided, hash it and compare
   //    b) Replay: re-run the pipeline and compare (requires matching feed_id/timestamps)
   if (originalEnvelope) {
     // Direct verification — hash the provided envelope
     const envelopeHash = sha256(canonicalize(originalEnvelope));
-    if (envelopeHash === receipt.output_hash) {
+    if (envelopeHash === receipt.subject.digest) {
       details.checks.output_hash = 'pass';
       details.checks.output_hash_mode = 'direct';
       return result('MATCH', EXIT_MATCH, details);
     }
     details.checks.output_hash = {
-      expected: receipt.output_hash,
+      expected: receipt.subject.digest,
       computed: envelopeHash,
     };
     return result('MISMATCH', EXIT_MISMATCH, details, 'Output hash mismatch (direct envelope verification)');
@@ -151,7 +149,7 @@ export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, 
 
   const replayedOutputHash = sha256(canonicalize(envelope));
 
-  if (replayedOutputHash === receipt.output_hash) {
+  if (replayedOutputHash === receipt.subject.digest) {
     details.checks.output_hash = 'pass';
     details.checks.output_hash_mode = 'replay';
     details.replayed_output_hash = replayedOutputHash;
@@ -159,7 +157,7 @@ export function verifyReceipt({ receipt, inputData, envelope: originalEnvelope, 
   }
 
   details.checks.output_hash = {
-    expected: receipt.output_hash,
+    expected: receipt.subject.digest,
     replayed: replayedOutputHash,
   };
   details.replayed_output_hash = replayedOutputHash;

@@ -22,6 +22,9 @@ import { ingest, ingestFile } from '../../src/ingester/generic.js';
 import { classify }           from '../../src/classifier/feed-grammar.js';
 import { selectTemplates }    from '../../src/selector/template-selector.js';
 import { emitEnvelope }       from '../../src/ir/emit.js';
+import { buildReceipt }       from '../../src/receipt/receipt-builder.js';
+import { canonicalize }       from '../../src/receipt/canonicalize.js';
+import { ForgeConstruct }     from '../../src/index.js';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -202,5 +205,86 @@ describe('Determinism Gate (FR-2)', () => {
         'Without timestampBase, timestamps should be based on Date.now()',
       );
     }
+  });
+});
+
+// ─── Pre-002 Hardening: Receipt-level deterministic replay (H-2) ─────────────
+
+describe('Determinism Gate — receipt-level replay (H-2)', () => {
+
+  it('two runs with fixed clocks produce byte-identical canonicalized receipt', () => {
+    const data = loadTremor();
+    const receipts = [];
+
+    for (let i = 0; i < 2; i++) {
+      const events    = ingest(data, { timestampBase: FIXED_TIMESTAMP_BASE });
+      const profile   = classify(events);
+      const proposals = selectTemplates(profile);
+      const envelope  = emitEnvelope({
+        feed_id: 'determinism-receipt-test',
+        feed_profile: profile,
+        proposals,
+        now: FIXED_NOW,
+      });
+
+      const receipt = buildReceipt({ rawInput: data, envelope });
+
+      // Canonicalize the signed payload (excludes computed_at)
+      const signedPayload = canonicalize({
+        schema: receipt.schema,
+        predicateType: receipt.predicateType,
+        subject: receipt.subject,
+        materials: receipt.materials,
+        policy: receipt.policy,
+        builder: receipt.builder,
+        http_transcript_receipts: receipt.http_transcript_receipts,
+        signer: receipt.signer,
+      });
+
+      receipts.push(signedPayload);
+    }
+
+    assert.strictEqual(receipts[0], receipts[1],
+      'Canonicalized signed payloads must be byte-identical across runs');
+  });
+});
+
+// ─── Pre-002 Hardening: deterministic: true enforcement (H-2) ───────────────
+
+describe('Determinism Gate — deterministic: true enforcement (H-2)', () => {
+
+  it('throws when deterministic: true and timestampBase missing', async () => {
+    const forge = new ForgeConstruct();
+    await assert.rejects(
+      () => forge.analyze(TREMOR_FIXTURE, { deterministic: true, now: FIXED_NOW }),
+      { message: 'deterministic mode requires explicit timestampBase and now' },
+    );
+  });
+
+  it('throws when deterministic: true and now missing', async () => {
+    const forge = new ForgeConstruct();
+    await assert.rejects(
+      () => forge.analyze(TREMOR_FIXTURE, { deterministic: true, timestampBase: FIXED_TIMESTAMP_BASE }),
+      { message: 'deterministic mode requires explicit timestampBase and now' },
+    );
+  });
+
+  it('throws when deterministic: true and both missing', async () => {
+    const forge = new ForgeConstruct();
+    await assert.rejects(
+      () => forge.analyze(TREMOR_FIXTURE, { deterministic: true }),
+      { message: 'deterministic mode requires explicit timestampBase and now' },
+    );
+  });
+
+  it('succeeds when deterministic: true with both timestampBase and now', async () => {
+    const forge = new ForgeConstruct();
+    const result = await forge.analyze(TREMOR_FIXTURE, {
+      deterministic: true,
+      timestampBase: FIXED_TIMESTAMP_BASE,
+      now: FIXED_NOW,
+    });
+    assert.ok(result.envelope, 'should produce an envelope');
+    assert.ok(result.proposals.length > 0, 'should produce proposals');
   });
 });

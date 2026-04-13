@@ -80,10 +80,10 @@ describe('forge-verify — MATCH path', () => {
 // ─── MISMATCH path ──────────────────────────────────────────────────────────
 
 describe('forge-verify — MISMATCH path', () => {
-  it('tampered output_hash detected as MISMATCH', () => {
+  it('tampered subject.digest detected as MISMATCH', () => {
     const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
     const receipt = generateReceipt(rawData, 'tremor');
-    receipt.output_hash = 'sha256:0000000000000000000000000000000000000000000000000000000000000000';
+    receipt.subject.digest = 'sha256:0000000000000000000000000000000000000000000000000000000000000000';
     const result = verifyReceipt({ receipt, inputData: rawData });
     assert.equal(result.verdict, 'MISMATCH');
     assert.equal(result.exit_code, 1);
@@ -170,7 +170,7 @@ describe('forge-verify — warnings', () => {
     const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
     const receipt = generateReceipt(rawData, 'tremor');
     // Fake a different node version
-    receipt.code_version.node_version = '99.99.99';
+    receipt.builder.node_version = '99.99.99';
     const result = verifyReceipt({ receipt, inputData: rawData });
     // Should still MATCH (node version is advisory)
     assert.equal(result.verdict, 'MATCH');

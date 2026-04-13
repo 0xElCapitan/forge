@@ -79,6 +79,7 @@ export class ForgeConstruct {
    * @param {boolean} [options.receipt=false]    - When true, generate a ProposalReceipt
    * @param {number}  [options.timestampBase=null] - Fixed timestamp base for deterministic ingestion
    * @param {number}  [options.now]              - Fixed wall-clock for emitEnvelope (deterministic envelope)
+   * @param {boolean} [options.deterministic=false] - Require explicit timestampBase and now (fail-closed)
    * @param {Function} [options.sign]            - Signing function for receipt
    * @returns {Promise<ForgeResult>}
    */
@@ -92,7 +93,12 @@ export class ForgeConstruct {
       timestampBase    = null,
       now              = undefined,
       sign             = null,
+      deterministic    = false,
     } = options;
+
+    if (deterministic && (timestampBase == null || now === undefined)) {
+      throw new Error('deterministic mode requires explicit timestampBase and now');
+    }
 
     // Read raw input before ingestion when receipt is requested
     const rawInput = receipt ? JSON.parse(readFileSync(fixturePath, 'utf8')) : null;
@@ -218,6 +224,10 @@ export { alignFeeds, detectCausalOrdering, proposeComposedTheatre } from './comp
 
 // IR
 export { emitEnvelope } from './ir/emit.js';
+
+// Receipt
+export { buildReceipt } from './receipt/receipt-builder.js';
+export { toInTotoStatement } from './receipt/to-intoto.js';
 
 // Runtime
 export { ForgeRuntime } from './runtime/lifecycle.js';

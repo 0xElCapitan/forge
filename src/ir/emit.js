@@ -72,7 +72,7 @@ function proposalId(feed_id, template, params) {
  *                   Pass a fixed value to obtain a deterministic envelope (used
  *                   by tests and by any caller that needs envelope-level hash
  *                   stability across identical inputs).
- * @param {any}      [opts.rawInput=null] - Pre-ingest payload for receipt input_hash.
+ * @param {any}      [opts.rawInput=null] - Pre-ingest payload for receipt materials.digest.
  *                   Only used when `receipt: true`.
  * @param {boolean}  [opts.receipt=false] - When true, return `{ envelope, receipt }`
  *                   instead of just the envelope.

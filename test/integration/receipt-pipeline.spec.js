@@ -146,8 +146,8 @@ describe('PRD Goal Validation (Task 7.7)', () => {
     const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
       feed_id: 'g2-test', receipt: true, timestampBase: FIXED_TIMESTAMP_BASE, now: FIXED_NOW,
     });
-    const required = ['schema', 'input_hash', 'input_canonicalization', 'code_version',
-      'policy_hash', 'rule_set_hash', 'output_hash', 'computed_at', 'signer', 'key_id', 'signature'];
+    const required = ['schema', 'predicateType', 'subject', 'materials',
+      'policy', 'builder', 'computed_at', 'signer', 'key_id', 'signature'];
     for (const field of required) {
       assert.ok(field in result.receipt, `Missing required field: ${field}`);
     }

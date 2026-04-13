@@ -16,7 +16,7 @@ import { canonicalize } from '../../src/receipt/canonicalize.js';
 // ─── signReceipt / verifySignature ─────────────────────────────────────────
 
 describe('signReceipt', () => {
-  const payload = canonicalize({ schema: 'forge-receipt/v0', input_hash: 'sha256:abc123' });
+  const payload = canonicalize({ schema: 'forge-receipt/v0', subject: { digest: 'sha256:abc123' } });
 
   it('sign -> verify round-trips successfully', () => {
     const { signature, key_id } = signReceipt(payload, TEST_PRIVATE_KEY, TEST_KEY_ID);

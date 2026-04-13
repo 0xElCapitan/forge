@@ -41,9 +41,9 @@ The receipt's `code_version.git_sha` field points to the exact commit. The `poli
 
 These artifacts are the caller's responsibility:
 
-- **Input data**: The raw pre-ingest JSON payload. The receipt's `input_hash` can verify integrity but cannot reconstruct the data.
+- **Input data**: The raw pre-ingest JSON payload. The receipt's `materials.digest` can verify integrity but cannot reconstruct the data.
 - **Receipts**: The ProposalReceipt JSON. Without it, there's no proof of provenance.
-- **Envelopes**: The ProposalEnvelope JSON. The receipt's `output_hash` can verify integrity.
+- **Envelopes**: The ProposalEnvelope JSON. The receipt's `subject.digest` can verify integrity.
 
 ### Storage Recommendations
 

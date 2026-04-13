@@ -348,7 +348,7 @@ Directory structure:
 | `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
 | `bin/` | 1 | `forge-verify` — independent replay verifier CLI for ProposalReceipts |
 | `spec/` | 5 | Construct spec, Proposal IR schema, Receipt v0 schema (`receipt-v0.json`), stability policy |
-| `test/unit/` | 23 | Unit test suite — 684 tests (node:test, zero dependencies) |
+| `test/unit/` | 26 | Unit test suite — 735 tests (node:test, zero dependencies) |
 | `test/integration/` | 1 | Receipt pipeline E2E tests — round-trip verify for all 3 backing specs |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
@@ -356,13 +356,13 @@ Directory structure:
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 684 unit tests (`node --test test/unit/*.spec.js`), 699 total with convergence + integration
+- 735 unit tests (`node --test test/unit/*.spec.js`), 750 total with convergence + integration
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 684
+# ℹ pass 735
 # ℹ fail 0
 ```
 
@@ -382,7 +382,7 @@ node --test test/unit/*.spec.js
 
 ```bash
 # No install needed — zero dependencies, Node.js 20+ only
-node --test test/unit/*.spec.js          # Run unit tests (684 tests)
+node --test test/unit/*.spec.js          # Run unit tests (735 tests)
 node --test test/convergence/*.spec.js   # Run convergence tests
 ```
 
@@ -422,7 +422,7 @@ sections:
   architecture: pipeline-ingester-classifier-selector-processor-ir-receipt-runtime-rlmf
   interfaces: construct-api-theatre-templates-oracle-trust-model-receipt-pipeline-forge-verify
   module_map: 19-modules
-  verification: 699-tests
+  verification: 750-tests
   culture: echelon-convergence-loop
   quick_start: zero-deps-node20-receipt-verify
 -->

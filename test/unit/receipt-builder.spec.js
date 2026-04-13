@@ -3,6 +3,7 @@
  * Tests for the ProposalReceipt builder and emitEnvelope receipt integration.
  *
  * FR-6 (ProposalReceipt Schema v0)
+ * H-1 (Receipt shape restructuring — attestation field discipline)
  */
 
 import { describe, it } from 'node:test';
@@ -36,26 +37,44 @@ function validateReceipt(receipt) {
     errors.push(`Invalid schema: ${receipt.schema}`);
   }
 
+  // Check predicateType
+  if (receipt.predicateType !== 'https://forge.echelon.build/attestation/v0') {
+    errors.push(`Invalid predicateType: ${receipt.predicateType}`);
+  }
+
   // Check hash formats
   const hashPattern = /^sha256:[0-9a-f]{64}$/;
-  for (const field of ['input_hash', 'output_hash', 'policy_hash', 'rule_set_hash']) {
-    if (receipt[field] && !hashPattern.test(receipt[field])) {
-      errors.push(`Invalid hash format for ${field}: ${receipt[field]}`);
-    }
+
+  // subject.digest
+  if (receipt.subject?.digest && !hashPattern.test(receipt.subject.digest)) {
+    errors.push(`Invalid hash format for subject.digest: ${receipt.subject.digest}`);
   }
 
-  // Check input_canonicalization
-  if (receipt.input_canonicalization !== 'jcs-subset/v0') {
-    errors.push(`Invalid input_canonicalization: ${receipt.input_canonicalization}`);
+  // materials.digest
+  if (receipt.materials?.digest && !hashPattern.test(receipt.materials.digest)) {
+    errors.push(`Invalid hash format for materials.digest: ${receipt.materials.digest}`);
   }
 
-  // Check code_version
-  if (receipt.code_version) {
-    if (receipt.code_version.package_lock_sha !== null) {
-      errors.push('package_lock_sha should be null at v0');
+  // materials.canonicalization
+  if (receipt.materials?.canonicalization !== 'jcs-subset/v0') {
+    errors.push(`Invalid materials.canonicalization: ${receipt.materials?.canonicalization}`);
+  }
+
+  // policy hashes
+  if (receipt.policy?.policy_hash && !hashPattern.test(receipt.policy.policy_hash)) {
+    errors.push(`Invalid hash format for policy.policy_hash: ${receipt.policy.policy_hash}`);
+  }
+  if (receipt.policy?.rule_set_hash && !hashPattern.test(receipt.policy.rule_set_hash)) {
+    errors.push(`Invalid hash format for policy.rule_set_hash: ${receipt.policy.rule_set_hash}`);
+  }
+
+  // builder
+  if (receipt.builder) {
+    if (receipt.builder.package_lock_sha !== null) {
+      errors.push('builder.package_lock_sha should be null at v0');
     }
-    if (typeof receipt.code_version.node_version !== 'string') {
-      errors.push('node_version should be a string');
+    if (typeof receipt.builder.node_version !== 'string') {
+      errors.push('builder.node_version should be a string');
     }
   }
 
@@ -100,14 +119,13 @@ describe('buildReceipt', () => {
     assert.deepStrictEqual(errors, [], `Schema validation errors: ${errors.join(', ')}`);
   });
 
-  it('input_hash is hash of canonicalized raw input (not post-normalized events)', () => {
+  it('has predicateType attestation discriminator', () => {
     const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
     const receipt = buildTestReceipt(rawData, 'test-tremor');
-    const expectedHash = sha256(canonicalize(rawData));
-    assert.equal(receipt.input_hash, expectedHash);
+    assert.equal(receipt.predicateType, 'https://forge.echelon.build/attestation/v0');
   });
 
-  it('output_hash is hash of canonicalized envelope', () => {
+  it('subject.digest is hash of canonicalized envelope', () => {
     const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
     const events = ingest(rawData, { timestampBase: FIXED_TIMESTAMP_BASE });
     const profile = classify(events);
@@ -120,7 +138,48 @@ describe('buildReceipt', () => {
     });
     const receipt = buildReceipt({ rawInput: rawData, envelope });
     const expectedHash = sha256(canonicalize(envelope));
-    assert.equal(receipt.output_hash, expectedHash);
+    assert.equal(receipt.subject.digest, expectedHash);
+  });
+
+  it('materials.digest is hash of canonicalized raw input (not post-normalized events)', () => {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const receipt = buildTestReceipt(rawData, 'test-tremor');
+    const expectedHash = sha256(canonicalize(rawData));
+    assert.equal(receipt.materials.digest, expectedHash);
+  });
+
+  it('materials.canonicalization is jcs-subset/v0', () => {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const receipt = buildTestReceipt(rawData, 'test-tremor');
+    assert.equal(receipt.materials.canonicalization, 'jcs-subset/v0');
+  });
+
+  it('policy groups policy_hash, rule_set_hash, version_tag', () => {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const receipt = buildTestReceipt(rawData, 'test-tremor');
+    assert.ok(receipt.policy.policy_hash);
+    assert.ok(receipt.policy.rule_set_hash);
+    assert.equal(receipt.policy.version_tag, 'forge-policy/v0.1.0');
+  });
+
+  it('builder has uri, git_sha, package_lock_sha, node_version', () => {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const receipt = buildTestReceipt(rawData, 'test-tremor');
+    assert.equal(receipt.builder.uri, 'https://forge.echelon.build/builder/v0');
+    assert.equal(receipt.builder.package_lock_sha, null);
+    assert.ok(typeof receipt.builder.node_version === 'string');
+  });
+
+  it('no flat input_hash, output_hash, code_version fields remain', () => {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const receipt = buildTestReceipt(rawData, 'test-tremor');
+    assert.equal(receipt.input_hash, undefined, 'flat input_hash should not exist');
+    assert.equal(receipt.output_hash, undefined, 'flat output_hash should not exist');
+    assert.equal(receipt.code_version, undefined, 'flat code_version should not exist');
+    assert.equal(receipt.input_canonicalization, undefined, 'flat input_canonicalization should not exist');
+    assert.equal(receipt.policy_hash, undefined, 'flat policy_hash should not exist');
+    assert.equal(receipt.rule_set_hash, undefined, 'flat rule_set_hash should not exist');
+    assert.equal(receipt.policy_version_tag, undefined, 'flat policy_version_tag should not exist');
   });
 
   it('computed_at is present as ISO 8601 string', () => {
@@ -177,7 +236,7 @@ describe('Receipt fixture generation (Task 4.4)', () => {
     const receipt = buildTestReceipt(rawData, 'tremor-fixture');
     const errors = validateReceipt(receipt);
     assert.deepStrictEqual(errors, [], `TREMOR: ${errors.join(', ')}`);
-    assert.equal(receipt.input_hash, sha256(canonicalize(rawData)));
+    assert.equal(receipt.materials.digest, sha256(canonicalize(rawData)));
   });
 
   it('CORONA: generates valid receipt', () => {
@@ -192,7 +251,7 @@ describe('Receipt fixture generation (Task 4.4)', () => {
     const receipt = buildTestReceipt(rawData, 'corona-fixture');
     const errors = validateReceipt(receipt);
     assert.deepStrictEqual(errors, [], `CORONA: ${errors.join(', ')}`);
-    assert.equal(receipt.input_hash, sha256(canonicalize(rawData)));
+    assert.equal(receipt.materials.digest, sha256(canonicalize(rawData)));
   });
 
   it('BREATH: generates valid receipt', () => {
@@ -202,7 +261,7 @@ describe('Receipt fixture generation (Task 4.4)', () => {
     const receipt = buildTestReceipt(rawData, 'breath-fixture');
     const errors = validateReceipt(receipt);
     assert.deepStrictEqual(errors, [], `BREATH: ${errors.join(', ')}`);
-    assert.equal(receipt.input_hash, sha256(canonicalize(rawData)));
+    assert.equal(receipt.materials.digest, sha256(canonicalize(rawData)));
   });
 });
 
@@ -242,5 +301,6 @@ describe('emitEnvelope — receipt integration', () => {
     assert.ok(result.receipt, 'Should have receipt property');
     assert.ok(result.envelope.ir_version, 'Envelope should have ir_version');
     assert.equal(result.receipt.schema, 'forge-receipt/v0');
+    assert.equal(result.receipt.predicateType, 'https://forge.echelon.build/attestation/v0');
   });
 });

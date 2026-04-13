@@ -143,7 +143,7 @@ export function selectTemplates(profile) {
     template:   rule.template,
     params:     { ...rule.params },
     confidence: evaluation.confidence,
-    rationale:  `Rule '${rule.id}' fired (${evaluation.conditions_total}/${evaluation.conditions_total} conditions). ` +
+    rationale:  `Rule '${rule.id}' fired (${evaluation.conditions_met}/${evaluation.conditions_total} conditions). ` +
                 `Traced to: ${rule.traced_to.join(', ')}.`,
   }));
 }

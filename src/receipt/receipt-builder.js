@@ -13,6 +13,13 @@ import { getCodeIdentity } from './code-identity.js';
 /**
  * Build a ProposalReceipt from raw input and a proposal envelope.
  *
+ * Receipt fields are grouped into attestation-aligned structures:
+ *   - subject: output identity (digest of the envelope)
+ *   - materials: input identity (digest + canonicalization of raw input)
+ *   - policy: policy_hash, rule_set_hash, version_tag
+ *   - builder: code identity (uri, git_sha, package_lock_sha, node_version)
+ *   - predicateType: attestation type discriminator
+ *
  * @param {Object} opts
  * @param {any}      opts.rawInput      - Raw pre-ingest input payload
  * @param {Object}   opts.envelope      - Proposal IR envelope from emitEnvelope()
@@ -29,17 +36,17 @@ export function buildReceipt({
 }) {
   // 1. Hash the canonicalized raw input
   const canonicalInput = canonicalize(rawInput);
-  const input_hash = sha256(canonicalInput);
+  const inputDigest = sha256(canonicalInput);
 
   // 2. Hash the canonicalized envelope
   const canonicalEnvelope = canonicalize(envelope);
-  const output_hash = sha256(canonicalEnvelope);
+  const outputDigest = sha256(canonicalEnvelope);
 
   // 3. Policy hashes
   const { policy_hash, rule_set_hash, policy_version_tag } = computePolicyHash();
 
   // 4. Code identity
-  const code_version = getCodeIdentity();
+  const codeId = getCodeIdentity();
 
   // 5. Metadata timestamp (not in signed payload)
   const computed_at = new Date().toISOString();
@@ -47,13 +54,27 @@ export function buildReceipt({
   // 6. Assemble the receipt (pre-signature)
   const receipt = {
     schema: 'forge-receipt/v0',
-    input_hash,
-    input_canonicalization: 'jcs-subset/v0',
-    code_version,
-    policy_hash,
-    rule_set_hash,
-    policy_version_tag,
-    output_hash,
+    predicateType: 'https://forge.echelon.build/attestation/v0',
+    subject: {
+      digest: outputDigest,
+      uri: null,
+    },
+    materials: {
+      digest: inputDigest,
+      canonicalization: 'jcs-subset/v0',
+      uri: null,
+    },
+    policy: {
+      policy_hash,
+      rule_set_hash,
+      version_tag: policy_version_tag,
+    },
+    builder: {
+      uri: 'https://forge.echelon.build/builder/v0',
+      git_sha: codeId.git_sha,
+      package_lock_sha: codeId.package_lock_sha,
+      node_version: codeId.node_version,
+    },
     computed_at,
     http_transcript_receipts: null,
     signer: signerName,
@@ -66,13 +87,11 @@ export function buildReceipt({
     // Build the signed payload (excludes computed_at — it's metadata only)
     const signedPayload = canonicalize({
       schema: receipt.schema,
-      input_hash: receipt.input_hash,
-      input_canonicalization: receipt.input_canonicalization,
-      code_version: receipt.code_version,
-      policy_hash: receipt.policy_hash,
-      rule_set_hash: receipt.rule_set_hash,
-      policy_version_tag: receipt.policy_version_tag,
-      output_hash: receipt.output_hash,
+      predicateType: receipt.predicateType,
+      subject: receipt.subject,
+      materials: receipt.materials,
+      policy: receipt.policy,
+      builder: receipt.builder,
       http_transcript_receipts: receipt.http_transcript_receipts,
       signer: receipt.signer,
     });

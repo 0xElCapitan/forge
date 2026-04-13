@@ -1,435 +1,394 @@
-# SDD: Community Feedback — Review Pipeline Hardening
+# SDD: FORGE Pre-002 Hardening — Attestation & Hermeticity Discipline
 
-**Cycle**: cycle-048
+**Cycle**: pre-002
 **PRD**: grimoires/loa/prd.md
-**Created**: 2026-02-28
-**Flatline Review**: Passed — 5 HIGH findings integrated, 0 BLOCKERS
+**Created**: 2026-04-12
+
+---
 
 ## 1. Architecture Overview
 
-Six targeted fixes to the review pipeline, all in the `.claude/scripts/` System Zone (authorized for this cycle per PRD Section 5). The fixes share a common pattern: centralize logic that is currently duplicated across call sites, then migrate all sites to the centralized helper.
+FORGE Pre-002 Hardening is a discipline pass applied to the existing FORGE monolith (zero-dependency Node.js library). It restructures receipt attestation fields, introduces a hermeticity contract with a two-zone model, hardens adversarial checks against NaN/non-finite inputs, fixes a rationale string bug, and adds schema-validation tests as docs/code enforcement.
 
-**Implementation order** (dependency-driven):
-1. FR-6 (curl config guard) — no dependencies, used by FR-4
-2. FR-4 (error surfacing) — uses FR-6's `write_curl_auth_config()`
-3. FR-1 (verdict parsing) — modifies same file as FR-4, must follow
-4. FR-3 (flatline readiness) — independent, can parallel with FR-1
-5. FR-5 (timeout helper) — independent, can parallel with FR-1
-6. FR-2 (YAML regex) — TypeScript, isolated from shell changes
+No new services, infrastructure, or runtime surfaces are introduced. All five hardening items are internal structural improvements to existing modules within `src/receipt/`, `src/trust/`, `src/selector/`, `src/ir/`, and `src/index.js`.
 
-## 2. Detailed Design
-
-### 2.1 FR-1: Centralized Verdict Extraction
-
-**Design decision**: Create `extract_verdict()` in `lib/normalize-json.sh` as a single normalization point, rather than patching 7+ individual call sites with fallback logic.
-
-**New function** in `.claude/scripts/lib/normalize-json.sh`:
-
-```bash
-# extract_verdict — Resilient verdict extraction with field fallback
-# Returns: verdict string on stdout, exit 0 on success, exit 1 on missing
-# Usage: verdict=$(echo "$json" | extract_verdict)
-extract_verdict() {
-  local json="${1:-$(cat)}"
-  local verdict
-  verdict=$(echo "$json" | jq -r '.verdict // .overall_verdict // empty' 2>/dev/null)
-  if [[ -z "$verdict" ]]; then
-    return 1
-  fi
-  echo "$verdict"
-}
-```
-
-**Call sites to migrate** (11 implementation + 22 test locations):
-
-| File | Lines | Current Pattern | Migration |
-|------|-------|-----------------|-----------|
-| `gpt-review-api.sh` | 116, 131 | `jq -e '.verdict'` | `extract_verdict` existence check |
-| `lib-curl-fallback.sh` | 318 | `jq -r '.verdict // empty'` | `extract_verdict` |
-| `lib-route-table.sh` | 202, 581 | `jq -e '.verdict'`, `jq -r '.verdict // empty'` | `extract_verdict` |
-| `lib/normalize-json.sh` | 250 | `jq -r '.verdict // ""'` | `extract_verdict` (self-use) |
-| `post-pr-audit.sh` | 370, 491 | `jq -r '.verdict' "$file"` (file-based, no fallback) | `extract_verdict < "$file"` |
-| `cache-manager.sh` | 580-581 | `jq -e '.verdict'` + `jq -r '.verdict // "stored"'` | `extract_verdict` with "stored" default |
-| `condense.sh` | 217, 352 | `jq -r '.verdict // .status // .result // "UNKNOWN"'` | Already resilient — leave as-is |
-
-**condense.sh exception**: Lines 217 and 352 already use triple-fallback (`.verdict // .status // .result // "UNKNOWN"`). These are in the condensation pipeline where any status value suffices. No change needed.
-
-**Test updates**: 22 locations across 3 test files (`test-gpt-review-integration.bats`, `test-gpt-review-codex-adapter.bats`, `test-gpt-review-multipass.bats`) use `.verdict` in assertions. These should test with both `.verdict` and `.overall_verdict` response shapes.
-
-**New test file**: `tests/unit/extract-verdict.bats`
-- Test `.verdict` present → returns verdict
-- Test `.overall_verdict` present → returns overall_verdict
-- Test both present → `.verdict` takes precedence
-- Test neither present → exit 1
-- Test null verdict → exit 1
-- Test enum validation downstream (APPROVED, CHANGES_REQUIRED, DECISION_NEEDED, SKIPPED)
-
-### 2.2 FR-2: Bridgebuilder YAML Regex Fix
-
-**Target**: `.claude/skills/bridgebuilder-review/resources/config.ts` line 189
-
-**Current regex**:
-```regex
-/^bridgebuilder:\s*\n((?:\s+.+\n?)*)/m
-```
-
-**Fixed regex**:
-```regex
-/^bridgebuilder:\s*\n((?:[ \t]+.+\n?)*)/m
-```
-
-**Design notes**:
-- The `\s+` in the inner capture group matches `\n`, causing the capture to bleed past the `bridgebuilder:` section into subsequent sections. `[ \t]+` restricts to horizontal whitespace only.
-- The `^` anchor with multiline flag matches any line start. `bridgebuilder_design_review:` would NOT match because the regex requires exactly `bridgebuilder:` followed by optional whitespace and newline — `bridgebuilder_design_review:` has additional characters before the colon.
-- **dist/ is tracked in git** (not gitignored). After the TypeScript change, run `npm run build` and commit the updated dist/ output. Verify with `git diff --exit-code dist/`.
-- Existing `config.test.ts` tests bypass `loadYamlConfig()` entirely (pass yamlConfig directly to `resolveConfig()`), so they don't exercise the regex.
-
-**Test strategy**: Add tests to `config.test.ts` that exercise `loadYamlConfig()` directly:
-1. Create temp YAML file with `bridgebuilder:` before `red_team:` (which has `enabled: false`)
-2. Verify `loadYamlConfig()` returns `{ enabled: true }` for bridgebuilder
-3. Verify `bridgebuilder_design_review:` is NOT captured as a `bridgebuilder:` match
-4. Verify section ordering independence (bridgebuilder after red_team)
-
-### 2.3 FR-3: Flatline Readiness Script
-
-**New file**: `.claude/scripts/flatline-readiness.sh`
-
-**Interface** (mirrors `beads-health.sh`):
+### 1.1 Affected Components
 
 ```
-Usage: flatline-readiness.sh [--json] [--quick]
-Exit codes:
-  0 = READY       (all configured providers available)
-  1 = DISABLED    (flatline_protocol.enabled is false)
-  2 = NO_API_KEYS (zero provider keys present)
-  3 = DEGRADED    (some but not all provider keys present)
+ingest → classify → selectTemplates → emitEnvelope → buildReceipt
+  |           |              |                 |              |
+  |           |         [H-4: rationale]  [H-2: det. mode]  [H-1: receipt shape]
+  |           |                               |
+  |     [H-2: contract doc]            [H-5: schema tests]
+  |
+[H-2: hidden input doc]     [H-3: adversarial NaN guards]
+                              (src/trust/adversarial.js)
 ```
 
-**Provider mapping logic**:
+### 1.2 Key Change Surfaces
 
-```bash
-# Map model names to provider + env var
-map_model_to_provider() {
-  local model="$1"
-  case "$model" in
-    opus|claude-*|anthropic-*)
-      echo "anthropic:ANTHROPIC_API_KEY" ;;
-    gpt-*|openai-*)
-      echo "openai:OPENAI_API_KEY" ;;
-    gemini-*|google-*)
-      # GOOGLE_API_KEY is canonical (per cheval.py, google_adapter.py)
-      # GEMINI_API_KEY accepted as alias with deprecation warning
-      echo "google:GOOGLE_API_KEY:GEMINI_API_KEY" ;;
-    *)
-      echo "unknown:" ;;
-  esac
-}
-```
+| Module | Change | Risk |
+|--------|--------|------|
+| `src/receipt/receipt-builder.js` | Restructured receipt shape: `predicateType`, `subject`, `materials`, `policy`, `builder` groups | Medium — all receipt consumers must update |
+| `spec/receipt-v0.json` | Schema updated for new structure | Low — pre-stable v0 |
+| `src/receipt/to-intoto.js` | New file: pure-function converter | None — additive |
+| `bin/forge-verify.js` | Updated field paths for new receipt shape | Medium — must update in same PR |
+| `src/trust/adversarial.js` | `Number.isFinite` guards on 5 fields | Low — fail-closed, only rejects malformed |
+| `src/selector/template-selector.js` | One-line rationale string fix | None |
+| `src/index.js` | `deterministic: true` validation gate | Low — validation only, no output change |
+| `spec/HERMETICITY.md` | New file: hermeticity contract | None — documentation |
 
-**Config reading**: Uses `yq` to extract `flatline_protocol.models.{primary,secondary,tertiary}` from `.loa.config.yaml`.
+---
 
-**JSON output schema**:
+## 2. Software Stack
+
+No additions. FORGE remains zero-dependency.
+
+| Category | Technology | Version |
+|----------|-----------|---------|
+| Runtime | Node.js | >= 20.0.0 |
+| Test runner | `node:test` | Built-in |
+| Crypto | `node:crypto` (ed25519, SHA-256) | Built-in |
+| Serialization | JCS-subset/v0 | Internal (`src/receipt/canonicalize.js`) |
+| Schema | JSON Schema draft/2020-12 | Spec files only |
+
+---
+
+## 3. Receipt Shape Restructuring (FR-H1)
+
+### 3.1 Design Decision: In-Place v0 Evolution
+
+The receipt shape evolves **within** `forge-receipt/v0`, not as a version bump to v1.
+
+**Rationale**:
+- Receipt is FORGE-internal. Tobias consumes ProposalEnvelope, not receipt (PRD §9).
+- Receipt is at v0 — pre-stability. Shape improvements are expected before v1 locks.
+- A version bump adds migration surface without benefit since no downstream consumer stores receipts.
+
+**Carry-forward instruction**: "Receipt cleanup should be structurally stronger but migration-light." This design satisfies both: the structure improves (grouped fields, type discriminator, in-toto isomorphism) while the migration is minimal (same `forge-receipt/v0` schema identifier, no new consumers to update).
+
+[ASSUMPTION] No downstream consumer stores or parses receipts beyond `forge-verify` and FORGE's own tests. Verify with Tobias before merging.
+
+### 3.2 New Receipt Shape
+
 ```json
 {
-  "status": "READY",
-  "exit_code": 0,
-  "providers": {
-    "anthropic": { "configured": true, "available": true, "env_var": "ANTHROPIC_API_KEY" },
-    "openai": { "configured": true, "available": true, "env_var": "OPENAI_API_KEY" },
-    "google": { "configured": true, "available": true, "env_var": "GOOGLE_API_KEY" }
+  "schema": "forge-receipt/v0",
+  "predicateType": "https://forge.echelon.build/attestation/v0",
+  "subject": {
+    "digest": "sha256:...",
+    "uri": null
   },
-  "models": {
-    "primary": "opus",
-    "secondary": "gpt-5.3-codex",
-    "tertiary": "gemini-2.5-pro"
+  "materials": {
+    "digest": "sha256:...",
+    "canonicalization": "jcs-subset/v0",
+    "uri": null
   },
-  "recommendations": [],
-  "timestamp": "2026-02-28T09:00:00Z"
+  "policy": {
+    "policy_hash": "sha256:...",
+    "rule_set_hash": "sha256:...",
+    "version_tag": "forge-policy/v0.1.0"
+  },
+  "builder": {
+    "uri": "https://forge.echelon.build/builder/v0",
+    "git_sha": "abc123...",
+    "package_lock_sha": null,
+    "node_version": "20.11.1"
+  },
+  "computed_at": "2026-04-12T...",
+  "http_transcript_receipts": null,
+  "signer": "forge-production",
+  "key_id": null,
+  "signature": null
 }
 ```
 
-**GEMINI_API_KEY alias handling**: If `GOOGLE_API_KEY` is unset but `GEMINI_API_KEY` is set, use it with a stderr warning: `"WARNING: GEMINI_API_KEY is deprecated, use GOOGLE_API_KEY"`.
+### 3.3 Field Migration Map
 
-**Integration point**: Called from simstim Phase 0 preflight. Status logged to trajectory. DEGRADED triggers a warning but does not block the workflow (operator decides).
+| Current Field | New Location | Notes |
+|---|---|---|
+| `output_hash` | `subject.digest` | Output is the subject (what was produced) |
+| — | `subject.uri` | Nullable; reserved for future URI identity |
+| `input_hash` | `materials.digest` | Input is a material (what was consumed) |
+| `input_canonicalization` | `materials.canonicalization` | Moved into materials group |
+| — | `materials.uri` | Nullable; reserved for future URI identity |
+| `policy_hash` | `policy.policy_hash` | Grouped under policy |
+| `rule_set_hash` | `policy.rule_set_hash` | Grouped under policy |
+| `policy_version_tag` | `policy.version_tag` | Shortened key; grouped under policy |
+| `code_version.git_sha` | `builder.git_sha` | `code_version` → `builder` |
+| `code_version.package_lock_sha` | `builder.package_lock_sha` | Under builder |
+| `code_version.node_version` | `builder.node_version` | Under builder |
+| — | `builder.uri` | New: explicit builder identity URI |
+| — | `predicateType` | New: type discriminator per in-toto pattern |
 
-**Test file**: `tests/unit/flatline-readiness.bats`
-- DISABLED: `flatline_protocol.enabled: false` → exit 1
-- NO_API_KEYS: all keys unset → exit 2
-- DEGRADED: only ANTHROPIC_API_KEY set → exit 3
-- READY: all 3 keys set → exit 0
-- GEMINI_API_KEY alias: only GEMINI_API_KEY set for google → exit 0 with deprecation warning
-- `--json` output structure validation
-- `PROJECT_ROOT` override for test isolation
+No field is removed — they are regrouped. Existing hash values are identical.
 
-### 2.4 FR-4: API Error Message Surfacing
+### 3.4 Signed Payload Update
 
-**Target**: `.claude/scripts/lib-curl-fallback.sh` lines 255-257
+The canonical signed payload becomes:
 
-**Current code** (401 handler in `call_api()`):
-```bash
-401)
-  echo "ERROR: Authentication failed - check OPENAI_API_KEY" >&2
-  return 4
-  ;;
+```js
+const signedPayload = canonicalize({
+  schema: receipt.schema,
+  predicateType: receipt.predicateType,
+  subject: receipt.subject,
+  materials: receipt.materials,
+  policy: receipt.policy,
+  builder: receipt.builder,
+  http_transcript_receipts: receipt.http_transcript_receipts,
+  signer: receipt.signer,
+});
 ```
 
-**Updated code**:
-```bash
-401)
-  # Extract provider error message if available
-  local api_error=""
-  if [[ -n "$response" ]]; then
-    api_error=$(echo "$response" | jq -r '.error.message // empty' 2>/dev/null)
-    # Redact potential key fragments before display
-    # Note: redact_log_output() takes positional arg, not stdin (Flatline fix)
-    if [[ -n "$api_error" ]]; then
-      api_error=$(redact_log_output "$api_error")
-    fi
-  fi
-  if [[ -n "$api_error" ]]; then
-    echo "ERROR: API authentication failed: $api_error" >&2
-  else
-    echo "ERROR: Authentication failed - check API key for provider" >&2
-  fi
-  return 4
-  ;;
-```
+This changes the signature. Since receipts are at v0 with no production signing deployed, this is acceptable.
 
-**Dependencies**: `redact_log_output()` from `lib-security.sh` (already sourced in the call chain).
+### 3.5 `toInTotoStatement()` Converter
 
-**Edge cases**:
-- HTML response body (proxy/CDN 401) → `jq` returns empty, falls through to generic message
-- Empty response body → `$response` is empty, skips extraction
-- JSON without `.error` key → `jq` returns empty, falls through
-- `.error.message` contains key fragment → `redact_log_output()` catches it
+New file: `src/receipt/to-intoto.js`
 
-**Scope boundary**: Only the direct curl path (`call_api()`). The model-invoke path (`call_api_via_model_invoke()`) is out of scope per PRD.
+Pure function that maps FORGE receipt to valid in-toto Statement v1 JSON. Separate utility, not in the receipt's critical path.
 
-**Test**: `tests/unit/api-error-surfacing.bats`
-- Mock 401 with JSON error body → shows API error message
-- Mock 401 with HTML body → falls back to generic
-- Mock 401 with empty body → falls back to generic
-- Mock 401 with key fragment in error → redacted before display
-
-### 2.5 FR-5: Canonical `run_with_timeout()`
-
-**Target**: `.claude/scripts/compat-lib.sh`
-
-**Existing implementations to consolidate**:
-1. `post-pr-orchestrator.sh:104-133` — array-based, timeout/manual fallback
-2. `post-pr-e2e.sh:103-142` — string-based with security allowlist
-3. `golden-path.sh:403` — bare `timeout 2` with no fallback
-
-**Canonical implementation**:
-
-```bash
-# run_with_timeout — Portable timeout execution
-# Usage: run_with_timeout <seconds> <command> [args...]
-# Exit codes: command's exit code, or 124 on timeout
-# Fallback: timeout → gtimeout → perl alarm → run without timeout (with warning)
-run_with_timeout() {
-  local timeout_val="$1"
-  shift
-
-  # Runtime detection (not cached) to support test PATH manipulation
-  if command -v timeout &>/dev/null; then
-    timeout "$timeout_val" "$@"
-  elif command -v gtimeout &>/dev/null; then
-    gtimeout "$timeout_val" "$@"
-  elif command -v perl &>/dev/null; then
-    # Note: exec replaces process image, losing $SIG{ALRM} handler.
-    # Use system() to fork+exec, preserving alarm handler in parent.
-    perl -e '
-      $SIG{ALRM} = sub { kill 9, $pid; exit 124 };
-      alarm(shift @ARGV);
-      $pid = fork();
-      if ($pid == 0) { exec @ARGV; die "exec failed: $!" }
-      waitpid($pid, 0);
-      exit($? >> 8);
-    ' "$timeout_val" "$@"
-  else
-    echo "WARNING: No timeout mechanism available, running without timeout" >&2
-    "$@"
-  fi
+```js
+export function toInTotoStatement(receipt) {
+  return {
+    _type: 'https://in-toto.io/Statement/v1',
+    subject: [{
+      name: receipt.subject.uri ?? 'forge-output',
+      digest: { sha256: receipt.subject.digest.replace('sha256:', '') },
+    }],
+    predicateType: receipt.predicateType,
+    predicate: {
+      builder: { id: receipt.builder.uri },
+      metadata: {
+        buildInvocationId: receipt.builder.git_sha,
+        completeness: { parameters: true, environment: false, materials: true },
+      },
+      materials: [{
+        uri: receipt.materials.uri ?? 'forge-input',
+        digest: { sha256: receipt.materials.digest.replace('sha256:', '') },
+      }],
+      policy: {
+        policy_hash: receipt.policy.policy_hash,
+        rule_set_hash: receipt.policy.rule_set_hash,
+        version_tag: receipt.policy.version_tag,
+      },
+    },
+  };
 }
 ```
 
-**Design decisions**:
-- **Runtime detection** (not cached at source time) — differs from compat-lib.sh's existing pattern of caching at source time. This is intentional: tests need to manipulate PATH between calls.
-- **Array-based** execution (`"$@"`) — safer than string interpolation, no injection risk.
-- **Exit code 124** convention preserved (standard for GNU timeout).
-- **perl alarm** as third fallback — uses fork+waitpid pattern (not bare `exec`) to preserve the `$SIG{ALRM}` handler. Bare `exec` replaces the process image, losing the signal handler and producing exit 142 instead of 124. _(Flatline SPR-11 fix)_
-- **Security allowlist** from `post-pr-e2e.sh` is NOT included in the canonical version — that's a separate concern for the caller. The e2e file will keep its `validate_command()` call before invoking `run_with_timeout()`.
+### 3.6 Impact on `forge-verify`
 
-**Migration plan**:
-1. Add `run_with_timeout()` to compat-lib.sh
-2. `post-pr-orchestrator.sh`: replace local implementation with `source compat-lib.sh` + call
-3. `post-pr-e2e.sh`: keep `validate_command()`, replace timeout logic with `run_with_timeout()`
-4. `golden-path.sh:403`: replace bare `timeout 2` with `run_with_timeout 2`
+Field path updates in `bin/forge-verify.js`:
 
-**CI lint rule**: Add to `.github/workflows/shell-compat-lint.yml` (or existing CI) a check that flags bare `timeout` command usage outside of `run_with_timeout()`:
-```bash
-# Flag bare timeout usage in .sh files (excluding compat-lib.sh itself)
-grep -rn 'timeout [0-9]' .claude/scripts/ --include='*.sh' | grep -v 'compat-lib.sh' | grep -v 'run_with_timeout' | grep -v '#'
-```
+| Old Path | New Path |
+|----------|----------|
+| `receipt.input_hash` | `receipt.materials.digest` |
+| `receipt.output_hash` | `receipt.subject.digest` |
+| `receipt.code_version?.node_version` | `receipt.builder?.node_version` |
 
-**Test file**: `tests/unit/run-with-timeout.bats`
-- PATH with `timeout` → uses timeout
-- PATH without `timeout` but with `gtimeout` → uses gtimeout
-- PATH without both but with `perl` → uses perl alarm
-- PATH without all three → warns and runs without timeout
-- Timeout fires correctly (command killed after N seconds)
-- Non-timeout command completes with correct exit code
+Signed payload construction updated per §3.4. Schema check `receipt.schema !== 'forge-receipt/v0'` unchanged.
 
-### 2.6 FR-6: Curl Config Injection Guard
+---
 
-**Target**: `.claude/scripts/lib-security.sh`
+## 4. Hermeticity Contract (FR-H2)
 
-**New function**:
+### 4.1 Two-Zone Model
 
-```bash
-# write_curl_auth_config — Secure curl config file creation
-# Usage: config_path=$(write_curl_auth_config "$api_key" ["$header_name"])
-# Returns: path to temp file on stdout (caller must rm after use)
-# Exit 1 with error message on invalid key
-write_curl_auth_config() {
-  local api_key="$1"
-  local header_name="${2:-Authorization: Bearer}"
+**Carry-forward instruction**: "Two-zone hermeticity is a current operational boundary, not a forever boundary." The contract explicitly documents a promotion path.
 
-  # Validate key: reject injection vectors
-  if [[ "$api_key" =~ [$'\r\n\0\\'] ]]; then
-    echo "ERROR: API key contains invalid characters (CR/LF/null/backslash)" >&2
-    return 1
-  fi
+| Zone | Scope | Enforcement | Promotion Path |
+|------|-------|-------------|----------------|
+| **Receipt-critical** | `ingest → classify → selectTemplates → emitEnvelope → buildReceipt` | Fail-closed: `deterministic: true` throws if clocks not injected | Permanent — this zone only grows |
+| **Runtime** | Theatre create/process/expire/resolve, `checkAdversarial`, `ForgeRuntime` | Documented: all functions accept `opts.now`; no fail-closed gate | Promotable: when a runtime function becomes receipt-relevant (e.g., composed attestation), it moves to receipt-critical zone with enforcement |
 
-  local config_path
-  config_path=$(mktemp)
-  chmod 600 "$config_path"
+### 4.2 Allowed Inputs (Receipt-Critical Zone)
 
-  # Use printf (not echo) to avoid -n/-e interpretation
-  # Escape double quotes in key value
-  local escaped_key="${api_key//\"/\\\"}"
-  printf 'header = "%s %s"\n' "$header_name" "$escaped_key" > "$config_path"
+| Input | Source | Identified By |
+|-------|--------|--------------|
+| Raw feed data (bytes) | Fixture file or live feed | `materials.digest` in receipt |
+| Injected timestamp base | `options.timestampBase` | Deterministic ingestion |
+| Injected wall clock | `options.now` | Deterministic `emitted_at` |
+| Selector rules (RULES array) | `src/selector/rules.js` | `policy.rule_set_hash` |
+| Regulatory tables | Threshold classifier imports | `policy.policy_hash` |
+| Code identity | Git SHA + Node.js version | `builder` in receipt |
 
-  echo "$config_path"
+Everything else is a hidden input.
+
+### 4.3 `deterministic: true` Option
+
+Added to `ForgeConstruct.analyze()` in `src/index.js`:
+
+```js
+if (deterministic) {
+  if (timestampBase == null || now === undefined) {
+    throw new Error('deterministic mode requires explicit timestampBase and now');
+  }
 }
 ```
 
-**Call sites to migrate**:
+Validation only. No output change. Fail-closed at entrypoint.
 
-| File | Lines | Current Pattern | Notes |
-|------|-------|-----------------|-------|
-| `lib-curl-fallback.sh` | 211-215 | `mktemp` + `chmod 600` + `printf` | Bearer auth |
-| `constructs-auth.sh` | 156-159 | `mktemp` + `chmod 600` + `echo` | Bearer auth |
-| `constructs-browse.sh` | 117-120, 179-182 | `mktemp` + `chmod 600` + `echo` | Bearer auth |
+### 4.4 Deterministic Replay Gate Test
 
-**Migration pattern**:
-```bash
-# Before (each site):
-local curl_config=$(mktemp)
-chmod 600 "$curl_config"
-echo "header = \"Authorization: Bearer ${api_key}\"" > "$curl_config"
+Extend `test/unit/determinism-gate.spec.js`:
 
-# After:
-local curl_config
-curl_config=$(write_curl_auth_config "$api_key") || return 1
+1. Run same fixture twice with fixed clocks through full pipeline including `buildReceipt`
+2. Assert byte-identical canonicalized receipt output
+3. Test that `deterministic: true` throws when `timestampBase` or `now` is missing
+
+### 4.5 `spec/HERMETICITY.md` Structure
+
+1. Purpose — formal backing for determinism claim
+2. Two-Zone Model — receipt-critical vs runtime
+3. Allowed Inputs — exhaustive table
+4. Hidden Input Risks — documented with locations
+5. Enforcement — `deterministic: true` option
+6. Replay Constants — `REPLAY_TIMESTAMP_BASE = 1700000000000`, `REPLAY_NOW = REPLAY_TIMESTAMP_BASE + 1000`
+7. Promotion Path — explicit note on zone boundary evolution
+8. `computed_at` Note — metadata-only, not in signed payload, not determinism-critical
+
+### 4.6 Confirmed: No Locale/Timezone Hidden Input
+
+Classification path (`classify()` in `src/classifier/feed-grammar.js`) operates on epoch-ms timestamps and numeric values. No `Date.toLocaleString()`, `Intl`, or timezone-dependent parsing found in the receipt-critical zone.
+
+---
+
+## 5. Adversarial Gate NaN Hardening (FR-H3)
+
+### 5.1 Guard Placement
+
+In `src/trust/adversarial.js`, `checkAdversarial()` (lines 64-138):
+
+| Check | Fields to Guard | Insert Point | Current Line |
+|-------|----------------|-------------|-------------|
+| 1: Channel A/B | `channel_a`, `channel_b` | After null check (line 68), before arithmetic (line 72) | 68-80 |
+| 2: Frozen data | `frozen_count` | After null check (line 83), before comparison | 83-88 |
+| 3: Clock drift | `timestamp` | After null check (line 91), before arithmetic (line 92) | 91-101 |
+| 4: Location | `lat`, `lon` | After null check (line 104), before arithmetic (line 105) | 104-114 |
+| 5: Sybil sensors | `peer_values` elements | After array check (line 118), before `.every()` (line 120) | 118-127 |
+| 6: Value range | `value` | **Already guarded** (line 130) | 130-135 |
+
+### 5.2 Guard Pattern
+
+```js
+if (fieldValue != null && !Number.isFinite(fieldValue)) {
+  return { clean: false, reason: `invalid_{field}: must be finite number` };
+}
 ```
 
-**Content-Type headers**: Some sites also write `Content-Type` to the same config file. The helper returns the path, so callers can append additional headers:
-```bash
-curl_config=$(write_curl_auth_config "$api_key") || return 1
-printf 'header = "Content-Type: application/json"\n' >> "$curl_config"
+For multi-field checks (channel_a + channel_b, lat + lon): guard both before the arithmetic block. For array (peer_values): filter non-finite values and reject if any found.
+
+### 5.3 Test Cases
+
+For each guarded field, test: `NaN`, `Infinity`, `-Infinity`, `undefined`, `"42"`. Each must produce `{ clean: false }`. Add to `test/unit/trust.spec.js`.
+
+---
+
+## 6. Rationale String Fix (FR-H4)
+
+### 6.1 The Fix
+
+`src/selector/template-selector.js:146`:
+
+```diff
+- rationale: `Rule '${rule.id}' fired (${evaluation.conditions_total}/${evaluation.conditions_total} conditions). ` +
++ rationale: `Rule '${rule.id}' fired (${evaluation.conditions_met}/${evaluation.conditions_total} conditions). ` +
 ```
 
-**CI regression check**: Add to CI a grep that flags raw curl config creation outside of `lib-security.sh`:
-```bash
-# Flag raw Authorization Bearer patterns in .sh files (excluding lib-security.sh)
-grep -rn 'Authorization.*Bearer' .claude/scripts/ --include='*.sh' | grep -v 'lib-security.sh' | grep -v '#'
-```
+### 6.2 Test
 
-**Test file**: `tests/unit/curl-config-guard.bats`
-- Valid key → correct curl config content
-- Key with CR → rejected (exit 1)
-- Key with LF → rejected (exit 1)
-- Key with null byte → rejected (exit 1)
-- Key with backslash → rejected (exit 1)
-- Key with double quote → properly escaped
-- Key with base64 chars (+, /, =) → accepted
-- Config file permissions → 0600
-- Config file path → starts with /tmp
+Add assertion in `test/unit/selector.spec.js` that the rationale string contains `conditions_met` (not `conditions_total` repeated) in the first numeric position.
 
-## 3. Cross-Cutting Concerns
+---
 
-### 3.1 System Zone Authorization
+## 7. Docs/Code Contract Tests (FR-H5)
 
-All target files are in `.claude/scripts/` (System Zone). The PRD authorizes System Zone writes for this cycle. The safety hook `team-role-guard-write.sh` will need to be accounted for in Agent Teams mode — the team lead must perform these writes.
+### 7.1 New Test File
 
-### 3.2 Test Isolation
+`test/unit/schema-validation.spec.js`:
 
-Pre-existing 271 BATS failures may interfere. New tests should:
-- Be runnable individually: `bats tests/unit/<specific-file>.bats`
-- Not depend on test infrastructure from failing tests
-- Use `PROJECT_ROOT` override for filesystem isolation
+1. **Envelope schema validation**: `emitEnvelope()` output validated against `spec/proposal-ir.json`
+2. **Receipt schema validation**: `buildReceipt()` output validated against `spec/receipt-v0.json` (updated)
 
-### 3.3 Integration Test
+### 7.2 Post-Hardening Doc Updates
 
-A single integration test (`tests/unit/review-pipeline-integration.bats`) should exercise FR-1 + FR-4 + FR-6 together:
-1. Create curl config via `write_curl_auth_config()` (FR-6)
-2. Mock a 401 response with JSON error body (FR-4)
-3. Mock a success response with `.overall_verdict` instead of `.verdict` (FR-1)
-4. Verify: error surfaced with redaction, verdict extracted correctly
-
-## 4. File Manifest
-
-### New files
-| File | FR | Purpose |
-|------|-----|---------|
-| `.claude/scripts/flatline-readiness.sh` | FR-3 | Flatline readiness check |
-| `tests/unit/flatline-readiness.bats` | FR-3 | Readiness tests |
-| `tests/unit/extract-verdict.bats` | FR-1 | Verdict extraction tests |
-| `tests/unit/api-error-surfacing.bats` | FR-4 | Error surfacing tests |
-| `tests/unit/run-with-timeout.bats` | FR-5 | Timeout helper tests |
-| `tests/unit/curl-config-guard.bats` | FR-6 | Injection guard tests |
-| `tests/unit/review-pipeline-integration.bats` | FR-1,4,6 | Integration test |
-
-### Modified files
-| File | FR | Change |
-|------|-----|--------|
-| `.claude/scripts/lib/normalize-json.sh` | FR-1 | Add `extract_verdict()` |
-| `.claude/scripts/gpt-review-api.sh` | FR-1 | Use `extract_verdict()` |
-| `.claude/scripts/lib-curl-fallback.sh` | FR-1, FR-4, FR-6 | Verdict, error surfacing, curl config |
-| `.claude/scripts/lib-route-table.sh` | FR-1 | Use `extract_verdict()` |
-| `.claude/scripts/post-pr-audit.sh` | FR-1 | Use `extract_verdict()` |
-| `.claude/scripts/cache-manager.sh` | FR-1 | Use `extract_verdict()` |
-| `.claude/scripts/lib-security.sh` | FR-6 | Add `write_curl_auth_config()` |
-| `.claude/scripts/constructs-auth.sh` | FR-6 | Migrate to `write_curl_auth_config()` |
-| `.claude/scripts/constructs-browse.sh` | FR-6 | Migrate to `write_curl_auth_config()` |
-| `.claude/scripts/compat-lib.sh` | FR-5 | Add `run_with_timeout()` |
-| `.claude/scripts/post-pr-orchestrator.sh` | FR-5 | Migrate to `compat-lib.sh` helper |
-| `.claude/scripts/post-pr-e2e.sh` | FR-5 | Migrate timeout logic |
-| `.claude/scripts/golden-path.sh` | FR-5 | Replace bare `timeout` |
-| `.claude/skills/bridgebuilder-review/resources/config.ts` | FR-2 | Regex fix |
-| `.claude/skills/bridgebuilder-review/resources/config.test.ts` | FR-2 | Add loadYamlConfig tests |
-| `.claude/protocols/cross-platform-shell.md` | FR-5, FR-6 | Document patterns |
-
-### Unchanged files (already resilient)
-| File | Reason |
+| File | Update |
 |------|--------|
-| `.claude/scripts/condense.sh` | Lines 217, 352 already use triple-fallback pattern |
+| `README.md` | Test counts (estimated ~735 total) |
+| `BUTTERFREEZONE.md` | Test counts, receipt shape docs |
+| `spec/receipt-v0.json` | Updated schema for new structure |
+| `FORGE_LEARNINGS_updated2.md` | Append: SLSA/in-toto lesson borrowed, Bazel/Nix lesson borrowed, why bulk rejected, how pre-002 sets up 002 |
 
-## 5. Security Considerations
+---
 
-- **FR-4**: Error messages pass through `redact_log_output()` before display — prevents API key fragment leakage
-- **FR-6**: Injection guard uses denylist (CR/LF/null/backslash) + escaping (quotes) — allows valid base64 characters
-- **FR-6**: `mktemp` + `chmod 600` pattern centralized — single point of enforcement
-- **FR-3**: No API calls made — only checks env var presence (no key material transmitted)
-- **All**: No `.env` file reading (SKP-003 security decision maintained)
+## 8. Development Phases
 
-## 6. Sprint Mapping
+### Phase 1: Local Fixes (P0 — No Shape Changes)
 
-| Sprint | FRs | Rationale |
-|--------|-----|-----------|
-| Sprint 1 | FR-6, FR-4, FR-2 | Foundation (curl guard) + error surfacing + TS regex (early to minimize dist/ merge conflicts) |
-| Sprint 2 | FR-1, FR-3 | Verdict centralization + readiness script |
-| Sprint 3 | FR-5 | Timeout consolidation + migration |
-| Sprint 4 | Integration test, CI lint rules, protocol docs | Cross-FR validation, regression checks, documentation |
+1. **H-4**: Rationale string fix — one line at `template-selector.js:146` + test
+2. **H-3**: Adversarial NaN hardening — `Number.isFinite` guards on 5 checks + ~25 tests
+
+Single commit/PR. No interface changes. No downstream risk.
+
+### Phase 2: Hermeticity Contract (P1 — Documentation + Validation)
+
+1. Create `spec/HERMETICITY.md`
+2. Add `deterministic: true` option to `src/index.js`
+3. Add deterministic replay gate test for receipts
+4. Document replay constants
+
+Single commit/PR. Adds documentation and validation gate. No output changes.
+
+### Phase 3: Receipt Shape Restructuring (P1 — Core Shape Change)
+
+Order matters:
+
+1. Update `spec/receipt-v0.json` schema
+2. Update `src/receipt/receipt-builder.js` — new shape + signed payload
+3. Create `src/receipt/to-intoto.js` — converter
+4. Update `bin/forge-verify.js` — new field paths
+5. Update all receipt tests
+6. Add `to-intoto.spec.js`
+7. Export `toInTotoStatement` from `src/index.js`
+
+Single PR. All receipt-touching changes together to avoid partial migration state.
+
+### Phase 4: Contract Verification + Cleanup (P2)
+
+1. Add `test/unit/schema-validation.spec.js`
+2. Update README.md, BUTTERFREEZONE.md test counts
+3. Append to FORGE_LEARNINGS_updated2.md
+4. Final `npm run test:all` pass
+
+---
+
+## 9. Testing Strategy
+
+### 9.1 New and Modified Tests
+
+| Test File | Type | Changes |
+|---|---|---|
+| `test/unit/trust.spec.js` | Modified | NaN/Infinity/non-finite tests for 5 adversarial checks (~25 tests) |
+| `test/unit/selector.spec.js` | Modified | Rationale string content assertion (1 test) |
+| `test/unit/receipt-builder.spec.js` | Modified | Updated field paths for new receipt shape |
+| `test/unit/forge-verify.spec.js` | Modified | Updated field paths |
+| `test/unit/to-intoto.spec.js` | New | Converter produces valid in-toto shape (~4 tests) |
+| `test/unit/schema-validation.spec.js` | New | Envelope + receipt schema validation (2 tests) |
+| `test/unit/determinism-gate.spec.js` | Modified | Receipt-level determinism + `deterministic: true` enforcement (~3 tests) |
+| `test/integration/receipt-pipeline.spec.js` | Modified | Updated for new receipt shape |
+
+### 9.2 Estimated Test Count
+
+Current: 699 total. Estimated additions: ~36 new tests. New total: ~735.
+
+---
+
+## 10. Open Questions
+
+| Question | Owner | Status |
+|---|---|---|
+| Does Tobias/Echelon parse or store ProposalReceipts? | El Capitan | Open — verify before Phase 3 |
+| Should `computed_at` accept injectable clock for full determinism? | Architect | [ASSUMPTION] Metadata-only, excluded from signed payload |
+| Should `builder.uri` be `"https://forge.echelon.build/builder/v0"` or different scheme? | El Capitan | Open — proposed value follows predicateType pattern |
+| Keep `additionalProperties: false` in updated receipt schema? | Architect | Recommend yes — receipt strictness |

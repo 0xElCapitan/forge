@@ -1,131 +1,318 @@
-# Sprint Plan: Community Feedback — Review Pipeline Hardening
+# Sprint Plan: FORGE Pre-002 Hardening — Attestation & Hermeticity Discipline
 
-**Cycle**: cycle-048
+**Cycle**: pre-002
 **PRD**: grimoires/loa/prd.md
 **SDD**: grimoires/loa/sdd.md
-**Created**: 2026-02-28
-**Sprints**: 4 (global IDs: 98-101)
-**Total FRs**: 6
+**Created**: 2026-04-12
+**Sprints**: 4 (sprint-pre002-local-hardening, sprint-pre002-hermeticity, sprint-pre002-attestation, sprint-pre002-contract-tests)
+**Total FRs**: 5 (H-1 through H-5)
+
+---
 
 ## Sprint Overview
 
-Six targeted fixes to the review pipeline, driven by community feedback (Issues #425, #426, #427, #430). All changes are in the `.claude/scripts/` System Zone (authorized for this cycle). The sprint order follows dependency chains: curl guard → error surfacing → verdict normalization, with TypeScript and independent scripts interleaved for balanced sizing.
-
-| Sprint | Label | FRs | Dependency |
-|--------|-------|-----|------------|
-| 1 | Foundation — Curl Guard, Error Surfacing, YAML Regex | FR-6, FR-4, FR-2 | None |
-| 2 | Verdict Centralization & Flatline Readiness | FR-1, FR-3 | Sprint 1 (FR-4 before FR-1) |
-| 3 | Timeout Consolidation & Migration | FR-5 | None |
-| 4 | Integration Testing, CI Lint, Protocol Docs | Cross-cutting | Sprints 1-3 |
+```
+sprint-pre002-local-hardening   [P0, 3 tasks, SMALL]
+    │
+    ▼
+sprint-pre002-hermeticity       [P1, 5 tasks, MEDIUM]
+    │
+    ▼
+sprint-pre002-attestation       [P1, 8 tasks, LARGE]
+    │
+    ▼
+sprint-pre002-contract-tests    [P2, 4 tasks, SMALL]
+```
 
 ---
 
-## Sprint 1: Foundation — Curl Guard, Error Surfacing, YAML Regex
+## Goals → Sprint Mapping
 
-**Global ID**: 98
-**FRs**: FR-6, FR-4, FR-2
-**Rationale**: FR-6 (curl guard) is a dependency for FR-4 (error surfacing uses the same curl pipeline). FR-2 (TypeScript regex) is isolated and placed early to minimize dist/ merge conflicts with concurrent PRs.
+| Goal ID | Goal | Sprint |
+|---------|------|--------|
+| G-1 | Receipt shape FORGE-native but in-toto convertible | sprint-pre002-attestation |
+| G-2 | Hermeticity contract exists and enforced | sprint-pre002-hermeticity |
+| G-3 | Docs match code | sprint-pre002-contract-tests |
+| G-4 | Adversarial gate fails closed on NaN | sprint-pre002-local-hardening |
+| G-5 | Rationale string bug fixed | sprint-pre002-local-hardening |
+
+---
+
+## sprint-pre002-local-hardening
+
+**Size**: SMALL (3 tasks)
+**Priority**: P0
+**Dependencies**: None
+**FRs**: H-3 (adversarial NaN hardening), H-4 (rationale string fix)
+**Risk**: Very low — no interface changes, no downstream impact
 
 ### Tasks
 
-| ID | Task | Acceptance Criteria |
-|----|------|---------------------|
-| T1.1 | Create `write_curl_auth_config()` in lib-security.sh (FR-6) | Function in `.claude/scripts/lib-security.sh`. Rejects keys containing CR/LF/null/backslash with clear error. Escapes double quotes. Uses `mktemp` + `chmod 600` + `printf`. Accepts valid base64 chars (+, /, =). Returns config file path on stdout. |
-| T1.2 | Migrate curl config sites to `write_curl_auth_config()` (FR-6) | **10 sites** migrated across 7 files: `lib-curl-fallback.sh` (211-215), `constructs-auth.sh` (156-159), `constructs-browse.sh` (117-120, 179-182), `flatline-proposal-review.sh` (169-170, 232), `flatline-validate-learning.sh` (256-257, 321), `flatline-learning-extractor.sh` (307-308), `flatline-semantic-similarity.sh` (186-187). All use centralized helper. Existing functionality preserved. _(Flatline SPR-01: expanded from 4 to 10 sites)_ |
-| T1.3 | Write curl config guard BATS tests (FR-6) | `tests/unit/curl-config-guard.bats` created. Tests: valid key, CR rejection, LF rejection, null rejection, backslash rejection, quote escaping, base64 chars accepted, file permissions 0600. All pass in isolation. |
-| T1.4 | Surface API error messages in 401 handler (FR-4) | `lib-curl-fallback.sh` `call_api()` 401 handler extracts `.error.message` from response. Error passed through `redact_log_output()` (positional arg). Non-JSON bodies fall back gracefully. Uses if/else (specific OR generic, not both). |
-| T1.5 | Write API error surfacing BATS tests (FR-4) | `tests/unit/api-error-surfacing.bats` created. Tests: JSON error body, HTML body fallback, empty body fallback, key fragment redaction, JSON without `.error` fallback. All pass in isolation. |
-| T1.6 | Fix bridgebuilder YAML parser regex (FR-2) | config.ts line 189 regex inner capture: `\s+` → `[ \t]+`. `bridgebuilder_design_review:` NOT matched by `bridgebuilder:` regex. Existing config.test.ts passes. |
-| T1.7 | Add `loadYamlConfig()` tests for section ordering (FR-2) | New tests in config.test.ts call `loadYamlConfig()` directly. Tests: bridgebuilder before/after red_team, `bridgebuilder_design_review:` not captured. All tests pass. |
-| T1.8 | Rebuild dist/ and commit (FR-2) | `npm run build` succeeds. Built dist/ committed alongside TypeScript changes. |
+#### Task 1.1: Fix rationale string bug
+
+**File**: `src/selector/template-selector.js:146`
+**FR**: H-4
+**Change**: Replace `evaluation.conditions_total` with `evaluation.conditions_met` in first position of rationale template string
+**Test**: Add assertion in `test/unit/selector.spec.js` that rationale contains `conditions_met/conditions_total`
+
+#### Task 1.2: Add NaN guards to adversarial gate
+
+**File**: `src/trust/adversarial.js`
+**FR**: H-3
+**Change**: Add `Number.isFinite` guards before arithmetic in 5 checks:
+
+| Check | Fields | Insert After |
+|-------|--------|-------------|
+| 1: Channel A/B | `channel_a`, `channel_b` | Line 68 (null check) |
+| 2: Frozen data | `frozen_count` | Line 83 (null check) |
+| 3: Clock drift | `timestamp` | Line 91 (null check) |
+| 4: Location | `lat`, `lon` | Line 104 (null check) |
+| 5: Sybil | `peer_values` elements | Line 118 (array check) |
+
+Pattern: `if (val != null && !Number.isFinite(val)) return { clean: false, reason: 'invalid_{field}: must be finite number' }`
+
+#### Task 1.3: Add NaN test cases
+
+**File**: `test/unit/trust.spec.js`
+**FR**: H-3, H-4
+**Change**: ~25 new tests — for each guarded field test with: `NaN`, `Infinity`, `-Infinity`, `undefined`, `"42"` (string). Each must produce `{ clean: false }`.
+
+### Acceptance Criteria
+
+- [x] `checkAdversarial({ channel_a: NaN, channel_b: 10 })` → `{ clean: false }`
+- [x] `checkAdversarial({ timestamp: NaN }, { now: 1700000000000 })` → `{ clean: false }`
+- [x] `checkAdversarial({ lat: Infinity }, { registered_lat: 37 })` → `{ clean: false }`
+- [x] Rationale string shows `conditions_met/conditions_total` (not `total/total`)
+- [x] All 699 existing tests still pass
+- [x] `npm run test:all` green
 
 ---
 
-## Sprint 2: Verdict Centralization & Flatline Readiness
+## sprint-pre002-hermeticity
 
-**Global ID**: 99
-**FRs**: FR-1, FR-3
-**Rationale**: FR-1 depends on FR-4 being complete (both modify lib-curl-fallback.sh). FR-3 is independent but grouped here for balanced sprint sizing.
+**Size**: MEDIUM (5 tasks)
+**Priority**: P1
+**Dependencies**: sprint-pre002-local-hardening
+**FRs**: H-2 (hermeticity contract)
+**Risk**: Low — validation only, no output change
 
 ### Tasks
 
-| ID | Task | Acceptance Criteria |
-|----|------|---------------------|
-| T2.1 | Create `extract_verdict()` in normalize-json.sh (FR-1) | Function in `.claude/scripts/lib/normalize-json.sh`. Accepts JSON via positional arg or stdin. Returns `.verdict` (priority) or `.overall_verdict` fallback. Exit 1 if neither present. |
-| T2.2 | Migrate verdict check sites to `extract_verdict()` (FR-1) | **10 sites** migrated across 6 files: `gpt-review-api.sh` (116, 131), `lib-curl-fallback.sh` (318), `lib-route-table.sh` (202, 581), `normalize-json.sh` (250), `post-pr-audit.sh` (370, 491), `cache-manager.sh` (580, 581). `condense.sh` left unchanged (triple-fallback). **Semantic migration notes**: Sites using `jq -e '.verdict'` (exit code check) must change to `if verdict=$(extract_verdict "$json")` pattern. `cache-manager.sh:581` uses `"stored"` default — use `verdict=$(extract_verdict "$json") || verdict="stored"` pattern. Each site needs individual exit-code semantic verification. _(Flatline SPR-07: semantic migration risk)_ |
-| T2.3 | Update existing BATS test assertions (FR-1) | 22 assertion locations across `test-gpt-review-integration.bats`, `test-gpt-review-codex-adapter.bats`, `test-gpt-review-multipass.bats` updated to test both `.verdict` and `.overall_verdict` response shapes. |
-| T2.4 | Write `extract_verdict()` BATS tests (FR-1) | `tests/unit/extract-verdict.bats` created. Tests: `.verdict` present, `.overall_verdict` present, both present (`.verdict` wins), neither (exit 1), null verdict (exit 1). All pass in isolation. |
-| T2.5 | Create `flatline-readiness.sh` (FR-3) | `.claude/scripts/flatline-readiness.sh` created (executable). Reads models from config via yq. Maps models→providers→env vars. Exit codes: 0=READY, 1=DISABLED, 2=NO_API_KEYS, 3=DEGRADED. GEMINI_API_KEY alias with deprecation warning. `--json` and `--quick` flags. `PROJECT_ROOT` override. |
-| T2.6 | Write flatline readiness BATS tests (FR-3) | `tests/unit/flatline-readiness.bats` created. Tests: READY, DISABLED, NO_API_KEYS, DEGRADED, GEMINI_API_KEY alias, --json structure, PROJECT_ROOT override. All pass in isolation. |
-| T2.7 | Integrate `flatline-readiness.sh` into simstim preflight (FR-3) | `simstim-orchestrator.sh` Phase 0 calls `flatline-readiness.sh --json`. Status logged to trajectory JSONL. DEGRADED triggers warning but does not block. DISABLED/NO_API_KEYS logged with recommendation. _(Flatline SPR-12: missing integration task)_ |
+#### Task 2.1: Create `spec/HERMETICITY.md`
+
+**File**: `spec/HERMETICITY.md` (new)
+**FR**: H-2
+**Sections**:
+1. Purpose — formal backing for determinism claim
+2. Two-Zone Model — receipt-critical (enforced) vs runtime (documented, promotable)
+3. Allowed Inputs — raw feed data, timestampBase, now, RULES, regulatory tables, code identity
+4. Hidden Input Risks — `Date.now()` defaults in ingester/emitter/adversarial/theatres
+5. Enforcement — `deterministic: true` option
+6. Replay Constants — `REPLAY_TIMESTAMP_BASE = 1700000000000`, `REPLAY_NOW = 1700000001000`
+7. Promotion Path — runtime zone can promote to receipt-critical when needed
+8. `computed_at` — metadata-only, not in signed payload, not determinism-critical
+
+#### Task 2.2: Add `deterministic: true` validation gate
+
+**File**: `src/index.js`
+**FR**: H-2
+**Change**: In `analyze()` options destructuring, add `deterministic = false`. If true, throw `Error('deterministic mode requires explicit timestampBase and now')` when either is missing. Validation only — no output change.
+
+#### Task 2.3: Receipt-level deterministic replay gate test
+
+**File**: `test/unit/determinism-gate.spec.js`
+**FR**: H-2
+**Change**: Run same fixture twice with fixed `timestampBase` and `now` through full pipeline including `buildReceipt`. Assert byte-identical canonicalized receipt output (not just envelope).
+
+#### Task 2.4: Test `deterministic: true` enforcement
+
+**File**: `test/unit/determinism-gate.spec.js`
+**FR**: H-2
+**Change**: Assert `deterministic: true` throws when `timestampBase` missing, when `now` missing, and succeeds when both provided.
+
+#### Task 2.5: Document replay constants
+
+**File**: `spec/HERMETICITY.md`
+**FR**: H-2
+**Change**: Document that `forge-verify` uses `REPLAY_TIMESTAMP_BASE = 1700000000000` and `REPLAY_NOW = REPLAY_TIMESTAMP_BASE + 1000` as canonical replay injection values. These are the values any verifier must use for replay.
+
+### Acceptance Criteria
+
+- [x] `spec/HERMETICITY.md` exists with two-zone model and allowed inputs table
+- [x] `forge.analyze(fixture, { deterministic: true })` throws descriptive error
+- [x] `forge.analyze(fixture, { deterministic: true, timestampBase: X, now: Y })` succeeds
+- [x] Two runs with identical fixed clocks produce byte-identical canonicalized receipt
+- [x] Promotion path language explicitly states two-zone boundary is pragmatic, not permanent
+- [x] `npm run test:all` green
 
 ---
 
-## Sprint 3: Timeout Consolidation & Migration
+## sprint-pre002-attestation
 
-**Global ID**: 100
-**FRs**: FR-5
-**Rationale**: Independent of other FRs. Involves migration of 3 existing ad-hoc implementations to a canonical helper.
+**Size**: LARGE (8 tasks)
+**Priority**: P1
+**Dependencies**: sprint-pre002-hermeticity
+**FRs**: H-1 (receipt shape audit + attestation field cleanup)
+**Risk**: Medium — largest change; all receipt consumers must update together
+**Critical constraint**: All receipt-touching changes land in same PR. No partial migration.
+
+**Confirmed**: Tobias/Echelon does NOT consume ProposalReceipt directly. All integration points reference ProposalEnvelope. Migration is light.
 
 ### Tasks
 
-| ID | Task | Acceptance Criteria |
-|----|------|---------------------|
-| T3.1 | Add canonical `run_with_timeout()` to compat-lib.sh (FR-5) | Function in `.claude/scripts/compat-lib.sh`. Fallback: `timeout` → `gtimeout` → `perl` alarm (using fork+exec pattern, NOT bare exec, to preserve exit 124 convention) → warn and run without. Runtime detection (not cached). Array-based execution (`"$@"`). **Note**: bare `exec @ARGV` in perl replaces the process image and loses the `$SIG{ALRM}` handler — must use `system()` or fork+waitpid pattern instead. _(Flatline SPR-11: perl alarm exit code fix)_ |
-| T3.2 | Migrate `post-pr-orchestrator.sh` timeout (FR-5) | Local `run_with_timeout()` at lines 104-133 removed. Sources `compat-lib.sh`. Calls canonical helper. Behavior preserved. |
-| T3.3 | Migrate `post-pr-e2e.sh` timeout (FR-5) | Local timeout logic at lines 103-142 removed. `validate_command()` security allowlist preserved separately. Sources `compat-lib.sh` for timeout. Behavior preserved. |
-| T3.4 | Migrate `golden-path.sh` bare `timeout` (FR-5) | Bare `timeout 2` at line 403 replaced with `run_with_timeout 2`. Sources `compat-lib.sh`. Works on macOS via fallback. |
-| T3.6 | Migrate `butterfreezone-gen.sh` and `mount-loa.sh` bare `timeout` (FR-5) | `butterfreezone-gen.sh:345` (`timeout 30 grep`) and `mount-loa.sh:1706` (`timeout 5 git ls-remote`) migrated to `run_with_timeout`. Both source `compat-lib.sh`. _(Flatline SPR-02: 2 additional migration sites)_ |
-| T3.5 | Write timeout helper BATS tests (FR-5) | `tests/unit/run-with-timeout.bats` created. Tests via PATH manipulation: timeout available, only gtimeout, only perl, none (warning). Tests: timeout fires, exit code preserved. All pass in isolation. |
+#### Task 3.1: Update receipt schema
+
+**File**: `spec/receipt-v0.json`
+**FR**: H-1
+**Change**: Add `predicateType` (required string). Restructure:
+- `output_hash` → `subject` object with `digest` (required) + `uri` (nullable)
+- `input_hash` + `input_canonicalization` → `materials` object with `digest`, `canonicalization`, `uri`
+- `policy_hash` + `rule_set_hash` + `policy_version_tag` → `policy` object
+- `code_version` → `builder` object with added `uri` field
+- Remove old flat fields from `required`
+
+#### Task 3.2: Restructure receipt builder
+
+**File**: `src/receipt/receipt-builder.js`
+**FR**: H-1
+**Change**: `buildReceipt()` returns new shape:
+```js
+{
+  schema: 'forge-receipt/v0',
+  predicateType: 'https://forge.echelon.build/attestation/v0',
+  subject: { digest: outputHash, uri: null },
+  materials: { digest: inputHash, canonicalization: 'jcs-subset/v0', uri: null },
+  policy: { policy_hash, rule_set_hash, version_tag },
+  builder: { uri: 'https://forge.echelon.build/builder/v0', git_sha, package_lock_sha, node_version },
+  computed_at, http_transcript_receipts, signer, key_id, signature
+}
+```
+Update signed payload to match new field structure.
+
+#### Task 3.3: Create in-toto converter
+
+**File**: `src/receipt/to-intoto.js` (new)
+**FR**: H-1
+**Change**: Pure function `toInTotoStatement(receipt)` producing valid in-toto Statement v1 JSON. Maps `subject.digest` → in-toto `subject[0].digest`, `materials` → `predicate.materials[0]`, `policy` + `builder` → `predicate`.
+
+#### Task 3.4: Update forge-verify
+
+**File**: `bin/forge-verify.js`
+**FR**: H-1
+**Change**: Update all field access paths:
+- `receipt.input_hash` → `receipt.materials.digest`
+- `receipt.output_hash` → `receipt.subject.digest`
+- `receipt.code_version?.node_version` → `receipt.builder?.node_version`
+- Signed payload reconstruction matches new shape
+
+#### Task 3.5: Update receipt-builder tests
+
+**File**: `test/unit/receipt-builder.spec.js`
+**FR**: H-1
+**Change**: All assertions updated for new field paths. Validate `predicateType`, `subject.digest`, `materials.digest`, `policy.*`, `builder.*`.
+
+#### Task 3.6: Update forge-verify tests
+
+**File**: `test/unit/forge-verify.spec.js`
+**FR**: H-1
+**Change**: Mock receipt fixtures updated for new shape. All field path assertions updated.
+
+#### Task 3.7: Create converter tests
+
+**File**: `test/unit/to-intoto.spec.js` (new)
+**FR**: H-1
+**Change**: ~4 tests:
+- Produces `_type: "https://in-toto.io/Statement/v1"`
+- `subject` is array with `name` and `digest.sha256`
+- `predicate.materials` is array with `uri` and `digest.sha256`
+- `predicate.builder.id` matches `receipt.builder.uri`
+
+#### Task 3.8: Export converter from index
+
+**File**: `src/index.js`
+**FR**: H-1
+**Change**: Add `toInTotoStatement` to exports (alongside existing receipt module exports).
+
+### Acceptance Criteria
+
+- [x] `buildReceipt()` output has `predicateType`, `subject.digest`, `materials.digest`, `policy.*`, `builder.*`
+- [x] No flat `input_hash`, `output_hash`, `code_version` fields remain in receipt
+- [x] `toInTotoStatement(receipt)` produces valid in-toto v1 JSON with correct `_type`
+- [x] `forge-verify` replay verification produces MATCH with new receipt shape
+- [x] All receipt tests (builder, verify, pipeline) pass with new field paths
+- [x] `npm run test:all` green
 
 ---
 
-## Sprint 4: Integration Testing, CI Lint, Protocol Docs
+## sprint-pre002-contract-tests
 
-**Global ID**: 101
-**FRs**: Cross-cutting (all FRs)
-**Rationale**: Final sprint validates all FRs work together, adds CI regression prevention, and documents new patterns.
+**Size**: SMALL (4 tasks)
+**Priority**: P2
+**Dependencies**: sprint-pre002-attestation
+**FRs**: H-5 (docs/code contract verification)
+**Risk**: Low — additive tests and documentation
 
 ### Tasks
 
-| ID | Task | Acceptance Criteria |
-|----|------|---------------------|
-| T4.1 | Create review pipeline integration test | `tests/unit/review-pipeline-integration.bats` created. Flow: curl config (FR-6) → mock 401 with JSON error (FR-4) → mock success with `.overall_verdict` (FR-1). Verifies error surfaced with redaction, verdict extracted, config validated. Passes in isolation. |
-| T4.2 | Add CI lint for bare `timeout` usage (FR-5) | Lint rule flags bare `timeout` command invocations (pattern: `^\s*timeout [0-9]` or `\btimeout [0-9]` with word boundary) in `.claude/scripts/*.sh` excluding compat-lib.sh. Must NOT false-positive on `--timeout` flags, variable names, or comments. Added to CI workflow. _(Flatline SPR-02: tightened regex)_ |
-| T4.3 | Add CI lint for raw curl config patterns (FR-6) | Lint rule flags raw `Authorization.*Bearer` in `.claude/scripts/*.sh` excluding lib-security.sh and comments. Added to CI workflow. |
-| T4.4 | Update cross-platform-shell.md protocol (FR-5, FR-6) | `.claude/protocols/cross-platform-shell.md` documents `run_with_timeout()` (usage, fallbacks, migration) and `write_curl_auth_config()` (usage, validation, SHELL-002 ref). |
-| T4.5 | Update SKILL.md with flatline readiness warning (FR-3) | Simstim SKILL.md documents fresh-per-cycle validation, references `flatline-readiness.sh` and exit codes, documents DEGRADED behavior. |
+#### Task 4.1: Add schema validation tests
+
+**File**: `test/unit/schema-validation.spec.js` (new)
+**FR**: H-5
+**Change**: Two tests:
+1. Emit an envelope via `emitEnvelope()` → validate against `spec/proposal-ir.json` schema
+2. Build a receipt via `buildReceipt()` → validate against updated `spec/receipt-v0.json` schema
+
+#### Task 4.2: Update docs with final counts
+
+**Files**: `README.md`, `BUTTERFREEZONE.md`
+**FR**: H-5
+**Change**: Update test counts to match actual `npm run test:all` output (~735). Update receipt shape documentation to reflect new structure (grouped fields, `predicateType`).
+
+#### Task 4.3: Append learnings log entries
+
+**File**: `grimoires/loa/context/FORGE/FORGE_LEARNINGS_updated2.md`
+**FR**: H-5
+**Change**: Append dated entries preserving existing log format:
+- `[2026-04-XX] TECHNICAL: SLSA/in-toto lesson borrowed — attestation field discipline (predicateType, subject/materials/policy/builder). Full supply-chain platform rejected.`
+- `[2026-04-XX] TECHNICAL: Bazel/Nix lesson borrowed — hermeticity contract (spec/HERMETICITY.md), deterministic mode enforcement, replay gate test. Toolchain migration rejected.`
+- `[2026-04-XX] TECHNICAL: Pre-002 discipline sets up 002 — receipt shape cleanup gives IR additions cleaner attestation surface; hermeticity contract backs IR stability commitment; NaN hardening closes adversarial fail-open.`
+
+#### Task 4.E2E: End-to-end goal validation
+
+**FR**: All (G-1 through G-5)
+**Change**: Run final validation:
+- G-1: `toInTotoStatement(buildReceipt(...))` produces valid in-toto v1 JSON
+- G-2: `spec/HERMETICITY.md` exists; `deterministic: true` gate works; replay identical
+- G-3: `npm run test:all` count matches README/BUTTERFREEZONE; schema-validation tests pass
+- G-4: All 6 adversarial checks reject NaN
+- G-5: Rationale strings show `conditions_met/conditions_total`
+
+### Acceptance Criteria
+
+- [x] `schema-validation.spec.js` validates envelope and receipt against their JSON schemas
+- [x] README test count matches actual `npm run test:all` output
+- [x] BUTTERFREEZONE test count matches
+- [x] FORGE_LEARNINGS entries appended (not rewritten)
+- [x] All ~735 tests pass (actual: 750)
+- [x] All 5 PRD goals validated (G-1 through G-5 PASS)
 
 ---
 
-## Bridge Sprint 5: Bridgebuilder Iteration 1 Fixes
+## Assumptions
 
-**Global ID**: N/A (bridge iteration)
-**Source**: Bridgebuilder review iteration 1 (PR #435 comment)
-**Rationale**: 3 MEDIUM + 3 LOW findings from Bridgebuilder review.
+| # | Assumption | Impact If Wrong |
+|---|-----------|----------------|
+| 1 | No downstream consumer stores ProposalReceipt beyond forge-verify + tests | Receipt shape change needs migration note for Tobias |
+| 2 | `computed_at` is metadata-only, excluded from signed payload | Full determinism requires injectable clock for `computed_at` |
+| 3 | `builder.uri` value follows predicateType URI pattern | Easy to change at v0 |
+| 4 | No locale/timezone in classification path | Hidden input found → fix in sprint-pre002-hermeticity |
 
-### Tasks
+## Risk Register
 
-| ID | Task | Acceptance Criteria |
-|----|------|---------------------|
-| T5.1 | Fix perl alarm race condition (medium-1) | `compat-lib.sh` perl fallback: move `alarm()` after `fork()` so `$pid` is initialized before the handler can fire. Guard handler with `if $pid`. Existing tests pass. |
-| T5.2 | Validate header_name in write_curl_auth_config() (medium-2) | `lib-security.sh` `write_curl_auth_config()` validates header_name against `[A-Za-z0-9-]+` pattern. Rejects names with CR/LF/special chars. Add BATS test for header name validation. |
-| T5.3 | Migrate constructs-install.sh curl config sites (medium-3) | `constructs-install.sh` lines 438 and 769 migrated to `write_curl_auth_config()`. CI lint catches if missed. |
-| T5.4 | Document condense.sh verdict divergence (low-1) | Add comment at `condense.sh` lines 217 and 352 explaining intentional non-migration. |
-| T5.5 | Fix flatline-readiness.sh JSON construction (low-2) | Replace string interpolation with `jq -n --arg/--argjson` for providers object. |
-| T5.6 | Fix null byte detection comment (low-3) | Update comment at `lib-security.sh:270-277` to correctly describe byte vs char comparison. |
-
----
-
-## Flatline Sprint Review Log
-
-**Phase**: Sprint plan review (cycle-048 Phase 6)
-**Findings**: 15 total (5 HIGH, 7 MEDIUM, 1 LOW, 2 PRAISE)
-**HIGH_CONSENSUS**: 5 findings auto-integrated:
-- SPR-01: Curl config migration expanded from 4 to 10 sites (T1.2)
-- SPR-02: Bare timeout migration expanded by 2 sites + CI lint regex tightened (T3.6, T4.2)
-- SPR-07: Verdict extraction semantic migration notes added per-site (T2.2)
-- SPR-11: Perl alarm fork+exec pattern noted to preserve exit 124 (T3.1)
-- SPR-12: Missing simstim integration task added (T2.7)
-**DISPUTED**: 0
-**BLOCKERS**: 0 (SPR-01/SPR-02 resolved by scope expansion)
+| Risk | Sprint | Probability | Impact | Mitigation |
+|------|--------|-------------|--------|------------|
+| Receipt shape breaks forge-verify | attestation | Certain | High | Update in same PR; run all receipt tests |
+| Signed payload change invalidates test receipts | attestation | Certain | Low | v0 pre-stable; update test fixtures |
+| Determinism gate reveals hidden input | hermeticity | Low | Medium | Fix the hidden input — that's the point |
+| NaN hardening changes adversarial behavior | local-hardening | Very Low | Low | Only rejects malformed inputs (were bugs) |
+| Test count changes require doc updates | contract-tests | Certain | Low | Final sprint handles all doc updates |

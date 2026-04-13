@@ -66,6 +66,12 @@ export function checkAdversarial(bundle, context = {}) {
 
   // ── Check 1: Channel A/B inconsistency (PurpleAir reference pattern) ────────
   if (bundle.channel_a != null && bundle.channel_b != null) {
+    if (!Number.isFinite(bundle.channel_a)) {
+      return { clean: false, reason: 'invalid_channel_a: must be finite number' };
+    }
+    if (!Number.isFinite(bundle.channel_b)) {
+      return { clean: false, reason: 'invalid_channel_b: must be finite number' };
+    }
     const a = bundle.channel_a;
     const b = bundle.channel_b;
     // Relative divergence: |a - b| / max(|a|, |b|, 1) to avoid division-by-zero.
@@ -80,6 +86,9 @@ export function checkAdversarial(bundle, context = {}) {
   }
 
   // ── Check 2: Frozen / replayed data ─────────────────────────────────────────
+  if (bundle.frozen_count != null && !Number.isFinite(bundle.frozen_count)) {
+    return { clean: false, reason: 'invalid_frozen_count: must be finite number' };
+  }
   if (bundle.frozen_count != null && bundle.frozen_count >= FROZEN_COUNT_THRESHOLD) {
     return {
       clean: false,
@@ -88,6 +97,9 @@ export function checkAdversarial(bundle, context = {}) {
   }
 
   // ── Check 3: Clock drift ─────────────────────────────────────────────────────
+  if (bundle.timestamp != null && !Number.isFinite(bundle.timestamp)) {
+    return { clean: false, reason: 'invalid_timestamp: must be finite number' };
+  }
   if (bundle.timestamp != null) {
     const age_ms = now - bundle.timestamp;
     if (age_ms > MAX_AGE_MS) {
@@ -101,6 +113,12 @@ export function checkAdversarial(bundle, context = {}) {
   }
 
   // ── Check 4: Location spoofing ───────────────────────────────────────────────
+  if (bundle.lat != null && !Number.isFinite(bundle.lat)) {
+    return { clean: false, reason: 'invalid_lat: must be finite number' };
+  }
+  if (bundle.lon != null && !Number.isFinite(bundle.lon)) {
+    return { clean: false, reason: 'invalid_lon: must be finite number' };
+  }
   if (context.registered_lat != null && bundle.lat != null) {
     const latDiff = Math.abs(bundle.lat - context.registered_lat);
     const lonDiff = Math.abs((bundle.lon ?? 0) - (context.registered_lon ?? 0));
@@ -116,6 +134,10 @@ export function checkAdversarial(bundle, context = {}) {
   // ── Check 5: Sybil sensors ───────────────────────────────────────────────────
   // Flag when all peer sensor readings are identical (implausible for independent sensors).
   if (Array.isArray(context.peer_values) && context.peer_values.length >= 2) {
+    const nonFiniteIdx = context.peer_values.findIndex(v => !Number.isFinite(v));
+    if (nonFiniteIdx !== -1) {
+      return { clean: false, reason: `invalid_peer_value: must be finite number, got ${context.peer_values[nonFiniteIdx]}` };
+    }
     const first = context.peer_values[0];
     const allIdentical = context.peer_values.every(v => v === first);
     if (allIdentical) {
