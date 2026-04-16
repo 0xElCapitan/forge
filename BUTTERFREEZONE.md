@@ -5,6 +5,7 @@ purpose: Loa is an agent-driven development framework for [Claude Code](https://
 key_files: [CLAUDE.md, .claude/loa/CLAUDE.loa.md, .loa.config.yaml, .claude/scripts/, .claude/skills/]
 interfaces:
   core: [/auditing-security, /autonomous-agent, /bridgebuilder-review, /browsing-constructs, /bug-triaging]
+  project: [/loa-setup, /spiraling]
 dependencies: [git, jq, yq]
 ecosystem:
   - repo: 0xHoneyJar/loa-finn
@@ -26,7 +27,7 @@ capability_requirements:
   - git: read_write
   - shell: execute
   - github_api: read_write (scope: external)
-version: v1.64.1
+version: v1.91.12
 installation_mode: unknown
 trust_level: L2-verified
 -->
@@ -36,7 +37,7 @@ trust_level: L2-verified
 <!-- provenance: DERIVED -->
 Loa is an agent-driven development framework for [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) (Anthropic's official CLI).
 
-The framework provides 29 specialized skills, built with TypeScript/JavaScript, Python, Shell.
+The framework provides 31 specialized skills, built with TypeScript/JavaScript, Python, Shell.
 
 ## Key Capabilities
 <!-- provenance: DERIVED -->
@@ -65,7 +66,7 @@ The project exposes 15 key entry points across its public API surface.
 
 ## Architecture
 <!-- provenance: DERIVED -->
-The architecture follows a three-zone model: System (`.claude/`) contains framework-managed scripts and skills, State (`grimoires/`, `.beads/`) holds project-specific artifacts and memory, and App (`src/`, `lib/`) contains developer-owned application code. The framework orchestrates 29 specialized skills through slash commands.
+The architecture follows a three-zone model: System (`.claude/`) contains framework-managed scripts and skills, State (`grimoires/`, `.beads/`) holds project-specific artifacts and memory, and App (`src/`, `lib/`) contains developer-owned application code. The framework orchestrates 31 specialized skills through slash commands.
 ```mermaid
 graph TD
     docs[docs]
@@ -117,13 +118,13 @@ Directory structure:
 #### Loa Core
 
 - **/auditing-security** — Paranoid Cypherpunk Auditor
-- **/autonomous-agent** — Autonomous agent
+- **/autonomous-agent** — Autonomous Agent Orchestrator
 - **/bridgebuilder-review** — Bridgebuilder — Autonomous PR Review
-- **/browsing-constructs** — Provide a multi-select UI for browsing and installing packs from the Loa Constructs Registry. Enables composable skill installation per-repo.
+- **/browsing-constructs** — Unified construct discovery surface for the Constructs Network. This skill is a **thin API client** — all search intelligence, ranking, and composability analysis lives in the Constructs Network API.
 - **/bug-triaging** — Bug Triage Skill
 - **/butterfreezone-gen** — BUTTERFREEZONE Generation Skill
 - **/continuous-learning** — Continuous Learning Skill
-- **/deploying-infrastructure** — Deploying infrastructure
+- **/deploying-infrastructure** — DevOps Crypto Architect Skill
 - **/designing-architecture** — Architecture Designer
 - **/discovering-requirements** — Discovering Requirements
 - **/enhancing-prompts** — Enhancing Prompts
@@ -135,31 +136,35 @@ Directory structure:
 - **/gpt-reviewer** — Gpt reviewer
 - **/implementing-tasks** — Sprint Task Implementer
 - **/managing-credentials** — /loa-credentials — Credential Management
-- **/mounting-framework** — Create structure (preserve if exists)
+- **/mounting-framework** — Mounting the Loa Framework
 - **/planning-sprints** — Sprint Planner
 - **/red-teaming** — Use the Flatline Protocol's red team mode to generate creative attack scenarios against design documents. Produces structured attack scenarios with consensus classification and architectural counter-designs.
 - **/reviewing-code** — Senior Tech Lead Reviewer
 - **/riding-codebase** — Riding Through the Codebase
 - **/rtfm-testing** — RTFM Testing Skill
 - **/run-bridge** — Run Bridge — Autonomous Excellence Loop
-- **/run-mode** — Run mode
-- **/simstim-workflow** — .loa.config.yaml
+- **/run-mode** — Run Mode Skill
+- **/simstim-workflow** — Simstim - HITL Accelerated Development Workflow
 - **/translating-for-executives** — DevRel Translator Skill (Enterprise-Grade v2.0)
+#### Project-Specific
+
+- **/loa-setup** — /loa setup — Onboarding Wizard
+- **/spiraling** — Spiraling
 
 ## Module Map
 <!-- provenance: DERIVED -->
 | Module | Files | Purpose | Documentation |
 |--------|-------|---------|---------------|
-| `docs/` | 7 | Documentation | \u2014 |
+| `docs/` | 8 | Documentation | \u2014 |
 | `evals/` | 5818 | Benchmarking and regression framework for the Loa agent development system. Ensures framework changes don't degrade agent behavior through | [evals/README.md](evals/README.md) |
-| `grimoires/` | 1698 | Home to all grimoire directories for the Loa | [grimoires/README.md](grimoires/README.md) |
+| `grimoires/` | 1807 | Home to all grimoire directories for the Loa | [grimoires/README.md](grimoires/README.md) |
 | `skills/` | 5112 | Specialized agent skills | \u2014 |
-| `tests/` | 204 | Test suites | \u2014 |
+| `tests/` | 248 | Test suites | \u2014 |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 - Trust Level: **L2 — CI Verified**
-- 204 test files across 1 suite
+- 248 test files across 1 suite
 - CI/CD: GitHub Actions (11 workflows)
 - Security: SECURITY.md present
 
@@ -189,6 +194,14 @@ The project defines 1 specialized agent persona.
 
 **Prerequisites**: [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) (Anthropic's CLI for Claude), Git, jq, [yq v4+](https://github.com/mikefarah/yq). See **[INSTALLATION.md](INSTALLATION.md)** for full details.
 
+> [!WARNING]
+> **Some Loa features invoke external AI APIs and incur costs.** The three most expensive are:
+> - **Flatline Protocol** — multi-model adversarial review (~$15–25 per planning cycle, Opus + GPT-5.3-codex)
+> - **Simstim** — HITL-accelerated full cycle (~$25–65 per cycle, Opus + GPT-5.3-codex + Gemini)
+> - **Spiral** — autonomous multi-cycle orchestrator (~$10–35 per cycle depending on profile)
+>
+> **Flatline Protocol** and **Simstim** are **enabled by default** but require API keys (`OPENAI_API_KEY`, `GOOGLE_API_KEY`) to function — without them, multi-model review phases are skipped. **Spiral** is **disabled by default** and must be explicitly enabled. See [`docs/CONFIG_REFERENCE.md`](docs/CONFIG_REFERENCE.md#cost-matrix) for the full cost table. Run `/loa setup` inside Claude Code before enabling autonomous modes to choose a budget-appropriate configuration.
+
 ```bash
 # Install (one command, any existing repo — adds Loa as git submodule)
 curl -fsSL https://raw.githubusercontent.com/0xHoneyJar/loa/main/.claude/scripts/mount-loa.sh | bash
@@ -198,26 +211,18 @@ curl -fsSL https://raw.githubusercontent.com/0xHoneyJar/loa/main/.claude/scripts
 
 # Start Claude Code
 claude
-
-# These are slash commands typed inside Claude Code, not your terminal.
-# 5 commands. Full development cycle.
-/plan      # Requirements -> Architecture -> Sprints
-/build     # Implement the current sprint
-/review    # Code review + security audit
-/ship      # Deploy and archive
-```
 <!-- ground-truth-meta
-head_sha: b012d510db79c47be69aa9b6deb7c7dfad62c891
-generated_at: 2026-03-19T04:38:37Z
+head_sha: 1d7801b27f778aba2a4816df842a7fb0f44ecb0d
+generated_at: 2026-04-16T09:49:11Z
 generator: butterfreezone-gen v1.0.0
 sections:
-  agent_context: b1f9e9470c7457f9582d46bba34c8f7bcd31839c4eb3d8edbb264e6fcfa454b2
+  agent_context: ebccb0a293df847ae07a79e7c3bc50ea9fce121d35adff937f8550e107154d00
   capabilities: ab2576b1f2e7e8141f0e93e807d26ed2b7b155e21c96d787507a3ba933bb9795
-  architecture: 970c0549aa208f3f8e0063176776b3fd52798e8d19011897a6a22e6542c2e772
-  interfaces: a3cac9bbb6166e79528b8b9532c234d2cbb7c949ecb3857899ecf4120d4c24cd
-  module_map: 56345d84722684dcfa13e8f7ebd1979cd39b4cffa7a838552503c9dbf1d59f15
-  verification: 6039d2d0ed270322e1be59da3063392bc88d0820cca2737c7a4554d0d64d1b8b
+  architecture: b94a16a20653a8044281f17bbec71ab6157304c70bf714bd3f919b740ba64395
+  interfaces: e1614216b4bf8865fe3cb288722c6b8950d0923f334212c8db39e6e8e2aed003
+  module_map: af9e868bd3426d96dd18d73300f34574440e01bf988b581de6d3164809d367c7
+  verification: cef97b2825e4bacf7c8e2ba1c4e1757e65e5b3dc7cf8651ae4f07399a44674df
   agents: ca263d1e05fd123434a21ef574fc8d76b559d22060719640a1f060527ef6a0b6
   culture: f73380f93bb4fadf36ccc10d60fc57555914363fc90e4f15b4dc4eb92bd1640f
-  quick_start: cfc39883247017c36dd2e9c3f44459a761d8b9e278b85a54584164db643a95ab
+  quick_start: a0610fe388635f2d1bfb520955ad321c783b6ee3f7af21b0fed5809e757c2664
 -->

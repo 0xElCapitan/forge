@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.92.0] — 2026-04-16 — Shell Hardening & QoL Cycle
+
+Eight PRs (#537–#544) addressing 6 tracked issues plus 2 codebase-wide QoL improvements. This cycle eliminated three classes of shell bugs, added two lint detectors for ongoing prevention, and closed all open spiral-harness reliability bugs.
+
+The central theme: **prevention infrastructure is more valuable than individual fixes.** Every bug fix in this cycle is paired with either a lint rule or a regression test that prevents the class from recurring.
+
+### Fixed
+
+- **Spiral stdout pollution** (#514, PR #537) — `cycle-workspace.sh init` JSON output leaked into `run_single_cycle`'s stdout return channel, terminating spirals after cycle 1 with malformed `stopping_condition: "{"`. One-line redirect + guard comment + 3 BATS tests. Full 18-call-site audit in disposition table.
+- **Harness budget boundary** (#515, PR #538) — Light profile $10 budget hit exactly at REVIEW→AUDIT boundary, blocking the audit quality gate. Three-layer fix: strict-greater comparison (`>` not `>=`), audit reserve ($2 reserved from effective cap for pre-AUDIT phases), raised light profile default from $10 to $12.
+- **Cache-manager secret false positives** (#530, PR #540) — Broad `secret.*[=:]` pattern false-positived on `{secret_scanning: true}`, `kind: Secret`, compound words. Replaced with two specific patterns plus `client_secret` literal. 14 BATS tests.
+- **Red team skipped in submodule mode** (#528, PR #543) — Template paths anchored to `PROJECT_ROOT` instead of `SCRIPT_DIR`. 106-line BATS test. Dispatched via spiral-harness.
+- **Harness silent exit** (#516, PR #544) — Added ERR trap handler (FATAL with LINENO), guarded `_record_action` with `|| true`, brace-group for `wc -c`. 112-line BATS test. Dispatched via spiral-harness.
+- **Vision-lib grep -c fallback** (PR #542) — 7 instances replaced with `awk`.
+
+### Added
+
+- **Shell lint: `grep -c || echo 0` detector** (#531, PR #539) — `.claude/scripts/lint-grep-c-fallback.sh`. 133 sites flagged. WARNING level. `--error`/`--scan-only` modes.
+- **Shell lint: `(( var++ ))` detector** (PR #541) — `.claude/scripts/lint-arithmetic-increment.sh`. 158 sites fixed across 26 scripts.
+
+### Changed
+
+- Light profile default budget: $10 → $12
+- `_check_budget` comparison: `>=` → `>` (phase can start at exact budget)
+
+### Issue Tracker
+
+- **Closed**: #514, #515, #516, #528, #530, #531, #509, #247
+- **Updated**: #443, #396, #310 (scopes narrowed)
+
 ## [1.91.7] — 2026-04-16
 
 ### Deprecated
