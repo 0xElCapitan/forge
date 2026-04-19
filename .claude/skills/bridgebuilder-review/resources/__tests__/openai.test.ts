@@ -304,4 +304,236 @@ describe("OpenAIAdapter", () => {
 
     assert.equal(result.content, "before after");
   });
+
+  // =========================================================================
+  // Codex routing tests (issue #585)
+  // =========================================================================
+  //
+  // Codex models (gpt-5.3-codex, etc.) require POST /v1/responses, not the
+  // standard /v1/chat/completions. The adapter previously hit /chat/completions
+  // for all models, producing a 404 on every codex review. These tests lock
+  // the routing split + wire format.
+
+  it("routes codex models (gpt-5.3-codex) to /v1/responses endpoint", async () => {
+    let capturedUrl: string | undefined;
+
+    globalThis.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+      capturedUrl = input.toString();
+      const events = [
+        'data: {"type":"response.output_text.delta","delta":"Hello"}\n\n',
+        'data: {"type":"response.completed","response":{"model":"gpt-5.3-codex","usage":{"input_tokens":20,"output_tokens":5}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    await adapter.generateReview({
+      systemPrompt: "sys",
+      userPrompt: "usr",
+      maxOutputTokens: 100,
+    });
+
+    assert.ok(capturedUrl);
+    assert.equal(capturedUrl, "https://api.openai.com/v1/responses");
+  });
+
+  it("routes non-codex models (gpt-4o) to /v1/chat/completions endpoint", async () => {
+    let capturedUrl: string | undefined;
+
+    globalThis.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+      capturedUrl = input.toString();
+      const events = [
+        'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+        'data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-4o");
+    await adapter.generateReview({
+      systemPrompt: "sys",
+      userPrompt: "usr",
+      maxOutputTokens: 100,
+    });
+
+    assert.ok(capturedUrl);
+    assert.equal(capturedUrl, "https://api.openai.com/v1/chat/completions");
+  });
+
+  it("codex body uses {input} not {messages}", async () => {
+    let capturedBody: string | undefined;
+
+    globalThis.fetch = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      capturedBody = init?.body as string;
+      const events = [
+        'data: {"type":"response.output_text.delta","delta":"hi"}\n\n',
+        'data: {"type":"response.completed","response":{"model":"gpt-5.3-codex","usage":{"input_tokens":10,"output_tokens":2}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    await adapter.generateReview({
+      systemPrompt: "You are a reviewer",
+      userPrompt: "Review this code",
+      maxOutputTokens: 4096,
+    });
+
+    assert.ok(capturedBody);
+    const parsed = JSON.parse(capturedBody);
+    assert.equal(parsed.model, "gpt-5.3-codex");
+    assert.equal(typeof parsed.input, "string");
+    assert.ok(parsed.input.includes("You are a reviewer"));
+    assert.ok(parsed.input.includes("Review this code"));
+    assert.equal(parsed.stream, true);
+    // Chat-completions-specific fields should NOT be present
+    assert.equal(parsed.messages, undefined);
+    assert.equal(parsed.max_completion_tokens, undefined);
+    assert.equal(parsed.stream_options, undefined);
+  });
+
+  it("parses codex responses stream (response.output_text.delta + response.completed)", async () => {
+    globalThis.fetch = async () => {
+      const events = [
+        'data: {"type":"response.created","response":{"model":"gpt-5.3-codex"}}\n\n',
+        'data: {"type":"response.output_text.delta","delta":"This "}\n\n',
+        'data: {"type":"response.output_text.delta","delta":"is "}\n\n',
+        'data: {"type":"response.output_text.delta","delta":"a review."}\n\n',
+        'data: {"type":"response.completed","response":{"model":"gpt-5.3-codex","usage":{"input_tokens":200,"output_tokens":50}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    const result = await adapter.generateReview({
+      systemPrompt: "sys",
+      userPrompt: "usr",
+      maxOutputTokens: 100,
+    });
+
+    assert.equal(result.content, "This is a review.");
+    assert.equal(result.inputTokens, 200);
+    assert.equal(result.outputTokens, 50);
+    assert.equal(result.model, "gpt-5.3-codex");
+    assert.equal(result.provider, "openai");
+  });
+
+  it("codex detection is case-insensitive (gpt-6.0-CODEX)", async () => {
+    let capturedUrl: string | undefined;
+
+    globalThis.fetch = async (input: RequestInfo | URL, _init?: RequestInit) => {
+      capturedUrl = input.toString();
+      const events = [
+        'data: {"type":"response.output_text.delta","delta":"x"}\n\n',
+        'data: {"type":"response.completed","response":{"usage":{"input_tokens":1,"output_tokens":1}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-6.0-CODEX");
+    await adapter.generateReview({
+      systemPrompt: "s",
+      userPrompt: "u",
+      maxOutputTokens: 10,
+    });
+
+    assert.equal(capturedUrl, "https://api.openai.com/v1/responses");
+  });
+
+  // Addresses Gemini HIGH finding on PR #586: the Responses API has a
+  // different event vocabulary than Chat Completions. Guard against
+  // over-translation (content accumulation picking up non-text events)
+  // and under-translation (error envelope differences).
+
+  it("codex stream ignores non-text events (reasoning deltas don't leak into content)", async () => {
+    globalThis.fetch = async () => {
+      // Responses API may emit reasoning events that shouldn't appear in
+      // the final user-facing content. Only response.output_text.delta
+      // should accumulate. If a future Responses event adds extra types,
+      // this test locks the whitelist — adding them requires an explicit
+      // decision in the adapter.
+      const events = [
+        'data: {"type":"response.created","response":{"model":"gpt-5.3-codex"}}\n\n',
+        'data: {"type":"response.reasoning_text.delta","delta":"INTERNAL THINKING"}\n\n',
+        'data: {"type":"response.output_text.delta","delta":"user-visible "}\n\n',
+        'data: {"type":"response.reasoning_summary_text.delta","delta":"IGNORE"}\n\n',
+        'data: {"type":"response.output_text.delta","delta":"text"}\n\n',
+        'data: {"type":"response.completed","response":{"usage":{"input_tokens":100,"output_tokens":3}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    const result = await adapter.generateReview({
+      systemPrompt: "s",
+      userPrompt: "u",
+      maxOutputTokens: 100,
+    });
+
+    // Only output_text.delta events contribute to content
+    assert.equal(result.content, "user-visible text");
+    assert.ok(!result.content.includes("INTERNAL THINKING"));
+    assert.ok(!result.content.includes("IGNORE"));
+  });
+
+  it("codex returns 4xx error envelopes as INVALID_REQUEST (surface the error, don't retry)", async () => {
+    globalThis.fetch = async () => {
+      return new Response(
+        JSON.stringify({
+          error: {
+            type: "invalid_request_error",
+            message: "Model not found",
+          },
+        }),
+        { status: 404, headers: { "Content-Type": "application/json" } },
+      );
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    await assert.rejects(
+      adapter.generateReview({
+        systemPrompt: "s",
+        userPrompt: "u",
+        maxOutputTokens: 10,
+      }),
+      (err: unknown) => {
+        assert.ok(err instanceof LLMProviderError);
+        assert.equal((err as LLMProviderError).code, "INVALID_REQUEST");
+        return true;
+      },
+    );
+  });
+
+  it("codex retries on 5xx server errors (same backoff policy as chat)", async () => {
+    let attempts = 0;
+    globalThis.fetch = async () => {
+      attempts++;
+      if (attempts === 1) {
+        return new Response("Internal Server Error", { status: 503 });
+      }
+      const events = [
+        'data: {"type":"response.output_text.delta","delta":"ok"}\n\n',
+        'data: {"type":"response.completed","response":{"usage":{"input_tokens":5,"output_tokens":1}}}\n\n',
+        "data: [DONE]\n\n",
+      ];
+      return mockFetchResponse(200, events);
+    };
+
+    const adapter = new OpenAIAdapter("sk-test", "gpt-5.3-codex");
+    const result = await adapter.generateReview({
+      systemPrompt: "s",
+      userPrompt: "u",
+      maxOutputTokens: 10,
+    });
+
+    // Confirmed retry → eventual success
+    assert.equal(result.content, "ok");
+    assert.equal(attempts, 2);
+  });
 });
