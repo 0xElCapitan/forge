@@ -511,6 +511,13 @@ run_mode:
     auto_push: true
     # Always create PRs as drafts - this is hardcoded and cannot be changed
     create_draft_pr: true
+    # Git-aware sync_run_mode (Issue #474)
+    # Branch to diff against when inferring sprint completion from git history.
+    base_branch: "main"
+    # Regex pattern (grep -E) for sprint commit messages. Default matches
+    # conventional commit markers like "feat(sprint-1): implementation".
+    # Override if your project uses a different commit convention.
+    sprint_commit_pattern: '^feat\(sprint-'
 
 # -----------------------------------------------------------------------------
 # BUTTERFREEZONE — Agent-Grounded README (v1.35.0)
@@ -710,12 +717,20 @@ hounfour:
     anthropic:
       auth: "{env:ANTHROPIC_API_KEY}"
       models:
-        claude-opus-4-6:
+        claude-opus-4-7:
           capabilities: [chat, tools, function_calling, thinking_traces]
           context_window: 200000
           pricing:
             input_per_mtok: 5000000     # $5.00/M tokens
             output_per_mtok: 25000000   # $25.00/M tokens
+        claude-opus-4-6:
+          # Retained as pinnable fallback (cycle-082 PRD §13).
+          # Pin via `opus: "anthropic:claude-opus-4-6"` in your aliases to route to 4.6 specifically.
+          capabilities: [chat, tools, function_calling, thinking_traces]
+          context_window: 200000
+          pricing:
+            input_per_mtok: 5000000
+            output_per_mtok: 25000000
         claude-sonnet-4-6:
           capabilities: [chat, tools, function_calling]
           context_window: 200000
@@ -733,7 +748,7 @@ hounfour:
     reviewer: "openai:gpt-5.2"            # Primary review model
     reasoning: "openai:gpt-5.2"           # Reasoning/skeptic model
     cheap: "anthropic:claude-sonnet-4-6"  # Budget-conscious model
-    opus: "anthropic:claude-opus-4-6"     # High-quality model
+    opus: "anthropic:claude-opus-4-7"     # High-quality model (retargeted from 4-6 in cycle-082)
 
   # Agent bindings — which model each agent uses + requirements
   # Agents not listed here use the system defaults from model-config.yaml
@@ -1162,7 +1177,7 @@ invisible_retrospective:
 # -----------------------------------------------------------------------------
 # Flatline Protocol (v1.17.0)
 # -----------------------------------------------------------------------------
-# Multi-model adversarial review using Claude Opus 4.6 + GPT-5.2 for planning
+# Multi-model adversarial review using Claude Opus 4.7 + GPT-5.2 for planning
 # document quality assurance. Phase 1: parallel reviews, Phase 2: cross-scoring,
 # Phase 3: consensus extraction with HIGH/DISPUTED/LOW/BLOCKER classification.
 flatline_protocol:
@@ -1180,7 +1195,7 @@ flatline_protocol:
 
   # Model configuration
   models:
-    primary: opus        # Claude Opus 4.6 (via claude.ai or API)
+    primary: opus        # Claude Opus 4.7 (alias resolves to 4.7 per cycle-082)
     secondary: gpt-5.3-codex  # OpenAI GPT-5.3-codex (via Responses API)
 
   # Consensus thresholds (0-1000 scale)
@@ -1245,6 +1260,41 @@ flatline_protocol:
     allowlist:                   # False-positive exclusions
       - "sha256:[a-f0-9]{64}"
       - "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
+# -----------------------------------------------------------------------------
+# Red Team — Generative Adversarial Security Design (cycle-012, sprint-bug-102)
+# -----------------------------------------------------------------------------
+# Invoked via /red-team. Generates creative attack scenarios against design
+# documents (PRD/SDD) and synthesizes architectural counter-designs.
+#
+# IMPORTANT: Live model invocation requires:
+#   1. hounfour.flatline_routing: true  (see Hounfour section above)
+#   2. At least one provider API key: ANTHROPIC_API_KEY / OPENAI_API_KEY /
+#      GOOGLE_API_KEY / GEMINI_API_KEY
+#   3. .claude/scripts/model-invoke is executable
+#
+# When any of those is missing, the pipeline falls back to MOCK mode (fixture
+# data). Mock mode emits a visible WARNING banner so results aren't mistaken
+# for real analysis. To force a mode explicitly, the adapter accepts --live
+# or --mock.
+red_team:
+  enabled: false                # Opt-in — set true to enable /red-team
+  mode: standard                # quick | standard | deep (see SKILL.md)
+  thresholds:
+    confirmed_attack: 700       # Both models >700 → CONFIRMED_ATTACK
+    theoretical: 400
+    human_review_gate: 800      # Severity >800 requires human acknowledgment
+  budgets:
+    quick_max_tokens: 50000
+    standard_max_tokens: 200000
+    deep_max_tokens: 500000
+  # Optional: route red team through Hounfour (same routing as Flatline).
+  # If unset, inherits from hounfour.flatline_routing. Set false here to
+  # force mock mode even when Flatline runs live.
+  # routing_enabled: true
+  simstim:
+    auto_trigger: false         # Run as Phase 4.5 of /simstim
+    phase: post_sdd
 
 # -----------------------------------------------------------------------------
 # Autonomous Flatline Mode (v1.22.0)
@@ -1455,14 +1505,28 @@ post_pr_validation:
       # Mode for Flatline review
       mode: "hitl"    # hitl | autonomous
 
+    # Bridgebuilder post-PR review with auto-triage (Amendment 1, cycle-053)
+    # Closes the loop between external adversarial review and Loa state.
+    # Runs bridge-orchestrator.sh against the current PR after PR creation,
+    # parses findings via post-pr-triage.sh, and dispatches /bug for BLOCKERs.
+    # Feature-flagged OFF for progressive rollout — opt-in per Issue #464 Part B.
+    bridgebuilder_review:
+      enabled: false  # Default off; enable per-repo after validation
+      # Auto-dispatch /bug triage for BLOCKER findings in autonomous mode.
+      # Per HITL design decision #1: autonomous acts with logged reasoning.
+      auto_triage_blockers: true
+      # Bridge iteration depth (inherited from /run-bridge default)
+      depth: 5
+
   # -------------------------------------------------------------------------
   # Per-Phase Timeouts (seconds)
   # -------------------------------------------------------------------------
   timeouts:
-    post_pr_audit: 600    # 10 minutes
-    context_clear: 60     # 1 minute
-    e2e_testing: 1200     # 20 minutes
-    flatline_pr: 300      # 5 minutes
+    post_pr_audit: 600         # 10 minutes
+    context_clear: 60          # 1 minute
+    e2e_testing: 1200          # 20 minutes
+    flatline_pr: 300           # 5 minutes
+    bridgebuilder_review: 600  # 10 minutes (Amendment 1)
 
   # -------------------------------------------------------------------------
   # Circuit Breakers
@@ -1545,6 +1609,91 @@ vision_registry:
   # When true, bridge-vision-capture.sh is invoked automatically during bridge
   # review finalization for findings with VISION or SPECULATION severity.
   bridge_auto_capture: false
+
+# =============================================================================
+# /spiral Autopoietic Meta-Orchestrator (cycle-066, RFC-060 #483)
+# =============================================================================
+# Multi-cycle autonomous development loop. Each cycle runs /simstim; outputs
+# (visions, lore, bridge findings) become the next cycle's inputs via the
+# existing post-merge HARVEST pipeline. Terminates on cycle budget, flatline,
+# cost, wall-clock, quality-gate failure, or HITL halt.
+#
+# SAFETY FLOORS (hardcoded, cannot be overridden by config):
+#   - max_cycles        ≤ 50
+#   - budget_cents      ≤ 10000 ($100)
+#   - wall_clock_seconds ≤ 86400 (24h)
+#
+# Status: v0.1.0 MVP scaffolding. Cycle dispatch wires in cycle-067+.
+# See: grimoires/loa/proposals/rfc-060-spiral.md
+spiral:
+  # Master switch — default OFF. /spiral exits early with guidance when false.
+  enabled: false
+
+  # Default cycle budget
+  default_max_cycles: 3
+
+  # Kaironic convergence: two consecutive cycles below this many new findings
+  # trigger flatline termination.
+  flatline:
+    min_new_findings_per_cycle: 3
+    consecutive_low_cycles: 2
+
+  # Cost budget (cents). Safety floor: 10000 ($100).
+  budget_cents: 2000
+
+  # Wall-clock budget (seconds). Safety floor: 86400 (24h).
+  wall_clock_seconds: 28800
+
+  # SEED phase: pull prior cycle outputs into this cycle's discovery context.
+  # Gated separately because Vision Registry is in shadow_mode (#486).
+  seed:
+    enabled: false
+    include_visions: true
+    include_lore: true
+    include_deferred_findings: true
+    max_seed_tokens: 2000
+
+  # HITL halt sentinel — creating this file mid-spiral halts gracefully.
+  halt_sentinel: ".run/spiral-halt"
+
+  # ── Evidence-Gated Harness (cycle-071) ──────────────────────────────
+  # Phase-as-subprocess: each phase is a separate claude -p call.
+  # Gate-as-script: Flatline/Review/Audit run in bash (LLM cannot skip).
+  harness:
+    enabled: true                    # Use harness vs monolithic dispatch
+    max_phase_retries: 3             # Retries per gate on failure
+
+    # Per-phase budget caps (claude -p --max-budget-usd)
+    planning_budget_usd: 1           # PRD, SDD, Sprint (each)
+    implement_budget_usd: 5          # Code + tests + commit
+    review_budget_usd: 2             # Independent review session
+    audit_budget_usd: 2              # Independent audit session
+
+    # Advisor Strategy: Sonnet executes (~5x cheaper), Opus judges.
+    # See: grimoires/loa/reports/spiral-harness-benchmark-report.md
+    executor_model: sonnet           # PRD, SDD, Sprint, Implementation
+    advisor_model: opus              # Review, Audit (judgment quality)
+
+    # Pipeline Profiles (cycle-072): match intensity to task complexity.
+    # full     = all 3 Flatline gates + Opus advisor ($15 budget)
+    # standard = Sprint Flatline only + Opus advisor ($12 budget) [DEFAULT]
+    # light    = no Flatline + Sonnet advisor ($8 budget)
+    # Override per-cycle: --profile light
+    pipeline_profile: standard
+
+  # ── Off-Hours Scheduling (cycle-072) ────────────────────────────────
+  # Run spiral cycles during AFK/sleep windows against included token
+  # allowances instead of burning paid overage.
+  # Entry point: .claude/scripts/spiral-scheduler.sh
+  # Schedule via: CronCreate, RemoteTrigger, or /schedule skill
+  scheduling:
+    enabled: false                   # Must opt-in
+    windows:
+      - start_utc: "02:00"          # When to begin (HH:MM UTC)
+        end_utc: "08:00"            # When to halt gracefully
+        days: [mon, tue, wed, thu, fri]
+    strategy: fill                   # "fill" = use full window; "single" = one cycle; "continuous" = ignore window, run until other conditions stop
+    max_cycles_per_window: 3         # Safety cap per scheduling window
 
 # Prompt Isolation (v1.42.0)
 # De-authorization wrappers for untrusted content in LLM prompts.
@@ -1757,6 +1906,19 @@ post_merge:
     skip_gt: false
     # Skip RTFM validation
     skip_rtfm: false
+
+  # Lore promoter (cycle-061, #484)
+  # When enabled, the post-merge pipeline auto-promotes PRAISE candidates
+  # from .run/bridge-lore-candidates.jsonl into grimoires/loa/lore/patterns.yaml
+  # via lore-promote.sh --auto (threshold 2 — pattern must recur across ≥2
+  # distinct merged PRs to qualify). Without this enabled, lore-promote.sh
+  # ships in v1.80.0 but never runs in practice — the autopoietic spiral
+  # never closes.
+  #
+  # Default false — opt-in per repo. Recommended to enable once the
+  # downstream Loa user has reviewed the lore promoter contract.
+  lore_promote:
+    enabled: false
 
   # Notification
   notify:

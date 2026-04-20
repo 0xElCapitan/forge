@@ -1,0 +1,265 @@
+# Hounfour Default Configuration (SDD §4.1.2)
+#
+# System Zone defaults — ships with the Loa framework.
+# Users override in .loa.config.yaml under hounfour: section.
+# DO NOT EDIT — use project config for customization.
+
+# Provider registry
+providers:
+  openai:
+    type: openai
+    endpoint: "https://api.openai.com/v1"
+    auth: "{env:OPENAI_API_KEY}"
+    models:
+      gpt-5.2:
+        capabilities: [chat, tools, function_calling]
+        context_window: 128000
+        token_param: max_completion_tokens
+        pricing:
+          # Unit: micro-USD per million tokens (1_000_000 micro-USD = $1).
+          # Unified unit across all entries per sprint-bug-108 / vision-011 —
+          # previously mixed milli-USD (OpenAI/Anthropic) and micro-USD (Gemini).
+          # The Python metering in .claude/adapters/loa_cheval/metering/pricing.py
+          # expects micro-USD; the old milli-USD values undercounted by 1000x.
+          input_per_mtok: 10000000    # $10.00 per million tokens
+          output_per_mtok: 30000000   # $30.00 per million tokens
+      gpt-5.3-codex:
+        capabilities: [chat, tools, function_calling, code]
+        context_window: 400000
+        token_param: max_completion_tokens
+        pricing:
+          input_per_mtok: 1750000     # $1.75 per million tokens
+          output_per_mtok: 14000000   # $14.00 per million tokens
+
+  google:
+    type: google
+    endpoint: "https://generativelanguage.googleapis.com/v1beta"
+    auth: "{env:GOOGLE_API_KEY}"
+    models:
+      gemini-2.0-flash:
+        # Legacy model retained for backward-compat via `gemini-2.0` alias.
+        # Pricing matches gemini-2.5-flash (both are Google flash-tier).
+        capabilities: [chat]
+        context_window: 1048576
+        pricing:
+          input_per_mtok: 150000     # $0.15 per million tokens (micro-USD)
+          output_per_mtok: 600000    # $0.60 per million tokens
+      gemini-2.5-flash:
+        capabilities: [chat]
+        context_window: 1048576
+        pricing:
+          input_per_mtok: 150000     # $0.15 per million tokens (micro-USD)
+          output_per_mtok: 600000    # $0.60 per million tokens
+      gemini-2.5-pro:
+        capabilities: [chat, thinking_traces]
+        context_window: 1048576
+        pricing:
+          input_per_mtok: 1250000    # $1.25 per million tokens
+          output_per_mtok: 10000000  # $10.00 per million tokens
+        extra:
+          thinking_budget: -1        # Dynamic thinking budget
+      # gemini-3-flash, gemini-3-pro, gemini-3.1-pro-preview removed per #574 —
+      # they passed allowlist but Google v1beta returned NOT_FOUND at runtime.
+      # Re-add with pricing when Google confirms availability on v1beta.
+      deep-research-pro:
+        capabilities: [chat, thinking_traces, deep_research]
+        context_window: 1048576
+        api_mode: interactions
+        pricing:
+          input_per_mtok: 5000000    # $5.00 per million tokens
+          output_per_mtok: 20000000  # $20.00 per million tokens
+        extra:
+          polling_interval_s: 5
+          max_poll_time_s: 600
+
+  anthropic:
+    type: anthropic
+    endpoint: "https://api.anthropic.com/v1"
+    auth: "{env:ANTHROPIC_API_KEY}"
+    models:
+      claude-opus-4-7:
+        capabilities: [chat, tools, function_calling, thinking_traces]
+        context_window: 200000
+        token_param: max_tokens
+        pricing:
+          # Unit: micro-USD per million tokens (see gpt-5.2 note above).
+          input_per_mtok: 5000000    # $5.00 per million tokens
+          output_per_mtok: 25000000  # $25.00 per million tokens
+      claude-opus-4-6:
+        # Retained as pinnable fallback (PRD cycle-082 §13).
+        # Operators who want exact 4.6 behavior use `anthropic:claude-opus-4-6` in .loa.config.yaml.
+        capabilities: [chat, tools, function_calling, thinking_traces]
+        context_window: 200000
+        token_param: max_tokens
+        pricing:
+          input_per_mtok: 5000000    # $5.00 per million tokens
+          output_per_mtok: 25000000  # $25.00 per million tokens
+      claude-sonnet-4-6:
+        capabilities: [chat, tools, function_calling]
+        context_window: 200000
+        token_param: max_tokens
+        pricing:
+          input_per_mtok: 3000000    # $3.00 per million tokens
+          output_per_mtok: 15000000  # $15.00 per million tokens
+
+# Aliases (short names → provider:model-id)
+aliases:
+  gemini-2.0: "google:gemini-2.0-flash"  # Backward-compat alias
+  native: "claude-code:session"         # Reserved — Claude Code native runtime
+  reviewer: "openai:gpt-5.3-codex"      # Primary review model
+  reasoning: "openai:gpt-5.3-codex"    # Reasoning/skeptic model
+  cheap: "anthropic:claude-sonnet-4-6"  # Budget-conscious model
+  opus: "anthropic:claude-opus-4-7"     # High-quality model (retargeted from 4-6 to 4-7, cycle-082)
+  # Gemini 3 aliases (gemini-3.1-pro, deep-thinker, fast-thinker) removed
+  # per #574 — target models returned NOT_FOUND on Google v1beta. Re-add
+  # when vendor confirms availability.
+  researcher: "google:deep-research-pro" # Deep Research model
+
+# Backward-compat aliases (legacy model IDs → canonical provider:model-id)
+# Used by gen-adapter-maps.sh to reproduce the hand-maintained bash map
+# entries that retarget historical IDs to current canonical models.
+# Added in sprint-bug-108 (issue #548, vision-011) so the YAML is the
+# single source of truth for bash adapter maps.
+backward_compat_aliases:
+  # OpenAI legacy alias
+  "gpt-5.2-codex": "openai:gpt-5.3-codex"
+  # Anthropic Opus history — all retarget to 4-7 (cycle-082).
+  # claude-opus-4-6 is ALSO listed in providers.anthropic.models but the
+  # legacy bash adapter retargets the BASH-level resolution to 4-7 per
+  # PR #207 pattern. The YAML/Python path preserves 4-6 for pinning.
+  "claude-opus-4.7": "anthropic:claude-opus-4-7"
+  "claude-opus-4.6": "anthropic:claude-opus-4-7"
+  "claude-opus-4-6": "anthropic:claude-opus-4-7"
+  "claude-opus-4.5": "anthropic:claude-opus-4-7"
+  "claude-opus-4-5": "anthropic:claude-opus-4-7"
+  "claude-opus-4.1": "anthropic:claude-opus-4-7"
+  "claude-opus-4-1": "anthropic:claude-opus-4-7"
+  "claude-opus-4.0": "anthropic:claude-opus-4-7"
+  "claude-opus-4-0": "anthropic:claude-opus-4-7"
+  # NOTE: gemini-3.1-pro is NOT listed here — it's already in the main
+  # `aliases` section. Duplicates across aliases + backward_compat_aliases
+  # emit the same key twice into the generated bash maps (behaviorally
+  # harmless since last-write-wins, but unnecessary noise).
+
+# Agent bindings (agent name → model + requirements)
+# Conservative profile: maximize quality, most agents on native (PRD FR-4)
+agents:
+  implementing-tasks:
+    model: native
+    requires:
+      native_runtime: true
+  riding-codebase:
+    model: native
+    requires:
+      native_runtime: true
+  designing-architecture:
+    model: native
+  planning-sprints:
+    model: native
+  discovering-requirements:
+    model: native
+  reviewing-code:
+    model: reviewer
+    temperature: 0.3
+  auditing-security:
+    model: native
+  translating-for-executives:
+    model: cheap
+    temperature: 0.5
+  flatline-reviewer:
+    model: reviewer
+    temperature: 0.3
+  flatline-skeptic:
+    model: reasoning
+    temperature: 0.5
+    requires:
+      thinking_traces: preferred
+  flatline-scorer:
+    model: reviewer
+    temperature: 0.2
+  flatline-dissenter:
+    model: reasoning
+    temperature: 0.6
+    requires:
+      thinking_traces: preferred
+  gpt-reviewer:
+    model: reviewer
+    temperature: 0.3
+  deep-researcher:
+    model: researcher
+    temperature: 0.3
+    requires:
+      deep_research: required
+  deep-thinker:
+    # Retargeted to gemini-2.5-pro per #574 (phantom gemini-3-pro pruned).
+    # Re-point at Gemini 3 alias when vendor confirms v1beta availability.
+    model: gemini-2.5-pro
+    temperature: 0.4
+    requires:
+      thinking_traces: required
+  fast-thinker:
+    # Retargeted to gemini-2.5-flash per #574 (phantom gemini-3-flash pruned).
+    model: gemini-2.5-flash
+    temperature: 0.5
+  literature-reviewer:
+    model: researcher
+    temperature: 0.2
+    requires:
+      deep_research: required
+
+  # Jam geometry roles (cycle-026 sprint-9)
+  # Feature flag: hounfour.feature_flags.jam_geometry (default false)
+  jam-reviewer-claude:
+    model: native
+    requires:
+      native_runtime: true
+      thinking_traces: true
+  jam-reviewer-gpt:
+    model: reviewer
+    temperature: 0.3
+  jam-reviewer-kimi:
+    model: reasoning
+    temperature: 0.5
+    requires:
+      thinking_traces: preferred
+  jam-synthesizer:
+    model: cheap
+    temperature: 0.3
+
+# Routing
+routing:
+  fallback:
+    openai: [anthropic]           # If OpenAI down, try Anthropic
+    anthropic: [openai]           # If Anthropic down, try OpenAI
+    google: [openai]              # If Google down, try OpenAI
+  downgrade:
+    reviewer: [cheap]             # If budget exceeded, downgrade
+
+  # Circuit breaker defaults
+  circuit_breaker:
+    failure_threshold: 5          # Consecutive failures to trip
+    reset_timeout_seconds: 60     # Time in OPEN before probing
+    half_open_max_probes: 1       # Concurrent probes in HALF_OPEN
+    count_window_seconds: 300     # Rolling window for failure count
+
+# Retry defaults
+retry:
+  max_retries: 3                  # Per-provider retries
+  max_total_attempts: 6           # Global hard cap (SDD §4.2.7)
+  max_provider_switches: 2        # Maximum fallback chain depth
+  base_delay_seconds: 1.0         # Exponential backoff base
+
+# Metering
+metering:
+  enabled: true
+  ledger_path: "grimoires/loa/a2a/cost-ledger.jsonl"
+  budget:
+    daily_micro_usd: 500000000    # $500/day default (effectively unlimited)
+    warn_at_percent: 80
+    on_exceeded: downgrade        # downgrade | block | warn
+
+# Default timeouts (per provider, overridable)
+defaults:
+  connect_timeout: 10             # seconds
+  read_timeout: 120               # seconds
+  write_timeout: 30               # seconds
