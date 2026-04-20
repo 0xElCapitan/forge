@@ -153,8 +153,14 @@ grimoires/loa/research/*
 !grimoires/loa/research/README.md
 
 # Ground truth
+grimoires/loa/gt/*
+!grimoires/loa/gt/README.md
 grimoires/loa/ground-truth/*
 !grimoires/loa/ground-truth/README.md
+
+# Translations
+grimoires/loa/translations/*
+!grimoires/loa/translations/README.md
 
 # Vision registry
 grimoires/loa/visions/entries/*
@@ -177,9 +183,12 @@ grimoires/pub/research/*
 !grimoires/pub/research/*.md
 
 # =============================================================================
-# LOA CONSTRUCTS
+# LOA FRAMEWORK (vendored — don't track on GitHub)
+# .claude/overrides/ and .claude/settings.json remain tracked
 # =============================================================================
-.claude/constructs/
+.claude/*
+!.claude/overrides/
+!.claude/settings.json
 
 # Development-specific docs
 docs/planning/
