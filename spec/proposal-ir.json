@@ -6,7 +6,7 @@
   "version": "0.1.0",
 
   "type": "object",
-  "required": ["ir_version", "forge_version", "emitted_at", "feed_id", "feed_profile", "proposals"],
+  "required": ["ir_version", "forge_version", "classifier_version", "emitted_at", "feed_id", "feed_profile", "proposals"],
   "additionalProperties": false,
 
   "properties": {
@@ -20,6 +20,11 @@
     "forge_version": {
       "type": "string",
       "description": "FORGE semver that produced this envelope (e.g. '0.1.0')."
+    },
+
+    "classifier_version": {
+      "type": "string",
+      "description": "Semver for the Pythia classifier (Q1-Q5 grammar). Independent from forge_version and ir_version. Required on all newly-emitted envelopes; non-breaking to Echelon consumers at ir_version 0.1.0 which SHOULD ignore unknown fields. Used for version-aware dispatch in downstream module pipelines."
     },
 
     "emitted_at": {
@@ -73,6 +78,24 @@
         "^[0-9]+$": { "type": "number", "minimum": 0, "maximum": 1 }
       },
       "additionalProperties": false
+    },
+
+    "original_hash": {
+      "type": ["string", "null"],
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 hash of the canonicalized raw input payload that produced this envelope. Format: 'sha256:<64 hex chars>'. Identical computation to receipt.materials.digest when a receipt is also generated — surfaced here for consumers that do not need the full receipt. Null when rawInput is not provided to emitEnvelope."
+    },
+
+    "hash_algorithm": {
+      "type": ["string", "null"],
+      "enum": ["sha256", null],
+      "description": "Algorithm used to produce original_hash. Currently always 'sha256'. Reserved for post-quantum hash migration — change this field atomically with original_hash. Null when original_hash is null."
+    },
+
+    "negative_policy_flags": {
+      "type": ["array", "null"],
+      "items": { "type": "string" },
+      "description": "FORGE-originated advisory policy flags detected at classification time. Flat string array — vocabulary-only, not structured rejection objects. Null when evaluate_policy=false (default). Empty array is valid (no flags fired). FORGE owns: synthetic_only, no_settlement_authority, reflexive_feed. Echelon owns: insufficient_independence, hidden_upstream_dependency."
     }
   },
 

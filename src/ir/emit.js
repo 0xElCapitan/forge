@@ -21,9 +21,13 @@
 import { createHash } from 'node:crypto';
 import { computeUsefulness } from '../filter/usefulness.js';
 import { buildReceipt } from '../receipt/receipt-builder.js';
+import { sha256 } from '../receipt/hash.js';
+import { canonicalize } from '../receipt/canonicalize.js';
+import { evaluateNegativePolicy } from '../policy/negative-policy.js';
 
-const IR_VERSION    = '0.1.0';
-const FORGE_VERSION = '0.1.0';
+const IR_VERSION         = '0.1.0';
+const FORGE_VERSION      = '0.1.0';
+const CLASSIFIER_VERSION = '0.1.0';
 
 /**
  * Brier type lookup per template.
@@ -77,19 +81,22 @@ function proposalId(feed_id, template, params) {
  * @param {boolean}  [opts.receipt=false] - When true, return `{ envelope, receipt }`
  *                   instead of just the envelope.
  * @param {Function} [opts.sign=null] - Signing function for receipt (Sprint 5).
+ * @param {boolean}  [opts.evaluate_policy=false] - When true, evaluate FORGE-owned
+ *                   negative policy flags and include in envelope.
  * @returns {Object} ProposalEnvelope (or { envelope, receipt } when receipt: true)
  */
 export function emitEnvelope({
   feed_id,
   feed_profile,
   proposals,
-  source_metadata = null,
-  composition     = null,
+  source_metadata  = null,
+  composition      = null,
   score_usefulness = false,
-  now             = Date.now(),
-  rawInput        = null,
-  receipt         = false,
-  sign            = null,
+  now              = Date.now(),
+  rawInput         = null,
+  receipt          = false,
+  sign             = null,
+  evaluate_policy  = false,
 }) {
   const emitted_at = now;
 
@@ -118,16 +125,41 @@ export function emitEnvelope({
     }
   }
 
+  // FR-1: original_hash + hash_algorithm — SHA-256 of canonicalized raw input.
+  // Identical computation to receipt.materials.digest when receipt: true, surfaced
+  // at envelope level for consumers that don't need the full receipt.
+  // canonicalize() throws TypeError on Infinity/NaN/BigInt/Date — treat as unhashable
+  // rather than propagating the throw; original_hash stays null in that case.
+  let original_hash  = null;
+  let hash_algorithm = null;
+  if (rawInput != null) {
+    try {
+      original_hash  = sha256(canonicalize(rawInput));
+      hash_algorithm = 'sha256';
+    } catch {
+      // unhashable rawInput — original_hash and hash_algorithm remain null
+    }
+  }
+
+  // FR-3: FORGE-owned negative policy flags (advisory signals, not Echelon rejections).
+  const negative_policy_flags = evaluate_policy
+    ? evaluateNegativePolicy({ proposals: annotated, feed_profile, source_metadata, feed_id })
+    : null;
+
   const envelope = {
-    ir_version:    IR_VERSION,
-    forge_version: FORGE_VERSION,
+    ir_version:           IR_VERSION,
+    forge_version:        FORGE_VERSION,
+    classifier_version:   CLASSIFIER_VERSION,
     emitted_at,
     feed_id,
-    feed_profile:  serializeProfile(feed_profile),
-    source_metadata: source_metadata ?? undefined,
-    proposals:     annotated,
-    composition:   composition ?? null,
+    feed_profile:         serializeProfile(feed_profile),
+    source_metadata:      source_metadata ?? undefined,
+    proposals:            annotated,
+    composition:          composition ?? null,
     usefulness_scores,
+    original_hash,
+    hash_algorithm,
+    negative_policy_flags,
   };
 
   if (receipt && rawInput != null) {

@@ -255,6 +255,110 @@ describe('emitEnvelope', () => {
     }
   });
 
+  // ── FR-2: classifier_version ─────────────────────────────────────────────
+
+  it('includes classifier_version as a non-null semver string', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: [],
+    });
+
+    assert.ok(typeof env.classifier_version === 'string', 'classifier_version must be a string');
+    assert.ok(env.classifier_version.length > 0, 'classifier_version must not be empty');
+    assert.match(env.classifier_version, /^\d+\.\d+\.\d+$/, 'classifier_version must be semver');
+  });
+
+  // ── FR-1: original_hash + hash_algorithm ─────────────────────────────────
+
+  it('sets original_hash and hash_algorithm when rawInput is provided', () => {
+    const rawInput = { events: [{ magnitude: 5.1, lat: 37.7, lon: -122.4 }] };
+    const env = emitEnvelope({
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      rawInput,
+    });
+
+    assert.ok(typeof env.original_hash === 'string', 'original_hash must be a string');
+    assert.match(env.original_hash, /^sha256:[0-9a-f]{64}$/, 'original_hash must be sha256:<64 hex>');
+    assert.equal(env.hash_algorithm, 'sha256', 'hash_algorithm must be "sha256"');
+
+    // Deterministic: same rawInput → same hash
+    const env2 = emitEnvelope({
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      rawInput,
+    });
+    assert.equal(env.original_hash, env2.original_hash, 'original_hash must be deterministic');
+  });
+
+  it('sets original_hash and hash_algorithm to null when rawInput is absent', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: [],
+    });
+
+    assert.equal(env.original_hash, null, 'original_hash must be null without rawInput');
+    assert.equal(env.hash_algorithm, null, 'hash_algorithm must be null without rawInput');
+  });
+
+  it('sets original_hash to null when rawInput contains unhashable types', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: [],
+      rawInput: { value: Infinity },
+    });
+
+    assert.equal(env.original_hash, null, 'original_hash must be null for unhashable rawInput');
+    assert.equal(env.hash_algorithm, null, 'hash_algorithm must be null for unhashable rawInput');
+  });
+
+  // ── FR-3: negative_policy_flags ──────────────────────────────────────────
+
+  it('sets negative_policy_flags to null when evaluate_policy is false (default)', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+    });
+
+    assert.equal(env.negative_policy_flags, null,
+      'negative_policy_flags must be null when evaluate_policy=false');
+  });
+
+  it('returns a sorted string array when evaluate_policy is true', () => {
+    const env = emitEnvelope({
+      feed_id: 'test',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      // No source_metadata → no_settlement_authority fires
+      evaluate_policy: true,
+    });
+
+    assert.ok(Array.isArray(env.negative_policy_flags),
+      'negative_policy_flags must be an array when evaluate_policy=true');
+    assert.ok(env.negative_policy_flags.includes('no_settlement_authority'),
+      'no_settlement_authority should fire when source_metadata is absent');
+  });
+
+  it('negative_policy_flags is empty array when no violations', () => {
+    const env = emitEnvelope({
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      source_metadata: { trust_tier: 'T1' },  // T1 can settle
+      evaluate_policy: true,
+    });
+
+    assert.ok(Array.isArray(env.negative_policy_flags));
+    assert.equal(env.negative_policy_flags.length, 0,
+      'no flags should fire for a T1 source with confident proposals');
+  });
+
   it('nullifies missing optional profile fields', () => {
     const sparse_profile = {
       cadence:      { classification: 'hours' },
