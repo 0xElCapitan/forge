@@ -93,8 +93,8 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **sha256** — SHA-256 hash with `sha256:` prefix for receipt fields. (`src/receipt/hash.js`)
 - **signReceipt** / **verifySignature** — Ed25519 signing and verification. Fail-closed: throws if no signing key available. Signature format: `ed25519:` prefixed base64. (`src/receipt/sign.js`)
 - **loadKeyring** / **getPublicKey** — Keyring management for receipt verification. Loads `keys/forge-keyring.json`. (`src/receipt/keyring.js`)
-- **getCodeIdentity** — Returns code identity triple `{ git_sha, package_lock_sha, node_version }` for receipt `code_version` field. `package_lock_sha` is null (zero-dep posture). (`src/receipt/code-identity.js`)
-- **computePolicyHash** — Hashes the active rule set and regulatory tables to produce the receipt `policy_hash`. (`src/receipt/policy-hasher.js`)
+- **getCodeIdentity** — Returns code identity triple `{ git_sha, package_lock_sha, node_version }` for the receipt `builder` block. `package_lock_sha` is null (zero-dep posture). (`src/receipt/code-identity.js`)
+- **computePolicyHash** — Hashes the active rule set and regulatory tables to produce the receipt `policy.policy_hash` field. (`src/receipt/policy-hasher.js`)
 - **forge-verify** — Independent replay verifier CLI. Re-runs the pipeline on original input and compares output hash against receipt. Exit codes: 0=MATCH, 1=MISMATCH, 2=ERROR. (`bin/forge-verify.js`)
 - **ForgeConstruct** — Top-level construct class. `.analyze(fixturePath)` runs the full pipeline (ingest → classify → select). `.analyze(path, { receipt: true })` adds a ProposalReceipt to the result. `.getCertificates()` returns accumulated RLMF state (defensive copy). (`src/index.js:37`)
 

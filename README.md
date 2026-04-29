@@ -222,6 +222,8 @@ const envelope = emitEnvelope({
 
 A ProposalReceipt is a signed proof that a specific ProposalEnvelope was produced from a specific input, under a specific policy configuration and code version. It enables independent verification without trusting the FORGE operator.
 
+> Receipt structure follows `spec/receipt-v0.json` — the schema is authoritative. Fields are grouped into attestation-aligned objects (`subject`, `materials`, `policy`, `builder`); access is always nested.
+
 ```js
 const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
   feed_id: 'usgs_m4.5_day',
@@ -235,14 +237,16 @@ const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
 // result.receipt:
 // {
 //   schema: 'forge-receipt/v0',
-//   input_hash: 'sha256:abc...',        // hash of canonicalized raw input
-//   code_version: { git_sha: 'abc...', package_lock_sha: null, node_version: '20.11.0' },
-//   policy_hash: 'sha256:def...',       // hash of rules + regulatory tables
-//   output_hash: 'sha256:789...',       // hash of canonicalized envelope
+//   predicateType: 'https://forge.echelon.build/attestation/v0',
+//   subject:   { digest: 'sha256:abc...', uri: null },                                        // canonicalized envelope hash
+//   materials: { digest: 'sha256:def...', canonicalization: 'jcs-subset/v0', uri: null },     // canonicalized raw input
+//   policy:    { policy_hash: 'sha256:789...', rule_set_hash: 'sha256:012...', version_tag: 'forge-policy/v0.1.0' },
+//   builder:   { uri: 'https://forge.echelon.build/builder/v0', git_sha: 'abc...', package_lock_sha: null, node_version: '20.11.0' },
+//   computed_at: '2023-11-14T...',
+//   http_transcript_receipts: null,
 //   signer: 'forge-production',
 //   key_id: 'forge-production-001',
-//   signature: 'ed25519:...',           // base64 ed25519 signature
-//   computed_at: '2023-11-14T...',
+//   signature: 'ed25519:...',                                                                  // base64 ed25519 signature
 // }
 ```
 

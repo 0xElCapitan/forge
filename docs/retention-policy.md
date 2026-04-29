@@ -35,7 +35,7 @@ The following artifacts are available at any committed SHA via standard git oper
 - **Regulatory data**: `src/selector/regulatory-*.json` files are versioned in git
 - **Public keyring**: `keys/forge-keyring.json` is versioned in git
 
-The receipt's `code_version.git_sha` field points to the exact commit. The `policy_hash` and `rule_set_hash` fields allow verification that the policy hasn't changed.
+The receipt's `builder.git_sha` field points to the exact commit. The `policy.policy_hash` and `policy.rule_set_hash` fields allow verification that the policy hasn't changed.
 
 ## Caller-Retained Artifacts
 

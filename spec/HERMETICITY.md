@@ -33,7 +33,7 @@ The two-zone boundary is a current operational boundary, not a forever boundary.
 | Injected wall clock | `options.now` | Deterministic `emitted_at` in envelope |
 | Selector rules (RULES array) | `src/selector/rules.js` | `policy.rule_set_hash` in receipt |
 | Regulatory tables | Threshold classifier imports | `policy.policy_hash` in receipt |
-| Code identity | Git SHA + Node.js version | `code_version` in receipt |
+| Code identity | Git SHA + Node.js version | `builder.git_sha` / `builder.node_version` in receipt |
 
 Everything else is a hidden input. If it affects receipt output and is not in this table, it is a bug.
 
