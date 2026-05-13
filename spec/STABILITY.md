@@ -63,6 +63,8 @@ The following fields are planned as additive (non-breaking) for Cycle 002:
 - `allocation_class` — routing tier derived from usefulness breakdown (`"core"` | `"niche"` | `"experimental"`)
 - `classifier_version` — independent semver for the Pythia classifier, enabling version-aware composition in downstream module pipelines
 - `composed_trust` — trust and settlement authority metadata for Hermes-composed theatres; schema subject to co-design with Echelon before 002 ships
+- `verifier_type` — verification regime applied to this envelope's outputs; scaffolding-only at v0.2.0, single legal value, no dispatch behavior. Exact schema mechanics (type, default value, placement) to be locked in the 1-sprint formal notice. Approved by Tobias 2026-05-06.
+- `claim_shape` — temporal/extent shape of the asserted truth; **proposal-level** field, scaffolding-only at v0.2.0. Legal value: `"event"` (discrete, point-in-time occurrence). Reserved (validator-rejected at v0.2.0): `"state"`, `"interval"`, `"continuous"`. Orthogonal to `template` (detection methodology) and `brier_type` (scoring rubric). v0.2.0 consumers: passthrough only — admission gate, theatre instantiation, verifier, and Echelon scoring substrate all ignore; RLMF exports pass it through as a read-only manifest column. Semantics confirmed by Tobias 2026-05-13.
 
 The following fields are planned as additive (non-breaking) for Cycle 003 (nullable in 002, populated in 003):
 

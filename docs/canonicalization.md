@@ -1,5 +1,7 @@
 # Canonicalization — JCS Subset (jcs-subset/v0)
 
+> **For cross-language porting** (Python, Rust, Go, etc.) see the formal spec at [`spec/JCS_SUBSET_V0.md`](../spec/JCS_SUBSET_V0.md) — it covers the exact algorithm, edge-case number serialization (negative zero, scientific-notation thresholds), string escaping rules (lowercase `\u` hex, `ensure_ascii=False` for Python), test vectors, and cross-implementation handshake guidance. This document is a friendlier introduction; the spec is the porting contract.
+
 ## Overview
 
 FORGE uses a JSON Canonicalization Scheme (JCS) subset for deterministic serialization of JSON data before hashing. This ensures that semantically identical JSON objects always produce the same hash, regardless of key ordering or whitespace.
