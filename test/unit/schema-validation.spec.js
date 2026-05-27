@@ -23,8 +23,9 @@ const receiptSchema = JSON.parse(readFileSync('spec/receipt-v0.json', 'utf8'));
 
 // ─── Lightweight JSON Schema validator ─────────────────────────────────────
 // Supported keywords: required, properties, type (incl. integer), const,
-// pattern, additionalProperties, nested object recursion.
-// NOT supported: $ref, oneOf, allOf, anyOf, if/then/else, enum, format,
+// enum (incl. null membership), pattern, additionalProperties,
+// nested object recursion.
+// NOT supported: $ref, oneOf, allOf, anyOf, if/then/else, format,
 // minItems, maxItems, minLength, maxLength, minimum, maximum.
 // Sufficient for contract tests; extend if schemas adopt new keywords.
 
@@ -72,6 +73,16 @@ function validateAgainstSchema(obj, schema, path = '') {
         }
         if (!matches) {
           errors.push(`${propPath}: expected type ${types.join('|')}, got ${actualType}`);
+        }
+      }
+
+      // enum check — Sprint 01 extension (SDD §5.5).
+      // Honors null membership: enum [..., null] accepts null. Independent of
+      // the type-check null-softening above: enum is the source of truth.
+      if ('enum' in propSchema) {
+        if (!propSchema.enum.includes(val)) {
+          const formatted = propSchema.enum.map(v => v === null ? 'null' : `'${v}'`).join(', ');
+          errors.push(`${propPath}: value '${val}' is not in enum [${formatted}]`);
         }
       }
 
