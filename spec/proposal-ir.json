@@ -3,18 +3,24 @@
   "$id": "https://forge.constructs.network/schemas/proposal-ir/0.1.0",
   "title": "FORGE Proposal IR",
   "description": "Intermediate Representation emitted by FORGE and consumed by Echelon's admission gate. Each ProposalEnvelope contains the full classification, one or more theatre proposals, provenance metadata, and optional composition context. Versioned for forward-compatibility. See spec/STABILITY.md for schema stability policy and breaking change commitments.",
-  "version": "0.1.0",
+  "version": "0.2.0",
 
   "type": "object",
-  "required": ["ir_version", "forge_version", "classifier_version", "emitted_at", "feed_id", "feed_profile", "proposals"],
+  "required": ["ir_version", "forge_version", "classifier_version", "emitted_at", "feed_id", "feed_profile", "proposals", "verifier_type"],
   "additionalProperties": false,
 
   "properties": {
 
     "ir_version": {
       "type": "string",
-      "const": "0.1.0",
+      "const": "0.2.0",
       "description": "Proposal IR schema version. Echelon MUST reject envelopes with unrecognised versions."
+    },
+
+    "verifier_type": {
+      "type": ["string", "null"],
+      "description": "Verification regime applied to this envelope's outputs. Default 'echelon-brier/v0' matches the current single-verifier model. Reserved for future multi-regime dispatch.",
+      "examples": ["echelon-brier/v0"]
     },
 
     "forge_version": {
@@ -172,7 +178,7 @@
 
     "Proposal": {
       "type": "object",
-      "required": ["proposal_id", "template", "params", "confidence", "rationale", "brier_type", "usefulness_score"],
+      "required": ["proposal_id", "template", "params", "confidence", "rationale", "brier_type", "usefulness_score", "claim_shape"],
       "additionalProperties": false,
       "properties": {
         "proposal_id": {
@@ -184,6 +190,12 @@
         "template": {
           "enum": ["threshold_gate", "cascade", "divergence", "regime_shift", "anomaly", "persistence"],
           "description": "Theatre template type. Must match a template registered in Echelon's theatre registry."
+        },
+        "claim_shape": {
+          "type": ["string", "null"],
+          "enum": ["event", null],
+          "description": "Temporal/extent shape of the asserted truth. v0.2.0: only 'event' is legal. Reserved: 'state', 'interval', 'continuous' (validator-rejected at v0.2.0). Orthogonal to template (detection methodology) and brier_type (scoring rubric).",
+          "examples": ["event"]
         },
         "params": {
           "type": "object",
