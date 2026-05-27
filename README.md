@@ -212,7 +212,7 @@ const envelope = emitEnvelope({
   score_usefulness: true,
 });
 
-// envelope.ir_version     → '0.1.0'
+// envelope.ir_version     → '0.2.0'
 // envelope.proposals[0].proposal_id → deterministic SHA-256 hash (dedup key)
 // envelope.proposals[0].brier_type  → 'binary' | 'multi_class'
 // envelope.usefulness_scores        → { '0': 0.82, '1': 0.71, ... }
