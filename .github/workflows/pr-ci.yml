@@ -1,0 +1,73 @@
+name: PR CI
+
+# Closes follow-up beads forge-1ce + forge-2fq from cycle-002 sprint-01.
+# Pre-merge gate previously absent from this repo; Sprint 01 relied on local
+# verification + senior-lead review + audit as a substitute. This workflow
+# restores the standard pre-merge gate.
+#
+# Scope is intentionally minimal: install deps + run tests. No release logic,
+# no tag creation, no PR-comment side effects. Read-only token; no secrets
+# required.
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    # Run on any non-master push so feature branches get CI feedback before
+    # opening a PR. `master` itself is owned by post-merge.yml (a separate
+    # workflow); excluding it here avoids double-firing on the merge commit.
+    branches-ignore:
+      - master
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref (e.g. force-push during PR review).
+concurrency:
+  group: pr-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Minimum permissions — tests are pure node:test invocations and require no
+# write access to anything.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Engine baseline per package.json `engines.node` is >=20.0.0.
+        # Pin to 20 LTS for the primary signal. Extend the matrix in a
+        # future cycle if multi-version coverage becomes useful.
+        node: ['20']
+
+    steps:
+      - name: Checkout
+        # Pinned to the same SHA the post-merge workflow uses (v4.3.1).
+        # See post-merge.yml header for the submodule-recursion rationale —
+        # this repo has no submodules today so `submodules: false` is fine.
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          submodules: false
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        # `npm ci` enforces the lockfile. Repo has zero runtime deps and a
+        # single devDep (loa-hounfour) fetched from a GitHub tarball; install
+        # is fast in the cached path. The test commands themselves do not
+        # import any devDep, so a strict `--ignore-scripts` is safe.
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run full test suite (unit + integration + convergence)
+        run: npm run test:all

@@ -1,9 +1,13 @@
 name: Post-Merge Pipeline
 
-# Triggers on push to main only (merge events)
+# Triggers on push to master (merge events). `main` is retained in the list
+# so the workflow remains forward-compatible if this repo's default branch
+# is ever renamed. FORGE follow-up forge-2fq: workflow had been dormant
+# because it was configured for `main` only, but this repo's default branch
+# is `master` — every prior merge to master skipped the post-merge pipeline.
 on:
   push:
-    branches: [main]
+    branches: [master, main]
 
 # =============================================================================
 # Issue #669 / Bridgebuilder F-001 (PR #671): submodule recursion decision trail
