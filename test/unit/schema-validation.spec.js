@@ -23,8 +23,9 @@ const receiptSchema = JSON.parse(readFileSync('spec/receipt-v0.json', 'utf8'));
 
 // ─── Lightweight JSON Schema validator ─────────────────────────────────────
 // Supported keywords: required, properties, type (incl. integer), const,
-// pattern, additionalProperties, nested object recursion.
-// NOT supported: $ref, oneOf, allOf, anyOf, if/then/else, enum, format,
+// enum (incl. null membership), pattern, additionalProperties,
+// nested object recursion.
+// NOT supported: $ref, oneOf, allOf, anyOf, if/then/else, format,
 // minItems, maxItems, minLength, maxLength, minimum, maximum.
 // Sufficient for contract tests; extend if schemas adopt new keywords.
 
@@ -72,6 +73,16 @@ function validateAgainstSchema(obj, schema, path = '') {
         }
         if (!matches) {
           errors.push(`${propPath}: expected type ${types.join('|')}, got ${actualType}`);
+        }
+      }
+
+      // enum check — Sprint 01 extension (SDD §5.5).
+      // Honors null membership: enum [..., null] accepts null. Independent of
+      // the type-check null-softening above: enum is the source of truth.
+      if ('enum' in propSchema) {
+        if (!propSchema.enum.includes(val)) {
+          const formatted = propSchema.enum.map(v => v === null ? 'null' : `'${v}'`).join(', ');
+          errors.push(`${propPath}: value '${val}' is not in enum [${formatted}]`);
         }
       }
 
@@ -125,6 +136,92 @@ describe('Schema validation — envelope against spec/proposal-ir.json', () => {
     const errors = validateAgainstSchema(envelope, envelopeSchema);
     assert.deepStrictEqual(errors, [],
       `Envelope schema validation errors:\n${errors.join('\n')}`);
+  });
+
+  // ─── Sprint 01 (IR 0.2.0 surface ratification) — T-3..T-10 ─────────────────
+  //
+  // Helper: build a v0.2.0 envelope with at least one proposal, on demand.
+  function buildEnvelopeWithProposal() {
+    const rawData = JSON.parse(readFileSync('fixtures/usgs-m4.5-day.json', 'utf8'));
+    const events = ingest(rawData, { timestampBase: FIXED_TIMESTAMP_BASE });
+    const profile = classify(events);
+    const proposals = selectTemplates(profile);
+    return emitEnvelope({
+      feed_id: 'schema-test',
+      feed_profile: profile,
+      proposals,
+      now: FIXED_NOW,
+    });
+  }
+
+  it('T-9: envelope required array contains verifier_type', () => {
+    assert.ok(envelopeSchema.required.includes('verifier_type'),
+      `envelope required array must contain 'verifier_type'; got [${envelopeSchema.required.join(', ')}]`);
+  });
+
+  it('T-10: Proposal required array contains claim_shape', () => {
+    const proposalRequired = envelopeSchema.$defs.Proposal.required;
+    assert.ok(proposalRequired.includes('claim_shape'),
+      `Proposal required array must contain 'claim_shape'; got [${proposalRequired.join(', ')}]`);
+  });
+
+  it('T-3: envelope with verifier_type: null validates', () => {
+    const envelope = buildEnvelopeWithProposal();
+    envelope.verifier_type = null;
+    const errors = validateAgainstSchema(envelope, envelopeSchema);
+    assert.deepStrictEqual(errors, [],
+      `Envelope with verifier_type=null should validate; errors:\n${errors.join('\n')}`);
+  });
+
+  // T-4 through T-8: claim_shape lives inside Proposal — validate the Proposal
+  // sub-schema directly. The lightweight validator does not recurse into array
+  // items by $ref (SDD §5.5 enum-only extension scope); the Proposal sub-schema
+  // has the enum constraint we need to exercise.
+  const proposalSchema = envelopeSchema.$defs.Proposal;
+
+  it('T-4: proposal with claim_shape: null validates', () => {
+    const envelope = buildEnvelopeWithProposal();
+    assert.ok(envelope.proposals.length > 0, 'fixture must produce at least one proposal');
+    const proposal = { ...envelope.proposals[0], claim_shape: null };
+    const errors = validateAgainstSchema(proposal, proposalSchema);
+    assert.deepStrictEqual(errors, [],
+      `Proposal with claim_shape=null should validate; errors:\n${errors.join('\n')}`);
+  });
+
+  it('T-5: proposal with claim_shape: state is rejected', () => {
+    const envelope = buildEnvelopeWithProposal();
+    const proposal = { ...envelope.proposals[0], claim_shape: 'state' };
+    const errors = validateAgainstSchema(proposal, proposalSchema);
+    const claimShapeError = errors.find(e => e.includes('claim_shape') && e.includes('state'));
+    assert.ok(claimShapeError,
+      `Expected enum-rejection error for claim_shape='state'; got errors:\n${errors.join('\n')}`);
+  });
+
+  it('T-6: proposal with claim_shape: interval is rejected', () => {
+    const envelope = buildEnvelopeWithProposal();
+    const proposal = { ...envelope.proposals[0], claim_shape: 'interval' };
+    const errors = validateAgainstSchema(proposal, proposalSchema);
+    const claimShapeError = errors.find(e => e.includes('claim_shape') && e.includes('interval'));
+    assert.ok(claimShapeError,
+      `Expected enum-rejection error for claim_shape='interval'; got errors:\n${errors.join('\n')}`);
+  });
+
+  it('T-7: proposal with claim_shape: continuous is rejected', () => {
+    const envelope = buildEnvelopeWithProposal();
+    const proposal = { ...envelope.proposals[0], claim_shape: 'continuous' };
+    const errors = validateAgainstSchema(proposal, proposalSchema);
+    const claimShapeError = errors.find(e => e.includes('claim_shape') && e.includes('continuous'));
+    assert.ok(claimShapeError,
+      `Expected enum-rejection error for claim_shape='continuous'; got errors:\n${errors.join('\n')}`);
+  });
+
+  it('T-8: proposal with claim_shape: garbage is rejected', () => {
+    const envelope = buildEnvelopeWithProposal();
+    const proposal = { ...envelope.proposals[0], claim_shape: 'garbage' };
+    const errors = validateAgainstSchema(proposal, proposalSchema);
+    const claimShapeError = errors.find(e => e.includes('claim_shape') && e.includes('garbage'));
+    assert.ok(claimShapeError,
+      `Expected enum-rejection error for claim_shape='garbage'; got errors:\n${errors.join('\n')}`);
   });
 });
 

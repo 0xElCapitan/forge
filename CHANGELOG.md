@@ -2,6 +2,35 @@
 
 All notable changes to FORGE will be documented in this file.
 
+## [IR 0.2.0] - 2026-05-27
+
+Proposal IR schema bump from `0.1.0` to `0.2.0` — surface ratification only. **Not a FORGE software/package version bump.** Receipt schema (`forge-receipt/v0`), canonicalization (`jcs-subset/v0`), and determinism contract unchanged.
+
+### Added
+- **`verifier_type`** (envelope-level) — type `["string", "null"]`. Verification regime applied to this envelope's outputs; default and sole producer value at v0.2.0: `"echelon-brier/v0"`. Required in the envelope `required` array. Scaffolding-only at v0.2.0: no enum on the schema (single-value posture is producer-side convention via `src/ir/emit.js`), no dispatch behavior. Reserved for future multi-regime dispatch.
+- **`claim_shape`** (proposal-level, inside `#/$defs/Proposal`) — type `["string", "null"]`; schema `enum: ["event", null]`. Default and sole producer value at v0.2.0: `"event"`. Validator-rejects `"state"`, `"interval"`, `"continuous"` and any other string. Required in the Proposal `required` array. Orthogonal to `template` (detection methodology) and `brier_type` (scoring rubric).
+
+### Changed
+- `spec/proposal-ir.json` top-level `version` and envelope `ir_version.const` move from `"0.1.0"` to `"0.2.0"`. `$id` URL stays at the `.../proposal-ir/0.1.0` URL by design (minor bump does not rotate the canonical schema URL).
+- `src/ir/emit.js` constant `IR_VERSION` flips to `'0.2.0'`. `FORGE_VERSION` and `CLASSIFIER_VERSION` stay at `'0.1.0'`.
+- `test/unit/schema-validation.spec.js` in-file lightweight validator extended to support the JSON Schema `enum` keyword (honoring `null` membership). Backward-compatible: properties without `enum` behave as before.
+
+### Migration
+
+- Consumers that ignore unknown fields (per JSON Schema `additionalProperties` policy and `spec/STABILITY.md` consumer guidance) require no code change.
+- Consumers that hard-pin `ir_version === "0.1.0"` MUST widen to accept `"0.1.0"` OR `"0.2.0"`, or split into version-specific variants. See PRD §7 four-category bridge compatibility plan in `grimoires/loa/a2a/cycle-002/00-ir-surface-ratification-prd-draft.md`.
+- Consumers iterating proposal fields MUST expect `claim_shape` on every proposal in v0.2.0 envelopes.
+- Old `forge-receipt/v0` receipts produced against v0.1.0 envelopes remain valid forever; no retroactive re-signing.
+
+### Bundled-notice flow
+
+Bundled per `spec/STABILITY.md:33` 1-sprint notice rule: both fields delivered in one notice to Echelon (Tobias) on 2026-05-26 and acknowledged same-day with no integration objection. The bridge survey confirmed 176/180 Echelon-side bridge tests need no change; the 4 sites requiring assertion widening are localized to one Echelon test file.
+
+### Notes
+
+- A-6 (forge-verify MATCH for refreshed golden envelopes) is satisfied via the new `test/unit/forge-verify.spec.js` "Sprint 01 §7 dual-version gate" suite that exercises MATCH for one preserved v0.1.0 inline envelope+receipt (TREMOR) plus freshly generated v0.2.0 TREMOR/CORONA/BREATH receipts in a single test run with `bin/forge-verify.js` unchanged (PRD §7 Path 1 closure).
+- `fixtures/forge-snapshots-{tremor,corona,breath}.json` snapshot refresh (FR-7 / T-E1) deferred this sprint — see follow-up bead `forge-ewa`. The snapshots are documentation-only and not consumed by any test; their refresh exposes pre-existing emitter drift unrelated to the IR 0.2.0 seam.
+
 ## [0.3.0] - 2026-04-11
 
 ### Added

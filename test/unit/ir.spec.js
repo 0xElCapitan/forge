@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { emitEnvelope } from '../../src/ir/emit.js';
+import { canonicalize } from '../../src/receipt/canonicalize.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -43,7 +44,7 @@ describe('emitEnvelope', () => {
       proposals: TREMOR_PROPOSALS,
     });
 
-    assert.equal(env.ir_version, '0.1.0');
+    assert.equal(env.ir_version, '0.2.0');
     assert.equal(env.forge_version, '0.1.0');
     assert.equal(typeof env.emitted_at, 'number');
     assert.ok(env.emitted_at > 0);
@@ -406,5 +407,52 @@ describe('emitEnvelope', () => {
     // Injected timestamp is honoured
     assert.strictEqual(e1.emitted_at, t);
     assert.strictEqual(e2.emitted_at, t);
+  });
+
+  // ─── Sprint 01 (IR 0.2.0 surface ratification) — T-1, T-2, T-12 ────────────
+
+  it('T-1: every v0.2.0 envelope has verifier_type === echelon-brier/v0', () => {
+    const env = emitEnvelope({
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      now: 1700000001000,
+    });
+    assert.equal(env.verifier_type, 'echelon-brier/v0');
+
+    const empty = emitEnvelope({
+      feed_id: 'empty-proposals',
+      feed_profile: TREMOR_PROFILE,
+      proposals: [],
+      now: 1700000001000,
+    });
+    assert.equal(empty.verifier_type, 'echelon-brier/v0');
+  });
+
+  it('T-2: every proposal in a v0.2.0 envelope has claim_shape === event', () => {
+    const env = emitEnvelope({
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+      now: 1700000001000,
+    });
+    assert.ok(env.proposals.length > 0, 'fixture must produce at least one proposal');
+    for (const p of env.proposals) {
+      assert.equal(p.claim_shape, 'event', `proposal ${p.proposal_id} missing claim_shape=event`);
+    }
+  });
+
+  it('T-12: two emissions with identical inputs and injected clocks produce byte-identical canonical output', () => {
+    const t = 1700000000000;
+    const params = {
+      feed_id: 'usgs_m4.5_hour',
+      feed_profile: TREMOR_PROFILE,
+      proposals: TREMOR_PROPOSALS,
+    };
+    const e1 = emitEnvelope(structuredClone({ ...params, now: t }));
+    const e2 = emitEnvelope(structuredClone({ ...params, now: t }));
+    const c1 = canonicalize(e1);
+    const c2 = canonicalize(e2);
+    assert.strictEqual(c1, c2, 'canonicalized envelopes must be byte-identical');
   });
 });
