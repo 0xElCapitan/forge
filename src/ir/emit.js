@@ -25,7 +25,7 @@ import { sha256 } from '../receipt/hash.js';
 import { canonicalize } from '../receipt/canonicalize.js';
 import { evaluateNegativePolicy } from '../policy/negative-policy.js';
 
-const IR_VERSION         = '0.1.0';
+const IR_VERSION         = '0.2.0';
 const FORGE_VERSION      = '0.1.0';
 const CLASSIFIER_VERSION = '0.1.0';
 
@@ -109,6 +109,7 @@ export function emitEnvelope({
     rationale:   p.rationale,
     brier_type:  BRIER_TYPE[p.template],
     usefulness_score: null,
+    claim_shape: 'event',
   }));
 
   // Optional usefulness scoring — populates both per-proposal and envelope-level map
@@ -148,6 +149,7 @@ export function emitEnvelope({
 
   const envelope = {
     ir_version:           IR_VERSION,
+    verifier_type:        'echelon-brier/v0',
     forge_version:        FORGE_VERSION,
     classifier_version:   CLASSIFIER_VERSION,
     emitted_at,
