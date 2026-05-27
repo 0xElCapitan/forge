@@ -81,8 +81,11 @@ jobs:
           # readability only — do NOT re-parse $GITHUB_OUTPUT (it's a
           # producer-write, runner-read contract; reading it back inverts
           # GitHub's intent and breaks if the wrapper ever uses heredoc syntax).
-          chmod +x .claude/scripts/classify-merge-pr.sh
-          RESULT=$(.claude/scripts/classify-merge-pr.sh --merge-sha "$MERGE_SHA")
+          # forge-1bo migration (cycle-002): runtime scripts moved from
+          # untracked `.claude/scripts/` into tracked `scripts/ci/` so the
+          # workflow survives `.claude/` being gitignored (commit 931d4c89).
+          chmod +x scripts/ci/classify-merge-pr.sh scripts/ci/classify-pr-type.sh
+          RESULT=$(scripts/ci/classify-merge-pr.sh --merge-sha "$MERGE_SHA")
           echo "Classifier output:"
           echo "$RESULT"
 
@@ -116,8 +119,14 @@ jobs:
       - name: Compute semver
         id: semver
         run: |
-          chmod +x .claude/scripts/semver-bump.sh .claude/scripts/bootstrap.sh
-          RESULT=$(.claude/scripts/semver-bump.sh 2>/dev/null || echo '{}')
+          # forge-1bo migration (cycle-002): runtime scripts moved from
+          # untracked `.claude/scripts/` into tracked `scripts/ci/`.
+          # The migrated semver-bump.sh additionally honors `[skip release]`,
+          # `[skip ci-release]`, and `[no-bump]` markers in commits between
+          # the latest tag and HEAD — if found, it emits `{}` and exits 0,
+          # causing the workflow to skip the "Create tag" step below.
+          chmod +x scripts/ci/semver-bump.sh scripts/ci/bootstrap.sh
+          RESULT=$(scripts/ci/semver-bump.sh 2>/dev/null || echo '{}')
           NEXT=$(echo "$RESULT" | jq -r '.next // empty')
           BUMP=$(echo "$RESULT" | jq -r '.bump // empty')
 
@@ -203,6 +212,19 @@ jobs:
           PM_PR_NUMBER: ${{ needs.classify.outputs.pr_number }}
           PM_MERGE_SHA: ${{ github.sha }}
         run: |
+          # KNOWN LIMITATION (forge-1bo scope): the cycle-PR shell-only path
+          # below still calls `.claude/scripts/*`, which are not tracked in
+          # CI checkout. This path was DEFERRED from the forge-1bo migration
+          # (chore-PR / simple-release path was the bounded scope). For
+          # cycle PRs WITHOUT secrets.ANTHROPIC_API_KEY set, this step will
+          # fail with `chmod: cannot access '.claude/scripts/...'`. The
+          # Claude Code Action path (runs inside the Anthropic container
+          # with Loa loaded) is the supported cycle-PR route.
+          # If a future cycle PR needs shell-only fallback, a follow-up
+          # bead must migrate post-merge-orchestrator.sh + transitive deps
+          # (release-notes-gen.sh, classify-pr-type.sh, ground-truth-gen.sh,
+          # classify-commit-zone.sh, lore-promote.sh, path-lib.sh) into
+          # scripts/ci/.
           echo "Running shell-only pipeline (no ANTHROPIC_API_KEY)"
           chmod +x .claude/scripts/post-merge-orchestrator.sh .claude/scripts/semver-bump.sh .claude/scripts/release-notes-gen.sh .claude/scripts/bootstrap.sh
           .claude/scripts/post-merge-orchestrator.sh \
