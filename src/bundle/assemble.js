@@ -25,8 +25,9 @@
  *     `final: true` to assemble a settlement-authority-conformant bundle; the
  *     `final` gate REJECTS the skeleton placeholders. The default skeleton is NOT
  *     final and NOT settlement-authority-conformant;
- *   - emits MINIMAL schema-shaped SKILL.md / reality.md / handoff.md (rich
- *     materialization is S03-E);
+ *   - emits FULLY materialized SKILL.md / reality.md / handoff.md for the FINAL
+ *     authored path (S03-E; see ./markdown-members.js); the default skeleton path
+ *     keeps the MINIMAL schema-shaped skeleton-only placeholders;
  *   - builds NO validation / admission / parser logic — every "reject" remains
  *     Echelon's receiving-end machinery (SDD §1, §16);
  *   - is NOT imported by any live runtime path.
@@ -42,6 +43,11 @@
 import { assertValidSlug } from './slug.js';
 import { assertAuthoredOracleSettlement } from './settlement.js';
 import { buildBundleReceipt } from './receipt.js';
+import {
+  materializeSkillMd,
+  materializeRealityMd,
+  materializeHandoffMd,
+} from './markdown-members.js';
 import {
   MANIFEST_MEMBER,
   SKILL_MEMBER,
@@ -116,12 +122,19 @@ export const SKELETON_SETTLEMENT_AUTHORITY = Object.freeze({
   authority_ref: null,
 });
 
-// ── Minimal schema-shaped member content (rich materialization is S03-E) ─────
+// ── Skeleton (non-final path) member content — final path materializes (S03-E) ─
+//
+// These emit the MINIMAL schema-shaped, skeleton-only placeholders for the
+// default (non-final) path. The FINAL authored path uses the S03-E materializers
+// in ./markdown-members.js instead (see the memberContent branch below). The
+// returned strings are kept byte-stable so the skeleton path's receipt digest is
+// unchanged by S03-E.
 
 /**
- * Minimal SKILL.md skeleton. S03-E materializes the real frontmatter
+ * Minimal SKILL.md skeleton (non-final path). The FINAL path's real frontmatter
  * (skillopt_config with `enabled: false`, slow_update_sections, bundle_member_hash)
- * plus the synthesis body + SLOW_UPDATE protected region (SDD §11).
+ * + synthesis body + SLOW_UPDATE protected region is materialized by
+ * materializeSkillMd in ./markdown-members.js (SDD §11).
  *
  * @param {string} slug
  * @returns {string}
@@ -139,9 +152,10 @@ skill_name: ${slug}
 }
 
 /**
- * Minimal reality.md skeleton. S03-E materializes the protected parameter-
- * provenance manifest (parameter_provenance[], oracle_thresholds[]); it stays
- * `provenance_manifest_signed: false` always (R-4) and is never signed here.
+ * Minimal reality.md skeleton (non-final path). The FINAL path's protected
+ * parameter-provenance manifest (parameter_provenance[], oracle_thresholds[]) is
+ * materialized by materializeRealityMd in ./markdown-members.js; both paths keep
+ * `provenance_manifest_signed: false` always (R-4) and never sign here.
  *
  * @returns {string}
  */
@@ -157,10 +171,11 @@ provenance_manifest_signed: false
 }
 
 /**
- * Minimal handoff.md skeleton. S03-E materializes the bounded-editable
+ * Minimal handoff.md skeleton (non-final path). The FINAL path's bounded-editable
  * theatre_trigger_conditions[] (template enum; frozen brier_type /
- * settlement_source_id; bounded_edit_policy `$ref` to bounded_edit_budget). No
- * payout terms ever appear in the bundle (H-3).
+ * settlement_source_id; bounded_edit_policy `$ref` to bounded_edit_budget) is
+ * materialized by materializeHandoffMd in ./markdown-members.js. No payout terms
+ * ever appear in the bundle (H-3).
  *
  * @returns {string}
  */
@@ -262,11 +277,21 @@ export function assembleBundle({
   }
 
   // The four non-receipt members, keyed by their S03-A member-name constants.
+  // A FINAL (settlement-authority-conformant) bundle gets the S03-E materialized
+  // markdown (./markdown-members.js — the BREATH worked path). The default
+  // skeleton path keeps the S03-B skeleton-only placeholders below (labelled
+  // skeleton-only; S03-E does NOT reintroduce placeholders into the authored
+  // path). The receipt (below) hashes whichever bytes are emitted here, so the
+  // S03-D digest hardening covers the materialized markdown automatically.
   const memberContent = {
     [MANIFEST_MEMBER]: serializeJson(manifest),
-    [SKILL_MEMBER]: skeletonSkillMd(constructSlug),
-    [REALITY_MEMBER]: skeletonRealityMd(),
-    [HANDOFF_MEMBER]: skeletonHandoffMd(),
+    [SKILL_MEMBER]: final
+      ? materializeSkillMd({ slug: constructSlug })
+      : skeletonSkillMd(constructSlug),
+    [REALITY_MEMBER]: final ? materializeRealityMd() : skeletonRealityMd(),
+    [HANDOFF_MEMBER]: final
+      ? materializeHandoffMd({ settlementSourceId: settlementAuthority.settling_source_id })
+      : skeletonHandoffMd(),
   };
 
   // bundle-receipt.json — receipt digest hardening + nullable publisher-authenticity
