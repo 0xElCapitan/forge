@@ -101,6 +101,15 @@ if (
  * settles). These are READ facts, hand-authored here (no construct.json import);
  * S03-E does not generalize beyond this single committed path (OD-2).
  */
+/**
+ * The ONLY construct slug the S03-E materializers may emit (S03-F, carries forward
+ * S03-E review L1). The materializers below hardcode the BREATH AQI worked path, so
+ * final materialization is BREATH-only for now — emitting this content under any other
+ * slug would silently mislabel BREATH AQI content as another construct. The
+ * (non-final) skeleton path in ./assemble.js stays generic and is NOT gated by this.
+ */
+export const BREATH_CONSTRUCT_SLUG = 'breath';
+
 const BREATH_TEMPLATE = 'threshold_gate'; // FORGE Proposal-IR template (rules.js:239)
 const BREATH_TRIGGER_ID = 'aqi_threshold_gate';
 const BREATH_FEED_ID = 'epa_airnow_aqi'; // BREATH AQI feed (construct.json data_sources `epa_airnow`); ties to ProposalEnvelope.feed_id (L-5)
@@ -158,6 +167,44 @@ const BREATH_PARAMETER_PROVENANCE = Object.freeze([
   }),
 ]);
 
+// ── Producer interpolation safety (S03-F; carries forward S03-E audit A1) ─────
+
+/**
+ * Safe-identifier charset for any value interpolated into a markdown/YAML surface.
+ * Anchored `^...$` with NO `m` flag — in JavaScript `$` matches only the true end of
+ * input (it does NOT match before a trailing newline as Python's `$` would), so a
+ * `"airnow\ninjected_key: evil"` payload cannot satisfy it. Mirrors the slug.js L-1
+ * anchoring note. Covers every TRUST_REGISTRY key, the construct slug, and feed/ref
+ * ids (letters, digits, `.`, `_`, `-`); rejects newline / colon / quote / space / `#`
+ * / `{` / `}` / `[` / `]` / backslash — the YAML- and markdown-breaking characters.
+ */
+const SAFE_IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * Assert that an identifier interpolated into a markdown/YAML member is injection-safe,
+ * returning it unchanged on success. This is the narrow guard S03-E audit A1 requires
+ * BEFORE any echelon|lattice authoring path is exercised: a `settling_source_id` /
+ * `source_id` carrying a newline, colon, or quote would otherwise inject attacker-
+ * controlled YAML keys into handoff.md. The BREATH worked path (`airnow`) passes
+ * unchanged. This validates the charset only — it does NOT claim full YAML-parser
+ * compatibility and adds no dependency.
+ *
+ * @param {unknown} value
+ * @param {string}  [label='identifier'] - field name, for the diagnostic.
+ * @returns {string} the validated identifier
+ * @throws {Error} if `value` is not a string matching {@link SAFE_IDENTIFIER}
+ */
+export function assertSafeIdentifier(value, label = 'identifier') {
+  if (typeof value !== 'string' || !SAFE_IDENTIFIER.test(value)) {
+    throw new Error(
+      `bundle/markdown-members: unsafe ${label} ${JSON.stringify(value)} for a markdown/YAML ` +
+        `surface — must match ${SAFE_IDENTIFIER} (no newline / colon / quote / space; ` +
+        `producer interpolation guard, S03-F/A1)`,
+    );
+  }
+  return value;
+}
+
 // ── Materializers ─────────────────────────────────────────────────────────────
 
 /**
@@ -173,6 +220,15 @@ const BREATH_PARAMETER_PROVENANCE = Object.freeze([
  * @returns {string} SKILL.md bytes
  */
 export function materializeSkillMd({ slug } = {}) {
+  // S03-F (S03-E review L1): this materializer hardcodes the BREATH AQI worked path,
+  // so it may only be emitted for the BREATH slug. Refusing any other slug prevents
+  // BREATH AQI content from being silently mislabelled as another construct.
+  if (slug !== BREATH_CONSTRUCT_SLUG) {
+    throw new Error(
+      `bundle/markdown-members: final materialization is BREATH-only for now — got slug ` +
+        `${JSON.stringify(slug)} (S03-E L1 guard; this materializer hardcodes BREATH AQI content)`,
+    );
+  }
   return `---
 skill_name: ${slug}
 archetype: core
@@ -311,6 +367,12 @@ provenance_manifest_signed: false
  * @returns {string} handoff.md bytes
  */
 export function materializeHandoffMd({ settlementSourceId } = {}) {
+  // S03-F (S03-E audit A1): settlementSourceId is interpolated verbatim into the YAML
+  // below (frozen.settlement_source_id). Validate it against the safe-identifier charset
+  // BEFORE interpolation so a malicious newline / colon / quote cannot inject YAML keys.
+  // The BREATH worked path ('airnow') passes unchanged; this guards the future
+  // echelon|lattice authoring path at the materialization seam.
+  assertSafeIdentifier(settlementSourceId, 'settlement_source_id');
   return `<!-- S03-E materialized member — bounded-editable theatre trigger surface.
      This member describes a theatre TRIGGER only (when a theatre activates); it
      is NOT a financial contract. Per H-3 the bundle carries no economic or

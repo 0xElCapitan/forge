@@ -31,7 +31,7 @@
  */
 
 import { getTrustTier } from '../trust/oracle-trust.js';
-import { SOURCE_SIDE, ORACLE_ROLE } from './enums.js';
+import { SOURCE_SIDE, ORACLE_ROLE, TRUST_TIER } from './enums.js';
 
 /** The FORGE boundary side — the only side whose `source_id` resolves a tier. */
 const FORGE_SIDE = 'forge';
@@ -84,6 +84,19 @@ export function authorOracleDeclaration({
     // declared trust_tier is unverifiable (getTrustTier → 'unknown'). The
     // skeleton's honest `trust_tier: 'unknown'` is exactly what this rejects.
     const trust_tier = getTrustTier(sourceId);
+    // S03-F hardening (carries forward S03-C audit A1): getTrustTier reads a plain-object
+    // registry, so a prototype-ish source_id ('__proto__' → Object.prototype, 'constructor'
+    // → the Object constructor) resolves to a NON-STRING value that the '=== unknown' check
+    // below does NOT catch — authoring a malformed `trust_tier: {}` (or a trust_tier silently
+    // dropped at JSON serialization). Reject any non-string / non-enum tier here, at the
+    // authoring entrypoint, BEFORE the unknown check. This does NOT modify the trust registry
+    // (src/trust/oracle-trust.js); it is producer authoring safety only.
+    if (typeof trust_tier !== 'string' || !TRUST_TIER.includes(trust_tier)) {
+      throw new Error(
+        `oracles: forge-side source_id ${JSON.stringify(sourceId)} resolved a non-string / ` +
+          `non-enum trust_tier — must be one of ${TRUST_TIER.join('|')} (prototype-key hardening, S03-F/A1)`,
+      );
+    }
     if (trust_tier === 'unknown') {
       throw new Error(
         `oracles: forge-side source_id '${sourceId}' is not a TRUST_REGISTRY key ` +

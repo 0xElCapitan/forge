@@ -47,6 +47,7 @@ import {
   materializeSkillMd,
   materializeRealityMd,
   materializeHandoffMd,
+  BREATH_CONSTRUCT_SLUG,
 } from './markdown-members.js';
 import {
   MANIFEST_MEMBER,
@@ -236,6 +237,17 @@ export function assembleBundle({
   // missing/placeholder inputs, then assert producer authoring safety (§8/AC-16).
   // This is producer safety, NOT Echelon admission validation.
   if (final) {
+    // S03-F (S03-E review L1): the final path materializes the hardcoded BREATH AQI
+    // worked content (./markdown-members.js). Refuse any other construct slug at this
+    // chokepoint so a non-BREATH final bundle cannot silently emit BREATH AQI content
+    // across all three materialized members. The default (non-final) skeleton path
+    // stays generic and is intentionally NOT gated here.
+    if (constructSlug !== BREATH_CONSTRUCT_SLUG) {
+      throw new Error(
+        `bundle: final materialization is BREATH-only for now — got construct_slug ` +
+          `${JSON.stringify(constructSlug)} (S03-E L1 guard; the materializers hardcode BREATH AQI content)`,
+      );
+    }
     if (
       oracleDeclarations === SKELETON_ORACLE_DECLARATIONS ||
       settlementAuthority === SKELETON_SETTLEMENT_AUTHORITY
