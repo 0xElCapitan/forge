@@ -2,6 +2,34 @@
 
 All notable changes to FORGE will be documented in this file.
 
+## [0.4.0] - 2026-06-04
+
+Forward-only release for the Cycle-002 ConstructAdmissionBundle producer.
+
+FORGE can emit a local, content-addressed ConstructAdmissionBundle producer artifact for the narrow BREATH worked path matching the Cycle-113 receiving surface shape.
+
+### Added
+- **bundle**: `src/bundle/` ConstructAdmissionBundle producer surface — bundle shape/constants (closed enums, field-name constants, construct slug, versioning).
+- **bundle**: In-memory assembly skeleton (`assemble.js`, `members.js`) — assembles an unsigned, in-memory ConstructAdmissionBundle shaped to the Cycle-113 receiving surface. Final materialization is BREATH-only by an explicit construct-slug guard; non-BREATH slugs are rejected.
+- **bundle**: Oracle-declaration and `settlement_authority` authoring (`oracles.js`, `settlement.js`) — producer-side authoring of those required bundle fields for the one worked BREATH path (oracle source plus read-only trust-tier bound). Authoring only: no settlement is performed and no payout; the path is not imported by any live runtime.
+- **bundle**: Receipt-digest content-addressing for the bundle (`receipt.js`) — SHA-256 content hash, not a cryptographic signature.
+- **bundle**: Local disk emitter (`emit.js`) — writes bundles to the gitignored `build/construct-bundles/` namespace. No network, no external submission.
+- **bundle**: `SKILL.md`, `reality.md`, and `handoff.md` markdown-member materialization (`markdown-members.js`) for the single worked BREATH worked path.
+- **test**: Construct bundle shape/conformance and boundary regression coverage (`test/unit/bundle-*.spec.js`).
+
+### Scope and limits
+- Producer artifact only — a local, **unsigned** bundle. It is not a submission.
+- Single worked theatre: BREATH. Non-BREATH constructs are rejected by design (single-construct, single-theatre).
+- No Echelon admission and no parser acceptance; no certification.
+- No calibration improvement and no optimization.
+- No signature production, signature verification, or signature-based acceptance.
+- No SkillOpt execution; no backend skill publication; no L2 readiness.
+- No broad multi-theatre / multi-construct support; no runtime/CLI readiness beyond the producer path itself.
+
+### Release-baseline note
+- Version `0.3.0` (ProposalReceipt v0; CHANGELOG entry dated 2026-04-11) was documented and bumped in `package.json` but **never tagged or released** — the semver automation was blocked by stale `[skip release]` / `[no-bump]` markers in the `v0.2.4..HEAD` range while `package.json` had already advanced past the latest `v0.2.4` tag.
+- `v0.4.0` is a one-time, operator-approved forward-only re-baseline. `v0.3.0` is intentionally preserved as an untagged version-baseline gap and is **not** backfilled. History is not rewritten and the old `[skip release]` / `[no-bump]` markers are left in place.
+
 ## [IR 0.2.0] - 2026-05-27
 
 Proposal IR schema bump from `0.1.0` to `0.2.0` — surface ratification only. **Not a FORGE software/package version bump.** Receipt schema (`forge-receipt/v0`), canonicalization (`jcs-subset/v0`), and determinism contract unchanged.
