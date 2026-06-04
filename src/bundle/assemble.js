@@ -1,6 +1,6 @@
 /**
  * src/bundle/assemble.js
- * ConstructAdmissionBundle producer — assembly skeleton (S03-B).
+ * ConstructAdmissionBundle producer — assembly skeleton + authoring seam (S03-B/S03-C).
  *
  * Assembles an in-memory, unsigned-but-receivable ConstructAdmissionBundle
  * skeleton from caller-supplied construct metadata, reusing the S03-A shape
@@ -8,16 +8,20 @@
  * (sha256, canonicalize). Produces the five member strings plus the manifest and
  * receipt objects; performs NO disk I/O (that is emit.js's concern).
  *
- * SCOPE (FORGE cycle-002 / sprint-03 slice S03-B): assembly skeleton ONLY.
+ * SCOPE (FORGE cycle-002 / sprint-03 slices S03-B + S03-C): assembly skeleton + authoring seam.
  *   - emits the 9 REQUIRED manifest fields (SDD §6) + `calibration_ref: null`;
  *   - emits the four publisher-authenticity receipt fields PRESENT and `null`
  *     (OD-1) — produces and verifies NO signature; imports no signer/keyring;
  *   - computes per-member `sha256:` content hashes + `bundle_digest` over the
  *     canonical JSON of `members[]` sorted by path (D-1..D-3), reusing
  *     src/receipt/{hash,canonicalize}.js — no new hashing/canonicalization code;
- *   - keeps `oracle_declarations[]` / `settlement_authority` PRESENT as clearly
- *     labelled skeleton PLACEHOLDERS (S03-C authors the real values); it fakes
- *     NO trust-tier / settlement semantics (`*trust_tier: 'unknown'`);
+ *   - DEFAULT assembly remains a labelled skeleton: `oracle_declarations[]` /
+ *     `settlement_authority` are PLACEHOLDERS that fake NO trust-tier / settlement
+ *     semantics (`*trust_tier: 'unknown'`). S03-C adds the authoring seam — callers
+ *     pass authored values (see ./oracles.js + ./settlement.js) and set
+ *     `final: true` to assemble a settlement-authority-conformant bundle; the
+ *     `final` gate REJECTS the skeleton placeholders. The default skeleton is NOT
+ *     final and NOT settlement-authority-conformant;
  *   - emits MINIMAL schema-shaped SKILL.md / reality.md / handoff.md (rich
  *     materialization is S03-E);
  *   - builds NO validation / admission / parser logic — every "reject" remains
@@ -35,6 +39,7 @@
 import { sha256 } from '../receipt/hash.js';
 import { canonicalize } from '../receipt/canonicalize.js';
 import { assertValidSlug } from './slug.js';
+import { assertAuthoredOracleSettlement } from './settlement.js';
 import {
   MANIFEST_MEMBER,
   SKILL_MEMBER,
@@ -75,7 +80,9 @@ const DEFAULT_BUNDLE_SCHEMA_VERSION = '0.1.0';
  * value exists ONLY so the REQUIRED manifest field is PRESENT and schema-shaped.
  * It resolves NO trust tier: `trust_tier: 'unknown'` truthfully reflects that
  * S03-B performs no tier resolution. Do NOT treat this as a real, admissible
- * declaration; S03-C replaces it wholesale.
+ * declaration; S03-C replaces it wholesale. assembleBundle({ final: true })
+ * REJECTS this placeholder — its `trust_tier: 'unknown'` is skeleton-only and not
+ * settlement-authority-conformant (see ./oracles.js for authored declarations).
  */
 export const SKELETON_ORACLE_DECLARATIONS = Object.freeze([
   Object.freeze({
@@ -97,6 +104,9 @@ export const SKELETON_ORACLE_DECLARATIONS = Object.freeze([
  * `declared_trust_tier: 'unknown'` truthfully reflects that S03-B resolves no
  * tier and asserts NO settlement eligibility (deliberately NOT T0/T1 — a
  * skeleton must not fake settlement semantics). S03-C replaces it wholesale.
+ * assembleBundle({ final: true }) REJECTS this placeholder — its
+ * `declared_trust_tier: 'unknown'` is not settlement-authority-conformant (see
+ * ./settlement.js for authored settlement authority).
  */
 export const SKELETON_SETTLEMENT_AUTHORITY = Object.freeze({
   settling_source_id: '__S03C_PLACEHOLDER__', // S03-C: must cross-ref an oracle_declarations[].source_id (AC-16)
@@ -175,6 +185,9 @@ theatre_trigger_conditions: []
  * @param {string[]} [input.capabilityFlags]      - subset of CAPABILITY_FLAGS; default `[]`.
  * @param {object[]} [input.oracleDeclarations]   - S03-C authors; default skeleton placeholder.
  * @param {object}   [input.settlementAuthority]  - S03-C authors; default skeleton placeholder.
+ * @param {boolean}  [input.final=false]          - when true, REQUIRE authored oracle/settlement
+ *                   inputs and assert settlement-authority conformance (§8/AC-16); the default
+ *                   (false) assembles a labelled skeleton that is NOT settlement-authority-conformant.
  * @param {string}   [input.bundleSchemaVersion]  - default `0.1.0`.
  * @param {string}   [input.irVersion]            - default `0.2.0`.
  * @param {string}   [input.forgeVersion]         - default `0.1.0`.
@@ -189,6 +202,7 @@ export function assembleBundle({
   capabilityFlags = [],
   oracleDeclarations = SKELETON_ORACLE_DECLARATIONS,
   settlementAuthority = SKELETON_SETTLEMENT_AUTHORITY,
+  final = false,
   bundleSchemaVersion = DEFAULT_BUNDLE_SCHEMA_VERSION,
   irVersion = DEFAULT_IR_VERSION,
   forgeVersion = DEFAULT_FORGE_VERSION,
@@ -199,6 +213,24 @@ export function assembleBundle({
 
   if (typeof constructVersion !== 'string' || constructVersion.length === 0) {
     throw new Error('bundle: constructVersion is REQUIRED (construct-native SemVer)');
+  }
+
+  // S03-C final gate: a "final" (settlement-authority-conformant) bundle MUST be
+  // authored — the default skeleton placeholders are explicitly NOT final. Reject
+  // missing/placeholder inputs, then assert producer authoring safety (§8/AC-16).
+  // This is producer safety, NOT Echelon admission validation.
+  if (final) {
+    if (
+      oracleDeclarations === SKELETON_ORACLE_DECLARATIONS ||
+      settlementAuthority === SKELETON_SETTLEMENT_AUTHORITY
+    ) {
+      throw new Error(
+        'bundle: a final bundle requires authored oracle_declarations + settlement_authority ' +
+          '(S03-C; see ./oracles.js + ./settlement.js) — the skeleton placeholders are not ' +
+          'settlement-authority-conformant',
+      );
+    }
+    assertAuthoredOracleSettlement(oracleDeclarations, settlementAuthority);
   }
 
   const emitted_at = now;
