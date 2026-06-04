@@ -12,9 +12,12 @@
  *   - emits the 9 REQUIRED manifest fields (SDD §6) + `calibration_ref: null`;
  *   - emits the four publisher-authenticity receipt fields PRESENT and `null`
  *     (OD-1) — produces and verifies NO signature; imports no signer/keyring;
- *   - computes per-member `sha256:` content hashes + `bundle_digest` over the
- *     canonical JSON of `members[]` sorted by path (D-1..D-3), reusing
- *     src/receipt/{hash,canonicalize}.js — no new hashing/canonicalization code;
+ *   - delegates the bundle-receipt.json digest to ./receipt.js (S03-D): a
+ *     whitelisted members[] (the four non-receipt files, REJECTED before digest if
+ *     the set is not exact — D-1, carrying forward S03-B review LOW-1), per-member
+ *     `sha256:` content_hash (D-2), and the `bundle_digest` over canonical-JSON of
+ *     members[] sorted by path (D-3), reusing src/receipt/{hash,canonicalize}.js —
+ *     no new hashing/canonicalization code;
  *   - DEFAULT assembly remains a labelled skeleton: `oracle_declarations[]` /
  *     `settlement_authority` are PLACEHOLDERS that fake NO trust-tier / settlement
  *     semantics (`*trust_tier: 'unknown'`). S03-C adds the authoring seam — callers
@@ -36,10 +39,9 @@
  * @module bundle/assemble
  */
 
-import { sha256 } from '../receipt/hash.js';
-import { canonicalize } from '../receipt/canonicalize.js';
 import { assertValidSlug } from './slug.js';
 import { assertAuthoredOracleSettlement } from './settlement.js';
+import { buildBundleReceipt } from './receipt.js';
 import {
   MANIFEST_MEMBER,
   SKILL_MEMBER,
@@ -47,7 +49,6 @@ import {
   HANDOFF_MEMBER,
   BUNDLE_RECEIPT_MEMBER,
   MANIFEST_REQUIRED_FIELDS,
-  RECEIPT_AUTHENTICITY_FIELDS,
 } from './index.js';
 
 // ── Skeleton emit defaults (local; later slices/callers override) ────────────
@@ -268,39 +269,21 @@ export function assembleBundle({
     [HANDOFF_MEMBER]: skeletonHandoffMd(),
   };
 
-  // members[] digest manifest — exactly the four non-receipt files (D-1), each
-  // { path, size_bytes, content_hash } with a `sha256:` content hash (D-2),
-  // sorted by path (D-3). Reuses src/receipt/hash.js (no new hashing code).
-  const members = Object.keys(memberContent)
-    .map((path) => {
-      const content = memberContent[path];
-      return {
-        path,
-        size_bytes: Buffer.byteLength(content, 'utf8'),
-        content_hash: sha256(content),
-      };
-    })
-    .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-
-  // bundle_digest — sha256 over the canonical JSON of members[] sorted by path
-  // (D-3). Reuses src/receipt/canonicalize.js (no new canonicalization code).
-  const bundle_digest = sha256(canonicalize(members));
-
-  // bundle-receipt.json — digest anchor + the four publisher-authenticity fields
-  // PRESENT and null (OD-1). NO signature is produced and NO signer / keyring /
-  // revocation / verification code is imported or called.
-  const authenticity = Object.fromEntries(
-    RECEIPT_AUTHENTICITY_FIELDS.map((field) => [field, null]),
-  );
-  const receipt = {
-    bundle_schema_version: bundleSchemaVersion,
-    construct_slug: constructSlug,
-    construct_version: constructVersion,
-    members,
-    bundle_digest,
-    ...authenticity,
-    emitted_at,
-  };
+  // bundle-receipt.json — receipt digest hardening + nullable publisher-authenticity
+  // delegated to ./receipt.js (S03-D). The receipt module whitelists the member set
+  // against BUNDLE_MEMBERS and REJECTS a non-exact set BEFORE digesting (D-1; carries
+  // forward S03-B review LOW-1), computes the `sha256:` per-member content_hash (D-2)
+  // and the bundle_digest over canonical-JSON of members[] sorted by path (D-3) by
+  // reusing src/receipt/{hash,canonicalize}.js, and emits the four publisher-
+  // authenticity fields present-and-null (OD-1). No signature is produced and no
+  // signer / keyring / revocation / verification code is imported or called.
+  const receipt = buildBundleReceipt({
+    memberContent,
+    bundleSchemaVersion,
+    constructSlug,
+    constructVersion,
+    emittedAt: emitted_at,
+  });
 
   const memberFiles = {
     ...memberContent,

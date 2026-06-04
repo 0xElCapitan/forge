@@ -22,6 +22,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { assembleBundle } from './assemble.js';
 import { assertValidSlug } from './slug.js';
+import { BUNDLE_MEMBERS } from './index.js';
 
 /**
  * Default LOCAL output root for emitted bundles — the confirmed-gitignored
@@ -31,13 +32,22 @@ import { assertValidSlug } from './slug.js';
 export const DEFAULT_BUILD_OUTPUT_ROOT = join('build', 'construct-bundles');
 
 /**
+ * Closed whitelist of writable member filenames — the S03-A BUNDLE_MEMBERS set.
+ * A member name outside this set is refused before any path is joined (S03-D;
+ * S03-B review LOW-1).
+ */
+const ALLOWED_MEMBER_FILES = new Set(BUNDLE_MEMBERS);
+
+/**
  * Write the five members of an already-assembled bundle to
  * `<outputRoot>/<slug>/`, returning the bundle directory path.
  *
  * The slug is re-asserted against L-1 (defense in depth) BEFORE it is joined
  * into a path, so a hostile slug cannot escape `outputRoot` via `../`, a path
- * separator, or an absolute path. Member filenames come from the fixed S03-A
- * member-name constants (not caller input), so only the slug needs guarding.
+ * separator, or an absolute path. Each member filename is ALSO whitelisted against
+ * the closed BUNDLE_MEMBERS set before it reaches `join` (S03-D; carries forward
+ * S03-B review LOW-1), so a directly-constructed `assembled` carrying a hostile
+ * member key cannot escape `<outputRoot>/<slug>/` either.
  *
  * @param {{ slug: string, members: Record<string,string> }} assembled
  * @param {object} [opts]
@@ -49,6 +59,17 @@ export function writeAssembledBundle(
   { outputRoot = DEFAULT_BUILD_OUTPUT_ROOT } = {},
 ) {
   assertValidSlug(assembled.slug); // guard BEFORE path construction
+  // Whitelist every member filename against the closed S03-A BUNDLE_MEMBERS set
+  // BEFORE any path is joined or directory created (S03-D; S03-B review LOW-1). A
+  // directly-constructed `assembled` could carry a hostile key (e.g. '../evil');
+  // refusing up front keeps a non-whitelisted member from escaping the bundle dir.
+  for (const name of Object.keys(assembled.members)) {
+    if (!ALLOWED_MEMBER_FILES.has(name)) {
+      throw new Error(
+        `bundle/emit: refusing to write unknown member '${name}' — not in BUNDLE_MEMBERS`,
+      );
+    }
+  }
   const dir = join(outputRoot, assembled.slug);
   mkdirSync(dir, { recursive: true });
   for (const [name, content] of Object.entries(assembled.members)) {
