@@ -6,7 +6,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { emitEnvelope } from '../../src/ir/emit.js';
+import { emitEnvelope, BREATH_NORMALIZATION_TRACE, assertNormalizationTrace } from '../../src/ir/emit.js';
 import { canonicalize } from '../../src/receipt/canonicalize.js';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -44,10 +44,10 @@ describe('emitEnvelope', () => {
       proposals: TREMOR_PROPOSALS,
     });
 
-    assert.equal(env.ir_version, '0.2.0');
+    assert.equal(env.ir_version, '0.3.0');
     assert.equal(env.forge_version, '0.1.0');
-    assert.equal(typeof env.emitted_at, 'number');
-    assert.ok(env.emitted_at > 0);
+    assert.equal(typeof env.emitted_at_ms, 'number');
+    assert.ok(env.emitted_at_ms > 0);
     assert.equal(env.feed_id, 'usgs_m4.5_hour');
     assert.ok(env.feed_profile);
     assert.ok(Array.isArray(env.proposals));
@@ -385,7 +385,7 @@ describe('emitEnvelope', () => {
 
   it('produces a deterministic envelope when `now` is injected', () => {
     // Identical inputs + identical injected `now` must produce byte-equal
-    // envelopes. Without an injectable clock, emitted_at would diverge
+    // envelopes. Without an injectable clock, emitted_at_ms would diverge
     // between calls and any envelope-level hash would be non-deterministic.
     //
     // Pass deep-cloned inputs to each call so the test stays mutation-blind:
@@ -405,8 +405,8 @@ describe('emitEnvelope', () => {
     // Full envelope equality — not just timestamp
     assert.deepStrictEqual(e1, e2);
     // Injected timestamp is honoured
-    assert.strictEqual(e1.emitted_at, t);
-    assert.strictEqual(e2.emitted_at, t);
+    assert.strictEqual(e1.emitted_at_ms, t);
+    assert.strictEqual(e2.emitted_at_ms, t);
   });
 
   // ─── Sprint 01 (IR 0.2.0 surface ratification) — T-1, T-2, T-12 ────────────
@@ -454,5 +454,107 @@ describe('emitEnvelope', () => {
     const c1 = canonicalize(e1);
     const c2 = canonicalize(e2);
     assert.strictEqual(c1, c2, 'canonicalized envelopes must be byte-identical');
+  });
+});
+
+// ─── Cycle 003 Sprint 01 — emitted_at_ms rename (Lane 1) ───────────────────────
+
+describe('emitEnvelope — emitted_at_ms rename (cycle-003 Lane 1)', () => {
+  const baseArgs = {
+    feed_id: 'usgs_m4.5_hour',
+    feed_profile: TREMOR_PROFILE,
+    proposals: TREMOR_PROPOSALS,
+    now: 1735689600000,
+  };
+
+  it('envelope carries emitted_at_ms (Unix-ms integer); no bare emitted_at key remains', () => {
+    const env = emitEnvelope(baseArgs);
+    const keys = Object.keys(env);
+    // Parsed-key assertions — NOT substring (emitted_at_ms ⊃ emitted_at).
+    assert.ok(keys.includes('emitted_at_ms'), 'envelope must carry emitted_at_ms');
+    assert.ok(!keys.includes('emitted_at'), 'envelope must NOT carry bare emitted_at');
+    assert.equal(env.emitted_at_ms, 1735689600000);
+    assert.ok(Number.isInteger(env.emitted_at_ms));
+  });
+
+  it('ir_version is 0.3.0 (coordinated breaking bump)', () => {
+    assert.equal(emitEnvelope(baseArgs).ir_version, '0.3.0');
+  });
+
+  it('injected `now` keeps byte-deterministic equality after the rename', () => {
+    const e1 = emitEnvelope(structuredClone(baseArgs));
+    const e2 = emitEnvelope(structuredClone(baseArgs));
+    assert.deepStrictEqual(e1, e2);
+    assert.strictEqual(e1.emitted_at_ms, 1735689600000);
+    assert.strictEqual(canonicalize(e1), canonicalize(e2));
+  });
+});
+
+// ─── Cycle 003 Sprint 01 — normalization_trace provenance (Lane 2) ─────────────
+
+describe('emitEnvelope — normalization_trace producer provenance (cycle-003 Lane 2)', () => {
+  const baseArgs = {
+    feed_id: 'epa_airnow_aqi',
+    feed_profile: TREMOR_PROFILE,
+    proposals: [],
+    now: 1735689600000,
+  };
+
+  it('defaults to present-and-null when no trace is supplied (mirrors negative_policy_flags)', () => {
+    const env = emitEnvelope(baseArgs);
+    assert.ok('normalization_trace' in env, 'field is present-and-null');
+    assert.equal(env.normalization_trace, null);
+  });
+
+  it('emits the populated BREATH worked-path trace (object-array; one entry per real normalization)', () => {
+    const env = emitEnvelope({ ...baseArgs, normalization_trace: BREATH_NORMALIZATION_TRACE });
+    assert.ok(Array.isArray(env.normalization_trace), 'populated as an object-array');
+    assert.equal(env.normalization_trace.length, 2);
+    for (const entry of env.normalization_trace) {
+      assert.deepEqual(
+        Object.keys(entry).sort(),
+        ['confidence', 'field', 'input_value', 'method', 'normalized_value', 'source'],
+        'each entry has exactly the six provenance fields',
+      );
+      assert.ok(['stated', 'inferred', 'mapped', 'defaulted'].includes(entry.method), 'valid method enum');
+      assert.ok(['forge', 'echelon', 'lattice', 'operator'].includes(entry.source), 'valid source enum');
+      assert.ok(typeof entry.confidence === 'number' && entry.confidence >= 0 && entry.confidence <= 1);
+    }
+    // Grounded BREATH normalizations: settlement_source (mapped) + feed_id (stated).
+    const byField = Object.fromEntries(env.normalization_trace.map((e) => [e.field, e]));
+    assert.equal(byField.settlement_source.method, 'mapped');
+    assert.equal(byField.settlement_source.input_value, 'airnow');
+    assert.equal(byField.settlement_source.normalized_value, 'airnow');
+    assert.equal(byField.feed_id.method, 'stated');
+    assert.equal(byField.feed_id.input_value, 'epa_airnow');
+    assert.equal(byField.feed_id.normalized_value, 'epa_airnow_aqi');
+  });
+
+  it('STATED and INFERRED for the same field stay distinguishable (never collapse — NFR-PROV)', () => {
+    const trace = [
+      { field: 'settlement_source', input_value: 'airnow', normalized_value: 'airnow', method: 'stated', source: 'operator', confidence: 1.0 },
+      { field: 'settlement_source', input_value: 'airnow', normalized_value: 'airnow', method: 'inferred', source: 'forge', confidence: 0.6 },
+    ];
+    const env = emitEnvelope({ ...baseArgs, normalization_trace: trace });
+    assert.equal(env.normalization_trace.length, 2, 'two entries for the same field are NOT merged');
+    const methods = env.normalization_trace.map((e) => e.method);
+    assert.ok(methods.includes('stated') && methods.includes('inferred'), 'both provenance states survive distinctly');
+    assert.notDeepStrictEqual(env.normalization_trace[0], env.normalization_trace[1]);
+  });
+
+  it('validates entry shape — rejects bad method, bad source, out-of-range confidence, extra/missing fields, non-array', () => {
+    const good = { field: 'f', input_value: 1, normalized_value: 1, method: 'mapped', source: 'forge', confidence: 1 };
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: [{ ...good, method: 'guessed' }] }), /method/);
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: [{ ...good, source: 'martian' }] }), /source/);
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: [{ ...good, confidence: 1.5 }] }), /confidence/);
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: [{ ...good, extra: true }] }), /unexpected field/);
+    const { confidence, ...missing } = good;
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: [missing] }), /missing required field/);
+    assert.throws(() => emitEnvelope({ ...baseArgs, normalization_trace: 'not-an-array' }), /must be an array or null/);
+  });
+
+  it('assertNormalizationTrace returns null for null and the array for a valid trace', () => {
+    assert.equal(assertNormalizationTrace(null), null);
+    assert.equal(assertNormalizationTrace(BREATH_NORMALIZATION_TRACE), BREATH_NORMALIZATION_TRACE);
   });
 });

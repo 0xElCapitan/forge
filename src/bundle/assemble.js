@@ -208,7 +208,7 @@ theatre_trigger_conditions: []
  * @param {string}   [input.bundleSchemaVersion]  - default `0.1.0`.
  * @param {string}   [input.irVersion]            - default `0.2.0`.
  * @param {string}   [input.forgeVersion]         - default `0.1.0`.
- * @param {number}   [input.now=Date.now()]       - injectable Unix-ms `emitted_at`
+ * @param {number}   [input.now=Date.now()]       - injectable Unix-ms `emitted_at_ms`
  *                   (mirrors emitEnvelope's `now` hook, src/ir/emit.js:95). Pass
  *                   a fixed value for a byte-deterministic bundle.
  * @returns {{ slug: string, members: Record<string,string>, manifest: object, receipt: object }}
@@ -261,7 +261,7 @@ export function assembleBundle({
     assertAuthoredOracleSettlement(oracleDeclarations, settlementAuthority);
   }
 
-  const emitted_at = now;
+  const emitted_at_ms = now;
 
   // manifest.json — 9 REQUIRED fields (SDD §6) + nullable calibration_ref.
   // `calibration_ref` is ALWAYS null in S03-B; S03-C/D copy an Echelon-supplied
@@ -276,7 +276,7 @@ export function assembleBundle({
     oracle_declarations: oracleDeclarations,
     settlement_authority: settlementAuthority,
     calibration_ref: null,
-    emitted_at,
+    emitted_at_ms,
   };
 
   // Internal emitter self-check (NOT Echelon admission validation): every
@@ -319,7 +319,7 @@ export function assembleBundle({
     bundleSchemaVersion,
     constructSlug,
     constructVersion,
-    emittedAt: emitted_at,
+    emittedAtMs: emitted_at_ms,
   });
 
   const memberFiles = {

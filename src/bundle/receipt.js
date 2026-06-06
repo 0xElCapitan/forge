@@ -23,8 +23,8 @@
  *     trust-policy, or verification code. Signature PRODUCTION is the deferred,
  *     optional S03-D′; signature VERIFICATION is never a FORGE responsibility
  *     (Echelon 113.x/115). The §13.3 reuse seam is DOCUMENTED below, NOT wired;
- *   - carries `emitted_at` verbatim from the caller (the assembler's injectable
- *     `now`); it does NOT decide timestamp format (see the emitted_at note below).
+ *   - carries `emitted_at_ms` verbatim from the caller (the assembler's injectable
+ *     `now`); it does NOT decide timestamp format (see the emitted_at_ms note below).
  *
  * NAMING: sibling of the singular `src/bundle/` producer — unrelated to the plural
  * `src/processor/bundles.js`; never imports it.
@@ -151,12 +151,12 @@ function buildReceiptMembers(memberContent) {
  * Assemble the in-memory `bundle-receipt.json` object: the whitelisted members[]
  * digest manifest, the bundle_digest over canonical-JSON of members[] sorted by
  * path (D-3; reuse src/receipt/canonicalize.js + hash.js), the four publisher-
- * authenticity fields PRESENT and `null` (OD-1), and the carried emitted_at.
+ * authenticity fields PRESENT and `null` (OD-1), and the carried emitted_at_ms.
  *
  * Determinism: over identical inputs (including a fixed `emittedAt`) this returns a
  * byte-identical receipt — the per-member content_hash, the canonical-JSON sort, and
  * the sha256 digest are all deterministic. (The default non-fixed timestamp is the
- * assembler's concern; see the emitted_at note.)
+ * assembler's concern; see the emitted_at_ms note.)
  *
  * publisher-authenticity (OD-1): all four fields are emitted PRESENT and `null`.
  * S03-D produces NO signature and resolves NO key / policy / revocation. The fields
@@ -172,27 +172,27 @@ function buildReceiptMembers(memberContent) {
  * module imports NONE of that machinery — those paths are named for the seam only.
  * Signature VERIFICATION is never a FORGE responsibility (AC-13; Echelon 113.x/115).
  *
- * emitted_at (LOW-2, carried forward — DOC only): `emittedAt` is carried verbatim
- * from the assembler's injectable `now`, a project-consistent Unix-ms integer
- * (mirrors src/ir/emit.js). The Receiving_Contract types this field as a Pydantic
- * datetime, which reads a bare integer as Unix *seconds*; the final int-vs-datetime
- * parser alignment is a deliberate S03-F / Echelon follow-up. S03-D changes NO
- * timestamp behavior — it preserves Unix-ms and only documents the open pin.
+ * emitted_at_ms (cycle-003 Lane 1): `emittedAtMs` is carried verbatim from the
+ * assembler's injectable `now`, a project-consistent Unix epoch **milliseconds**
+ * integer (mirrors src/ir/emit.js). The `_ms` suffix names the unit at the field,
+ * resolving the prior int-vs-datetime parser ambiguity (the Receiving_Contract's
+ * Pydantic datetime keys on the millisecond semantics by name). The value is
+ * unchanged — still a Unix-ms integer; only the field name carries the `_ms` unit.
  *
  * @param {object} input
  * @param {Record<string,string>} input.memberContent      - non-receipt member name → emitted bytes.
  * @param {string}                input.bundleSchemaVersion - mirrors the manifest.
  * @param {string}                input.constructSlug       - mirrors the manifest.
  * @param {string}                input.constructVersion    - mirrors the manifest.
- * @param {number}                input.emittedAt           - carried verbatim (Unix-ms; see note).
- * @returns {object} bundle-receipt.json (members[] + bundle_digest + 4 null authenticity fields + emitted_at).
+ * @param {number}                input.emittedAtMs         - carried verbatim (Unix-ms; see note).
+ * @returns {object} bundle-receipt.json (members[] + bundle_digest + 4 null authenticity fields + emitted_at_ms).
  */
 export function buildBundleReceipt({
   memberContent,
   bundleSchemaVersion,
   constructSlug,
   constructVersion,
-  emittedAt,
+  emittedAtMs,
 }) {
   const members = buildReceiptMembers(memberContent);
 
@@ -213,6 +213,6 @@ export function buildBundleReceipt({
     members,
     bundle_digest,
     ...authenticity,
-    emitted_at: emittedAt,
+    emitted_at_ms: emittedAtMs,
   };
 }

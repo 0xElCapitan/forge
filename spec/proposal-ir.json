@@ -1,19 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://forge.constructs.network/schemas/proposal-ir/0.1.0",
+  "$id": "https://forge.constructs.network/schemas/proposal-ir/0.3.0",
   "title": "FORGE Proposal IR",
   "description": "Intermediate Representation emitted by FORGE and consumed by Echelon's admission gate. Each ProposalEnvelope contains the full classification, one or more theatre proposals, provenance metadata, and optional composition context. Versioned for forward-compatibility. See spec/STABILITY.md for schema stability policy and breaking change commitments.",
-  "version": "0.2.0",
+  "version": "0.3.0",
 
   "type": "object",
-  "required": ["ir_version", "forge_version", "classifier_version", "emitted_at", "feed_id", "feed_profile", "proposals", "verifier_type"],
+  "required": ["ir_version", "forge_version", "classifier_version", "emitted_at_ms", "feed_id", "feed_profile", "proposals", "verifier_type"],
   "additionalProperties": false,
 
   "properties": {
 
     "ir_version": {
       "type": "string",
-      "const": "0.2.0",
+      "const": "0.3.0",
       "description": "Proposal IR schema version. Echelon MUST reject envelopes with unrecognised versions."
     },
 
@@ -33,9 +33,9 @@
       "description": "Semver for the Pythia classifier (Q1-Q5 grammar). Independent from forge_version and ir_version. Required on all newly-emitted envelopes; non-breaking to Echelon consumers at ir_version 0.1.0 which SHOULD ignore unknown fields. Used for version-aware dispatch in downstream module pipelines."
     },
 
-    "emitted_at": {
+    "emitted_at_ms": {
       "type": "integer",
-      "description": "Unix epoch milliseconds when FORGE emitted this envelope."
+      "description": "Unix epoch milliseconds when FORGE emitted this envelope. Renamed from `emitted_at` in IR 0.3.0 (cycle-003 Lane 1); the value is unchanged (still a Unix-ms integer), the `_ms` suffix names the millisecond unit at the field."
     },
 
     "feed_id": {
@@ -102,6 +102,24 @@
       "type": ["array", "null"],
       "items": { "type": "string" },
       "description": "FORGE-originated advisory policy flags detected at classification time. Flat string array — vocabulary-only, not structured rejection objects. Null when evaluate_policy=false (default). Empty array is valid (no flags fired). FORGE owns: synthetic_only, no_settlement_authority, reflexive_feed. Echelon owns: insufficient_independence, hidden_upstream_dependency."
+    },
+
+    "normalization_trace": {
+      "type": ["array", "null"],
+      "description": "Producer provenance (cycle-003 Lane 2): how each emitted value was derived from its input. Travels with the provenance family (original_hash, negative_policy_flags). Producer provenance ONLY — never an admission/acceptance/scoring claim. Null when no normalization is computed; empty array is valid (nothing normalized); populated when FORGE normalizes a producer field. A human-STATED authority and a system-INFERRED authority MUST NOT collapse into the same provenance state — the `method` enum is the discriminator.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "input_value", "normalized_value", "method", "source", "confidence"],
+        "properties": {
+          "field": { "type": "string", "description": "Name of the producer field that was normalized (e.g. 'settlement_source', 'feed_id')." },
+          "input_value": { "description": "The value as received / stated, before normalization. Any JSON type." },
+          "normalized_value": { "description": "The value as emitted, after normalization. Any JSON type." },
+          "method": { "enum": ["stated", "inferred", "mapped", "defaulted"], "description": "How normalized_value was derived. STATED (producer-asserted) and INFERRED (system-derived) MUST remain distinguishable and never collapse." },
+          "source": { "enum": ["forge", "echelon", "lattice", "operator"], "description": "Which party performed the normalization." },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "Producer confidence in the normalization (0-1). Provenance confidence only — NOT a calibration or scoring value." }
+        }
+      }
     }
   },
 

@@ -1,7 +1,7 @@
 # FORGE Proposal IR — Stability Policy
 
 **Schema:** `spec/proposal-ir.json`
-**Current Version:** 0.1.0
+**Current Version:** 0.3.0
 **Status:** Stabilizing
 
 ---
@@ -35,6 +35,40 @@ Breaking changes will be:
 1. Flagged in the CHANGELOG with a `BREAKING:` prefix
 2. Communicated to Echelon maintainers with a minimum of **1 sprint notice** before merge
 3. Accompanied by a MAJOR or MINOR version bump as appropriate
+
+## 0.3.0 — Cycle 003 Sprint 01 (coordinated breaking bump)
+
+A single coordinated `0.3.0` bump carrying one breaking rename and one additive field.
+`$id`, `version`, and `ir_version.const` are all reconciled to `0.3.0` (the `$id` path
+segment was previously stale at `0.1.0`).
+
+**BREAKING:**
+
+- `emitted_at` → `emitted_at_ms` — renamed on **both** surfaces (the IR envelope and
+  the bundle manifest/receipt). Value semantics are **unchanged**: still a Unix epoch
+  **milliseconds** integer (no ISO-8601, no separate second field, no both-fields
+  transition). The `_ms` suffix names the millisecond unit at the field, resolving the
+  prior int-vs-datetime parser ambiguity. Echelon (the sole known consumer) requested
+  and committed to this rename (Tobias follow-up reply). This deliberately spends the
+  pre-1.0 MINOR slot on a breaking rename, once, with the consumer's request and notice
+  — the additive-only-until-1.0 convention is broken here knowingly.
+
+**Additive (non-breaking):**
+
+- `normalization_trace` — **populated** producer-provenance object-array, travelling
+  with the provenance family (`original_hash`, `negative_policy_flags`). Nullable; each
+  entry is `{ field, input_value, normalized_value, method, source, confidence }` with
+  `method ∈ {stated, inferred, mapped, defaulted}`, `source ∈ {forge, echelon, lattice,
+  operator}`, and `confidence ∈ [0,1]`. It is producer provenance only — never an
+  admission/acceptance/scoring claim (the single in-ceiling field Echelon asked FORGE to
+  populate). STATED and INFERRED provenance never collapse.
+
+**Scope notes (no release coupling):**
+
+- **No `package.json` version bump.** The IR schema version (`0.3.0`) is independent of
+  the FORGE package/release version (`0.4.0`), per the cycle-002 precedent (IR `0.2.0`
+  shipped under package `0.4.0`).
+- **No package `v0.3.0` tag/release backfill.**
 
 ## Non-Breaking Changes
 

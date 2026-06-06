@@ -27,7 +27,7 @@ export const MANIFEST_REQUIRED_FIELDS = Object.freeze([
   'capability_flags',
   'oracle_declarations',
   'settlement_authority',
-  'emitted_at',
+  'emitted_at_ms',
 ]);
 
 /**
