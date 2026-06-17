@@ -79,7 +79,7 @@ const DEFAULT_FORGE_VERSION = '0.1.0';
  * Initial bundle schema version. Versioned INDEPENDENTLY of `ir_version`
  * (AC-7; SDD §15) — bundle revisions do not couple to FORGE's IR cadence.
  */
-const DEFAULT_BUNDLE_SCHEMA_VERSION = '0.1.0';
+const DEFAULT_BUNDLE_SCHEMA_VERSION = '1.0.0';
 
 /**
  * PLACEHOLDER — `oracle_declarations[]` authoring is owned by S03-C (source_id

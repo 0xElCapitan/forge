@@ -91,6 +91,44 @@ if (
   );
 }
 
+// ── feed_id grammar (S02 T2.3) ────────────────────────────────────────────────
+
+/**
+ * The receiving-contract grammar for `theatre_trigger_conditions[].feed_id`: one
+ * or more lowercase-alphanumeric segments joined by single underscores
+ * (`epa_airnow_aqi`). No leading/trailing underscore, no double underscore, no
+ * uppercase, no other characters. This pins the BREATH feed_id shape to the
+ * Cycle-113 receiving surface; it is deliberately NARROW and is NOT broadened
+ * here. Anchored `^...$` with no `m` flag — in JavaScript `$` matches only the
+ * true end of input (it does NOT match before a trailing newline as Python's `$`
+ * would), so a newline-injection payload cannot satisfy it.
+ */
+export const FEED_ID_GRAMMAR = /^[a-z0-9]+(_[a-z0-9]+)*$/;
+
+/**
+ * Assert that a `feed_id` is a non-empty string conforming to {@link FEED_ID_GRAMMAR},
+ * returning it unchanged on success. Mirrors the {@link assertSafeIdentifier}
+ * producer-authoring-safety precedent: it validates the grammar only — it does NOT
+ * claim Echelon receiving-end validation and adds no dependency. Rejects a non-string
+ * or any value the grammar does not match (uppercase, leading/trailing or doubled
+ * underscore, dot/dash/space/colon, the empty string).
+ *
+ * @param {unknown} value
+ * @param {string}  [label='feed_id'] - field name, for the diagnostic.
+ * @returns {string} the validated feed_id
+ * @throws {Error} if `value` is not a string matching {@link FEED_ID_GRAMMAR}
+ */
+export function assertFeedId(value, label = 'feed_id') {
+  if (typeof value !== 'string' || !FEED_ID_GRAMMAR.test(value)) {
+    throw new Error(
+      `bundle/markdown-members: invalid ${label} ${JSON.stringify(value)} — must match ` +
+        `${FEED_ID_GRAMMAR} (one or more lowercase-alphanumeric segments joined by single ` +
+        `underscores; feed_id grammar, S02 T2.3). The grammar is intentionally narrow and not broadened.`,
+    );
+  }
+  return value;
+}
+
 // ── BREATH worked-path committed facts (single theatre; mirrors oracles.js) ───
 
 /**
@@ -126,6 +164,11 @@ if (!HANDOFF_TEMPLATE.includes(BREATH_TEMPLATE)) {
       `HANDOFF_TEMPLATE {${HANDOFF_TEMPLATE.join(', ')}} (H-4)`,
   );
 }
+
+// Producer authoring-safety self-check (S02 T2.3): the BREATH feed_id conforms to
+// FEED_ID_GRAMMAR. Catches drift if BREATH_FEED_ID is ever edited to a
+// non-conforming value. Producer-side only — NOT Echelon receiving validation.
+assertFeedId(BREATH_FEED_ID, 'BREATH_FEED_ID');
 
 // ── reality.md provenance content_hash (decision 2 above) ─────────────────────
 

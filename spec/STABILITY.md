@@ -128,3 +128,29 @@ other purposes in any cycle before the relevant spec ships:
   Not emitted until the module contract spec is finalized.
 - `module_id` — reserved as alternative identifier if `module_type` is
   insufficient for routing.
+
+## ConstructAdmissionBundle `bundle_schema_version` — Cycle 003 Sprint 02
+
+`bundle_schema_version` is the **ConstructAdmissionBundle** receiving-contract
+version — a SEPARATE artifact and a SEPARATE version domain from this Proposal IR's
+`ir_version`. In Cycle-003 Sprint 02 it aligns **`0.1.0` → `1.0.0`**, adopting
+Echelon's Cycle-113 receiving-contract version for the BREATH producer path.
+
+Scope / non-claims:
+
+- **Not** a package bump — `package.json` stays `0.4.0`.
+- **Not** an IR version bump. The bundle manifest `ir_version` stays `0.2.0` and the
+  ProposalEnvelope `ir_version` stays `0.3.0`. `bundle_schema_version` and `ir_version`
+  are independent version domains; nothing couples the bundle manifest `ir_version` to
+  the ProposalEnvelope `ir_version`.
+- Adopting the receiving-contract version makes NO admission / certification / scoring /
+  runtime claim. The bundle remains a local, content-addressed producer artifact. The
+  value lives inside `manifest.json`, so the bump deliberately re-baselines the BREATH
+  `bundle_digest`; the `SKILL.md` / `reality.md` / `handoff.md` member hashes are
+  unchanged.
+- `manifest.calibration_ref` stays `null`. Its confirmed §12 pointer shape is
+  `{cert_uri, cert_hash, n_resolutions, as_of, verifier_type}` (`verifier_type` is
+  Echelon-owned; FORGE Rung 3 maps to `frozen_replay_baseline` as compatibility
+  language only — `frozen_baseline_hash` is NOT added this cycle). Recorded here for
+  receiving alignment only: FORGE emits no pointer, adds no schema key, and issues no
+  cert.
