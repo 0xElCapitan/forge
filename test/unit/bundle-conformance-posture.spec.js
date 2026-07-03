@@ -19,12 +19,17 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
 
 import { assembleBundle } from '../../src/bundle/assemble.js';
 import { buildBundleReceipt } from '../../src/bundle/receipt.js';
-import { authorBreathManifestParts } from '../../src/bundle/settlement.js';
+import { authorBreathManifestParts, assertAuthoredOracleSettlement } from '../../src/bundle/settlement.js';
 import { assertFeedId, FEED_ID_GRAMMAR } from '../../src/bundle/markdown-members.js';
 import { RECEIPT_AUTHENTICITY_FIELDS, CONSTRUCT_SOURCE_REF_FIELD } from '../../src/bundle/index.js';
+import { TRUST_TIER } from '../../src/bundle/enums.js';
+import { getTrustTier } from '../../src/trust/oracle-trust.js';
 import { sha256 } from '../../src/receipt/hash.js';
 import { canonicalize } from '../../src/receipt/canonicalize.js';
 
@@ -348,5 +353,188 @@ describe('S02 T2.7 — bundle_schema_version aligns to receiving-contract 1.0.0'
         `${path} hash stable across the schema bump`,
       );
     }
+  });
+});
+
+// ── S03 CF-8: settlement trust-tier guard hardening (cycle-003 Sprint 03) ─────
+//
+// assertAuthoredOracleSettlement must fail closed on a non-string / non-enum
+// trust_tier — including {trust_tier: Object.prototype} (AC-7) and prototype-key
+// source_ids (__proto__ / constructor / prototype), which getTrustTier resolves to
+// a non-string via its plain-object registry (oracle-trust.js:89-92). This mirrors
+// the authoring-side guard in oracles.js:94-99. An Echelon-owned trust/admission
+// token must never be smuggled in as accepted settlement trust. No runtime/CLI
+// entrypoint is added (the gate returns void; it emits nothing).
+
+describe('S03 CF-8 — assertAuthoredOracleSettlement non-string/non-enum trust_tier guard', () => {
+  const forgeOracle = (overrides = {}) => ({
+    source_id: 'airnow',
+    construct_source_ref: 'epa_airnow',
+    source_side: 'forge',
+    trust_tier: 'T1',
+    authority_ref: null,
+    role: 'settlement',
+    ...overrides,
+  });
+  const forgeSettlement = (overrides = {}) => ({
+    settling_source_id: 'airnow',
+    source_side: 'forge',
+    declared_trust_tier: 'T1',
+    authority_ref: null,
+    ...overrides,
+  });
+
+  it('the valid BREATH worked path still passes the gate (no behavior change)', () => {
+    const { oracleDeclarations: decls, settlementAuthority: sa } = authorBreathManifestParts();
+    assert.doesNotThrow(() => assertAuthoredOracleSettlement(decls, sa));
+  });
+
+  it('rejects a forge oracle whose source_id is the prototype key "__proto__"', () => {
+    // getTrustTier('__proto__') returns Object.prototype — a non-string.
+    assert.notEqual(typeof getTrustTier('__proto__'), 'string');
+    assert.throws(
+      () =>
+        assertAuthoredOracleSettlement(
+          [forgeOracle({ source_id: '__proto__' })],
+          forgeSettlement({ settling_source_id: '__proto__' }),
+        ),
+      /non-string \/ non-enum trust_tier|CF-8/,
+    );
+  });
+
+  it('rejects a forge oracle whose source_id is "constructor"', () => {
+    assert.notEqual(typeof getTrustTier('constructor'), 'string');
+    assert.throws(
+      () =>
+        assertAuthoredOracleSettlement(
+          [forgeOracle({ source_id: 'constructor' })],
+          forgeSettlement({ settling_source_id: 'constructor' }),
+        ),
+      /non-string \/ non-enum trust_tier|CF-8/,
+    );
+  });
+
+  it('rejects a forge oracle whose source_id is "prototype" (resolves to unknown → rejected)', () => {
+    // 'prototype' is not a data property of the registry, so getTrustTier returns the
+    // string 'unknown'; the existing unknown check rejects it — still fail-closed.
+    assert.throws(
+      () =>
+        assertAuthoredOracleSettlement(
+          [forgeOracle({ source_id: 'prototype' })],
+          forgeSettlement({ settling_source_id: 'prototype' }),
+        ),
+      /not a TRUST_REGISTRY key|unknown|non-string \/ non-enum/,
+    );
+  });
+
+  it('rejects a forge settlement whose declared_trust_tier is Object.prototype (non-string)', () => {
+    assert.throws(
+      () => assertAuthoredOracleSettlement([forgeOracle()], forgeSettlement({ declared_trust_tier: Object.prototype })),
+      /non-string \/ non-enum|CF-8/,
+    );
+  });
+
+  it('rejects a forge settlement carrying an Echelon-owned admission state as trust (non-enum string)', () => {
+    // 'signal_initiated' is an Echelon provenance/admission token, NOT a FORGE
+    // TRUST_TIER value; it must fail closed rather than be accepted as settlement trust.
+    assert.ok(!TRUST_TIER.includes('signal_initiated'));
+    assert.throws(
+      () => assertAuthoredOracleSettlement([forgeOracle()], forgeSettlement({ declared_trust_tier: 'signal_initiated' })),
+      /non-string \/ non-enum|CF-8/,
+    );
+  });
+
+  it('still routes a valid-enum non-settling tier (T2) through the existing canSettle check', () => {
+    // The new guard does NOT intercept valid enum members; T2 is a real tier that
+    // simply cannot settle, so it falls through to the pre-existing canSettle rejection.
+    assert.ok(TRUST_TIER.includes('T2'));
+    assert.throws(
+      () => assertAuthoredOracleSettlement([forgeOracle()], forgeSettlement({ declared_trust_tier: 'T2' })),
+      /is not T0\/T1|canSettle/,
+    );
+  });
+
+  it('the guard only throws / returns void — it emits no composed_trust / scoring / cert field', () => {
+    const { oracleDeclarations: decls, settlementAuthority: sa } = authorBreathManifestParts();
+    const result = assertAuthoredOracleSettlement(decls, sa);
+    assert.equal(result, undefined, 'gate returns void — emits no advisory/scoring/cert object');
+    for (const obj of [...decls, sa]) {
+      const keys = Object.keys(obj);
+      for (const forbidden of ['composed_trust', 'scoring', 'cert', 'can_settle', 'settlement_risk', 'risk_flags']) {
+        assert.ok(!keys.includes(forbidden), `no ${forbidden} field emitted`);
+      }
+    }
+  });
+});
+
+// ── S03 T3.4: no runtime / no CLI exposure added by CF-8/CF-9 (Sprint 03) ─────
+//
+// CF-8/CF-9 are preconditions only (PRD §5; operator instruction 8; NFR-BOUNDARY).
+// Sprint 03 adds NO runtime/CLI surface. These checks are path-aware (walk
+// src/bundle/, inspect the module export surface), not vague substring sweeps.
+
+describe('S03 T3.4 — no runtime / no CLI exposure', () => {
+  const bundleDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'bundle');
+  const bundleJs = readdirSync(bundleDir).filter((f) => f.endsWith('.js'));
+
+  it('found the src/bundle/ producer files', () => {
+    assert.ok(bundleJs.length >= 12, `expected >=12 src/bundle .js files, found ${bundleJs.length}`);
+  });
+
+  it('no src/bundle/ file declares a CLI / runtime entrypoint surface', () => {
+    // Each pattern is an exposure surface CF-8/CF-9 explicitly do NOT add.
+    const ENTRYPOINT_PATTERNS = [
+      { re: /^#!\s*\/\S*\b(?:node|env)\b/m, name: 'shebang' },
+      { re: /\bprocess\.argv\b/, name: 'process.argv' },
+      { re: /\bprocess\.exit\s*\(/, name: 'process.exit(' },
+      { re: /\bimport\.meta\.main\b/, name: 'import.meta.main' },
+      { re: /\brequire\.main\s*===\s*module\b/, name: 'require.main === module' },
+    ];
+    const offenders = [];
+    for (const f of bundleJs) {
+      const content = readFileSync(join(bundleDir, f), 'utf8');
+      for (const { re, name } of ENTRYPOINT_PATTERNS) {
+        if (re.test(content)) offenders.push(`${f}: ${name}`);
+      }
+    }
+    assert.deepEqual(offenders, [], `src/bundle/ must expose no CLI/runtime entrypoint; found: ${offenders.join(', ')}`);
+  });
+
+  it('settlement.js exports exactly the producer-authoring surface (no runner / main / parser export)', async () => {
+    const mod = await import('../../src/bundle/settlement.js');
+    assert.deepEqual(Object.keys(mod).sort(), [
+      'assertAuthoredOracleSettlement',
+      'authorBreathManifestParts',
+      'authorSettlementAuthority',
+      'canonicalizeSettlementSource',
+    ]);
+    for (const name of Object.keys(mod)) assert.equal(typeof mod[name], 'function');
+  });
+});
+
+// ── S03 T3.5: Sprint 01 / Sprint 02 invariant sentinel (cycle-003 Sprint 03) ──
+//
+// CF-8/CF-9 are pure hardening and must not move any already-landed invariant.
+// This is a thin S03 anchor; the authoritative coverage lives in ir.spec.js,
+// jcs-parity.spec.js, and the T8 / S02 blocks above.
+
+describe('S03 T3.5 — Sprint 01/02 invariants survive CF-8/CF-9 hardening', () => {
+  it('manifest ir_version stays 0.2.0 and bundle_schema_version stays 1.0.0', () => {
+    const { manifest } = breathFinal();
+    assert.equal(manifest.ir_version, '0.2.0');
+    assert.equal(manifest.bundle_schema_version, '1.0.0');
+  });
+
+  it('emitted_at_ms remains the timestamp key (no bare emitted_at) in manifest and receipt', () => {
+    const { manifest, receipt } = breathFinal(PINNED_NOW);
+    assert.ok(Object.keys(manifest).includes('emitted_at_ms'));
+    assert.ok(!Object.keys(manifest).includes('emitted_at'));
+    assert.equal(receipt.emitted_at_ms, PINNED_NOW);
+  });
+
+  it('BREATH feed_id remains epa_airnow_aqi and passes the grammar', () => {
+    const feedId = extractFeedId(breathFinal().members['handoff.md']);
+    assert.equal(feedId, 'epa_airnow_aqi');
+    assert.ok(FEED_ID_GRAMMAR.test(feedId));
   });
 });

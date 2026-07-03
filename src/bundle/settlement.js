@@ -31,7 +31,7 @@
  */
 
 import { getTrustTier, canSettle } from '../trust/oracle-trust.js';
-import { SOURCE_SIDE } from './enums.js';
+import { SOURCE_SIDE, TRUST_TIER } from './enums.js';
 import { authorBreathOracleDeclarations } from './oracles.js';
 
 /** The FORGE boundary side — the only side whose settling source resolves a tier. */
@@ -176,6 +176,19 @@ export function assertAuthoredOracleSettlement(oracleDeclarations, settlementAut
     }
     if (d.source_side === FORGE_SIDE) {
       const tier = getTrustTier(d.source_id);
+      // CF-8 (cycle-003 S03 safety hardening): mirror oracles.js:94-99. getTrustTier
+      // reads a plain-object registry (oracle-trust.js:89-92), so a prototype-key
+      // source_id ('__proto__' → Object.prototype, 'constructor' → the Object
+      // constructor) resolves to a NON-STRING the '=== unknown' check below does not
+      // catch. Fail closed here — reject any non-string / non-enum tier before the
+      // unknown comparison. Producer authoring safety only; does NOT modify
+      // src/trust/oracle-trust.js and adds no runtime/CLI surface.
+      if (typeof tier !== 'string' || !TRUST_TIER.includes(tier)) {
+        throw new Error(
+          `bundle: forge-side oracle '${d.source_id}' resolved a non-string / non-enum ` +
+            `trust_tier — must be one of ${TRUST_TIER.join('|')} (CF-8 prototype-key hardening)`,
+        );
+      }
       if (tier === 'unknown') {
         throw new Error(
           `bundle: forge-side oracle '${d.source_id}' is not a TRUST_REGISTRY key — ` +
@@ -214,6 +227,17 @@ export function assertAuthoredOracleSettlement(oracleDeclarations, settlementAut
     );
   }
   if (s.source_side === FORGE_SIDE) {
+    // CF-8 (cycle-003 S03): fail closed on a non-string / non-enum declared_trust_tier
+    // (incl. Object.prototype and Echelon-owned trust/admission states like
+    // 'signal_initiated') BEFORE the canSettle comparison, mirroring oracles.js:94-99.
+    // canSettle alone coerces a non-enum value to a silent `false`; this rejects it
+    // explicitly so an Echelon-owned state can never be smuggled in as accepted trust.
+    if (typeof s.declared_trust_tier !== 'string' || !TRUST_TIER.includes(s.declared_trust_tier)) {
+      throw new Error(
+        `bundle: forge-side settlement '${s.settling_source_id}' declared_trust_tier is a ` +
+          `non-string / non-enum value — must be one of ${TRUST_TIER.join('|')} (CF-8 hardening)`,
+      );
+    }
     if (!canSettle(s.declared_trust_tier)) {
       throw new Error(
         `bundle: forge-side settlement '${s.settling_source_id}' declared_trust_tier ` +
@@ -221,6 +245,15 @@ export function assertAuthoredOracleSettlement(oracleDeclarations, settlementAut
       );
     }
     const tier = getTrustTier(s.settling_source_id);
+    // CF-8 (cycle-003 S03): the resolved tier may be non-string for a prototype-key
+    // settling_source_id; reject before the equality comparison (defense in depth —
+    // mirrors the forge-oracle branch guard above).
+    if (typeof tier !== 'string' || !TRUST_TIER.includes(tier)) {
+      throw new Error(
+        `bundle: forge-side settlement '${s.settling_source_id}' resolved a non-string / ` +
+          `non-enum trust_tier — must be one of ${TRUST_TIER.join('|')} (CF-8 prototype-key hardening)`,
+      );
+    }
     if (s.declared_trust_tier !== tier) {
       throw new Error(
         `bundle: forge-side settlement '${s.settling_source_id}' declared_trust_tier ` +

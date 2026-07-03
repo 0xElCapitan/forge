@@ -48,8 +48,19 @@ function isInside(child, parent) {
 
 function importSpecifiers(content) {
   const specs = [];
-  // static `import ... from '...'` / `export ... from '...'` (line-anchored: ignores prose).
-  const reStatic = /^\s*(?:import|export)\b[^\n]*?\bfrom\s*['"]([^'"]+)['"]/gm;
+  // static `import ... from '...'` / `export ... from '...'`.
+  // CF-9 (cycle-003 S03 boundary hardening): the span between the import/export
+  // keyword and `from` uses `[^;]*?` (a statement-bounded class that DOES cross
+  // newlines) instead of the prior line-anchored `[^\n]*?`, so a multi-line braced
+  // import —
+  //     import {
+  //       foo,
+  //     } from 'some-external';
+  // — is detected, not silently evaded. The leading `(?:^|;|\n)` anchors the match
+  // at a statement start and `[^;]` cannot leap a `;`, so the dotall span stays
+  // bounded to a single statement and does not over-match prose or a from-less
+  // side-effect import followed by a later `from` (SDD §5 Lane 5 strategy (b)).
+  const reStatic = /(?:^|;|\n)\s*(?:import|export)\b[^;]*?\bfrom\s*['"]([^'"]+)['"]/gm;
   // dynamic `import('...')`.
   const reDynamic = /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
   let m;
@@ -116,5 +127,64 @@ describe('bundle boundaries — src/bundle/ external imports are allowlisted (pr
     ]) {
       assert.ok(!EXTERNAL_IMPORT_ALLOWLIST.has(forbidden), `${forbidden} must never be allowlisted`);
     }
+  });
+});
+
+// ── CF-9 (cycle-003 S03): multi-line import detection regression ──────────────
+//
+// The pre-CF-9 line-anchored regex matched only single-line `import ... from`.
+// A forbidden external dependency hidden behind a multi-line braced import would
+// evade the allowlist walk. These regressions pin the strengthened detector:
+// multi-line braced imports ARE surfaced, single-line coverage is intact, prose is
+// not over-matched, and a from-less side-effect import does not smear across
+// statements. This hardens the TEST that guards the boundary — it adds no
+// producer / runtime / CLI surface (precondition only; PRD §5, NFR-BOUNDARY).
+
+describe('bundle boundaries — CF-9 multi-line import detection (cycle-003 S03)', () => {
+  it('detects a single-line import specifier (baseline, unchanged)', () => {
+    assert.deepEqual(importSpecifiers(`import { foo } from './sibling.js';`), ['./sibling.js']);
+  });
+
+  it('detects a single-line export-from re-export (baseline, unchanged)', () => {
+    assert.deepEqual(importSpecifiers(`export { x } from './y.js';`), ['./y.js']);
+  });
+
+  it('detects a multi-line braced import — the pre-CF-9 evasion (forbidden external surfaced)', () => {
+    const multiline = ['import {', '  createHash,', '  randomBytes,', "} from 'crypto-js';"].join('\n');
+    const specs = importSpecifiers(multiline);
+    assert.ok(
+      specs.includes('crypto-js'),
+      `multi-line braced import must be detected; got ${JSON.stringify(specs)}`,
+    );
+  });
+
+  it('a synthetic multi-line forbidden external import trips the allowlist class (bare specifier)', () => {
+    // Mirrors how the allowlist walk classifies a specifier: a bare (non-relative)
+    // specifier is a third-party dependency and is rejected. Pre-CF-9 it was never
+    // even surfaced because the line-anchored regex skipped the multi-line form.
+    const sneaky = ['import {', '  evil,', "} from 'exfiltrate-secrets';"].join('\n');
+    const specs = importSpecifiers(sneaky);
+    assert.ok(specs.includes('exfiltrate-secrets'), 'multi-line third-party import surfaced');
+    assert.ok(!'exfiltrate-secrets'.startsWith('.'), 'bare specifier → allowlist walk pushes a violation');
+  });
+
+  it('detects a multi-line import even when a preceding side-effect import has no `from`', () => {
+    const content = [
+      "import './register-side-effect.js';",
+      'import {',
+      '  realThing,',
+      "} from './sibling.js';",
+    ].join('\n');
+    // The from-less side-effect import yields no specifier; the multi-line `from`
+    // import is collected exactly once, not smeared across the two statements.
+    assert.deepEqual(importSpecifiers(content), ['./sibling.js']);
+  });
+
+  it('does not over-match prose that merely contains the word "from"', () => {
+    const prose = [
+      '// This module derives values from the construct manifest.',
+      'const note = "imported from upstream";',
+    ].join('\n');
+    assert.deepEqual(importSpecifiers(prose), []);
   });
 });
