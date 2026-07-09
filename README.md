@@ -6,9 +6,11 @@ FORGE is Echelon's automatic Theatre Factory — the feed-native supply side tha
 
 > The Uniswap factory for prediction surfaces.
 
-FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 750 tests, zero external dependencies.
+FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 938 tests, zero external dependencies.
 
-v0.3.0 adds **ProposalReceipt v0** — a signed, independently verifiable proof that a given proposal envelope was produced from a specific input under a specific policy and code version. Ed25519 signing, JCS-subset canonicalization, and the `forge-verify` replay verifier CLI.
+> **Current standing claim ceiling.** FORGE can emit a local, content-addressed ConstructAdmissionBundle producer artifact for the narrow BREATH worked path matching the Cycle-113 receiving surface shape — and nothing stronger. The signed-ProposalReceipt / Ed25519-signing / `forge-verify` CLI / RLMF-certificate surfaces referenced below are **legacy / code-map** — present in the tree from earlier cycles, but **not current product claims**. See `spec/STABILITY.md` and `BUTTERFREEZONE.md`'s "Release Posture & Claim Ceiling" for the authoritative statement.
+
+v0.3.0 (the *package* version documented in `CHANGELOG.md`, 2026-04-11 — distinct from the current Proposal IR `ir_version` 0.3.0) added **ProposalReceipt v0** — a signed, independently verifiable proof that a given proposal envelope was produced from a specific input under a specific policy and code version, with Ed25519 signing, JCS-subset canonicalization, and the `forge-verify` replay verifier CLI. This pipeline is **legacy / code-map** (not a current product claim; see the sections below marked accordingly).
 
 ---
 
@@ -27,7 +29,12 @@ const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
 
 console.log(result.envelope);   // Versioned ProposalEnvelope (spec/proposal-ir.json)
 console.log(result.proposals);  // Raw proposals array
+```
 
+<details>
+<summary><strong>Legacy / code-map (not a current product claim):</strong> ProposalReceipt signing + ForgeRuntime theatre lifecycle</summary>
+
+```js
 // With ProposalReceipt — signed proof of deterministic output
 // Production: sign with ed25519 key (see docs/key-management.md)
 // Dev/test: omit `sign` to generate unsigned receipts for local verification
@@ -52,7 +59,11 @@ console.log(forge.getRuntime().getState());       // Runtime state
 console.log(forge.getCertificates());             // RLMF certificates after resolution
 ```
 
+</details>
+
 ## Pipeline
+
+> **Code map, not a claim ceiling.** This diagram traces the full pipeline present in the tree. The `buildReceipt`/`signReceipt` (receipt/signing) and `ForgeRuntime.instantiate` → RLMF-certificate stages are **legacy / held — not current product claims** (see the top-of-file claim ceiling note). The current standing claim is classify → select → `emitEnvelope`, plus (separately) a ConstructAdmissionBundle producer artifact for the narrow BREATH worked path — not depicted here.
 
 ```mermaid
 graph TD
@@ -73,17 +84,16 @@ graph TD
 
 ## The Seam
 
-FORGE is data-pure. It owns everything up to the **Proposal IR envelope** — classification, template selection, evidence bundle assembly, theatre lifecycle, RLMF certificate export, and (optionally) ProposalReceipt generation with ed25519 signing.
+FORGE is data-pure. Its current claim ceiling is classification, template selection, evidence bundle assembly, and Proposal IR envelope emission — plus, separately, a ConstructAdmissionBundle producer artifact for the narrow BREATH worked path. *(Legacy / code-map, not a current product claim: theatre lifecycle instantiation via `ForgeRuntime`, RLMF certificate export, and optional ProposalReceipt generation with ed25519 signing — all present in the tree from earlier cycles.)*
 
-It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes. Receipts provide an independent verification path via `forge-verify`.
+It does not handle market execution, liquidity, agent logic, or on-chain settlement. Integration with Echelon occurs via the `ProposalEnvelope` contract defined in `spec/proposal-ir.json`. FORGE emits; Echelon's admission gate consumes.
 
 ```
-FORGE    feed → classify → propose → emit envelope → receipt → sign
-                                          │                  │
-Echelon  admission gate → instantiation → resolution → RLMF │
-                                                             │
-Verify   receipt + input → forge-verify → MATCH / MISMATCH ◄┘
+FORGE    feed → classify → propose → emit envelope
+Echelon  admission gate → instantiation → resolution
 ```
+
+*(Legacy / code-map — not current product claims: the receipt/sign/forge-verify and RLMF stages shown in the Pipeline diagram above.)*
 
 ## Requirements
 
@@ -101,17 +111,19 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (735 tests)
+# Unit tests (923 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (750 tests — unit + convergence + integration)
+# Everything (938 tests — unit + convergence + integration)
 npm run test:all
 ```
 
 ## Modules
+
+> **Code map, not a claim ceiling.** Rows tagged _(legacy)_ are present in the tree but are **not current product claims** — see the claim ceiling note at the top of this file.
 
 | Module | Description |
 |--------|-------------|
@@ -121,21 +133,21 @@ npm run test:all
 | `src/selector/` | Template selection rules |
 | `src/processor/` | EvidenceBundle assembly, quality scoring, doubt pricing |
 | `src/trust/` | Oracle trust tiers (T0–T3), adversarial detection |
-| `src/rlmf/` | Brier scoring, RLMF certificate export |
+| `src/rlmf/` | _(legacy)_ Brier scoring, RLMF certificate export |
 | `src/filter/` | Economic usefulness scoring |
 | `src/composer/` | Temporal feed alignment and causal ordering |
 | `src/replay/` | Deterministic replay for convergence testing |
 | `src/ir/` | Proposal IR envelope emitter — the Echelon integration boundary |
-| `src/receipt/` | ProposalReceipt — canonicalization, hashing, signing, verification |
-| `src/runtime/` | ForgeRuntime — theatre lifecycle orchestrator |
+| `src/receipt/` | _(legacy)_ ProposalReceipt — canonicalization, hashing, signing, verification |
+| `src/runtime/` | _(legacy)_ ForgeRuntime — theatre lifecycle orchestrator |
 | `src/adapter/` | Live feed adapters (USGS seismic) |
 | `src/theatres/` | Theatre templates — threshold_gate, cascade, divergence, regime_shift, anomaly, persistence |
-| `bin/` | `forge-verify` — independent replay verifier CLI |
-| `spec/` | Proposal IR JSON Schema, Receipt v0 schema, construct spec |
+| `bin/` | _(legacy)_ `forge-verify` — independent replay verifier CLI |
+| `spec/` | Proposal IR JSON Schema, Receipt v0 schema (legacy), construct spec |
 
 ## Granular Exports
 
-Every sub-module is exported individually for testing, debugging, and the convergence loop:
+Every sub-module is exported individually for testing, debugging, and the convergence loop. Groups tagged _(legacy)_ are present but are **not current product claims**:
 
 ```js
 import {
@@ -157,7 +169,7 @@ import {
   getTrustTier, canSettle, validateSettlement,
   checkAdversarial, checkChannelConsistency,
 
-  // RLMF
+  // RLMF (legacy — not a current product claim)
   exportCertificate, brierScoreBinary, brierScoreMultiClass,
 
   // Filter
@@ -172,7 +184,7 @@ import {
   // IR
   emitEnvelope,
 
-  // Runtime
+  // Runtime (legacy — not a current product claim)
   ForgeRuntime,
 
   // Theatres
@@ -187,7 +199,7 @@ import {
   USGSLiveAdapter, classifyUSGSFeed,
 } from './src/index.js';
 
-// Receipt internals (not re-exported — used via analyze({ receipt: true }) or forge-verify)
+// Receipt internals (legacy — not a current product claim; not re-exported — used via analyze({ receipt: true }) or forge-verify)
 import { canonicalize }     from './src/receipt/canonicalize.js';
 import { sha256 }           from './src/receipt/hash.js';
 import { buildReceipt }     from './src/receipt/receipt-builder.js';
@@ -218,7 +230,9 @@ const envelope = emitEnvelope({
 // envelope.usefulness_scores        → { '0': 0.82, '1': 0.71, ... }
 ```
 
-## ProposalReceipt
+## ProposalReceipt (Legacy / Not a Current Claim)
+
+> **Legacy / code-map — not a current product claim.** This surface is present in the tree from an earlier cycle but is outside the current claim ceiling (0.4.0 scope: no signature production or verification). Kept here for code-map reference only; not something FORGE currently asserts as product.
 
 A ProposalReceipt is a signed proof that a specific ProposalEnvelope was produced from a specific input, under a specific policy configuration and code version. It enables independent verification without trusting the FORGE operator.
 
@@ -252,7 +266,9 @@ const result = await forge.analyze('fixtures/usgs-m4.5-day.json', {
 
 Receipt schema: `spec/receipt-v0.json`. Canonicalization: JCS-subset/v0 (see `docs/canonicalization.md`). Key management: `docs/key-management.md`. Retention: `docs/retention-policy.md`.
 
-## forge-verify
+## forge-verify (Legacy / Not a Current Claim)
+
+> **Legacy / code-map — not a current product claim.** Present in the tree from an earlier cycle but outside the current claim ceiling (0.4.0 scope: no CLI readiness beyond the ConstructAdmissionBundle producer path itself).
 
 Independent replay verifier CLI. Re-runs the FORGE pipeline on the original input and compares the output hash against the receipt.
 
@@ -288,7 +304,9 @@ graph TD
     style T3 fill:#3a1a1a,stroke:#f44336,color:#fff
 ```
 
-## RLMF Certificates
+## RLMF Certificates (Legacy / Not a Current Claim)
+
+> **Legacy / code-map — not a current product claim.** Present in the tree from an earlier cycle but outside the current claim ceiling (0.4.0 scope: no certification).
 
 After a theatre resolves, export a training certificate:
 
@@ -342,12 +360,14 @@ Real `forge.analyze()` IR output for each backing spec, used by Echelon's bridge
 
 ## Documentation
 
+Entries tagged _(legacy)_ document the receipt/signing pipeline — present in the tree but not a current product claim.
+
 | Document | Description |
 |----------|-------------|
-| `docs/canonicalization.md` | JCS-subset/v0 canonical JSON spec |
-| `docs/key-management.md` | Ed25519 key format, rotation, environment variables |
-| `docs/retention-policy.md` | 90-day retention window, git-retained vs caller-retained |
-| `docs/echelon-integration.md` | Admission gate integration path for receipts |
+| `docs/canonicalization.md` | _(legacy)_ JCS-subset/v0 canonical JSON spec |
+| `docs/key-management.md` | _(legacy)_ Ed25519 key format, rotation, environment variables |
+| `docs/retention-policy.md` | _(legacy)_ 90-day retention window, git-retained vs caller-retained |
+| `docs/echelon-integration.md` | _(legacy)_ Admission gate integration path for receipts |
 
 ## License
 

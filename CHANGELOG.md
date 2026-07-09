@@ -2,6 +2,18 @@
 
 All notable changes to FORGE will be documented in this file.
 
+## [IR 0.3.0] - 2026-06-06
+
+Proposal IR schema bump from `0.2.0` to `0.3.0` — Cycle 003 Sprint 01 coordinated breaking bump. **Not a FORGE software/package version bump** — `package.json` stays `0.4.0`, per the cycle-002 precedent (IR `0.2.0` shipped under package `0.4.0`). No `v0.3.0` package tag/release backfill.
+
+### BREAKING
+- **`emitted_at` → `emitted_at_ms`** — renamed on both surfaces (the IR envelope and the bundle manifest/receipt). Value semantics are unchanged: still a Unix epoch **milliseconds** integer (no ISO-8601, no separate second field, no both-fields transition). The `_ms` suffix names the millisecond unit at the field, resolving the prior int-vs-datetime parser ambiguity. Echelon (the sole known consumer) requested and committed to this rename (Tobias follow-up reply). This deliberately spends the pre-1.0 MINOR slot on a breaking rename, once, with the consumer's request and notice — the additive-only-until-1.0 convention is broken here knowingly.
+
+### Added (non-breaking)
+- **`normalization_trace`** — producer-provenance object-array, travelling with the provenance family (`original_hash`, `negative_policy_flags`). Nullable; each entry is `{ field, input_value, normalized_value, method, source, confidence }` with `method ∈ {stated, inferred, mapped, defaulted}`, `source ∈ {forge, echelon, lattice, operator}`, and `confidence ∈ [0,1]`. Producer provenance only — never an admission/acceptance/scoring claim.
+
+See `spec/STABILITY.md` §"0.3.0 — Cycle 003 Sprint 01" for the full contract.
+
 ## [0.4.0] - 2026-06-04
 
 Forward-only release for the Cycle-002 ConstructAdmissionBundle producer.

@@ -2,24 +2,32 @@
 name: forge
 type: construct
 purpose: >
-  Feed-adaptive oracle factory for the Echelon prediction market framework.
-  Classifies any structured event feed across five grammar dimensions (cadence,
-  distribution, noise, density, thresholds), selects Theatre templates via
-  rule-based matching, proposes composed theatres from feed pairs, exports
-  Brier-scored RLMF certificates, and generates signed ProposalReceipts with
-  ed25519 verification via the forge-verify CLI. The Uniswap factory for prediction surfaces.
+  Feed-native classifier and proposal producer for the Echelon prediction
+  market framework. Classifies any structured event feed across five grammar
+  dimensions (cadence, distribution, noise, density, thresholds), selects
+  Theatre templates via rule-based matching, proposes composed theatres from
+  feed pairs, and emits a versioned ProposalEnvelope (IR). CURRENT STANDING
+  CLAIM CEILING: FORGE can emit a local, content-addressed
+  ConstructAdmissionBundle producer artifact for the narrow BREATH worked path
+  matching the Cycle-113 receiving surface — and nothing stronger. The
+  receipt/ed25519-signing pipeline, forge-verify CLI, RLMF certificate export,
+  and ForgeRuntime lifecycle enumerated below are code-map / legacy surfaces
+  from earlier cycles, NOT current product claims (see "Release Posture &
+  Claim Ceiling", which overrides any broader capability implied here).
 key_files:
+  # Current claim-ceiling / data-pure core:
   - README.md
   - src/index.js
   - src/classifier/feed-grammar.js
   - src/selector/rules.js
   - src/selector/template-selector.js
   - src/composer/compose.js
-  - src/receipt/receipt-builder.js
-  - src/receipt/sign.js
-  - bin/forge-verify.js
   - spec/construct.json
-  - spec/receipt-v0.json
+  # Legacy / non-claimed code-map (present in tree; NOT current product claims):
+  - src/receipt/receipt-builder.js   # legacy: ProposalReceipt pipeline
+  - src/receipt/sign.js              # legacy: ed25519 signing (0.4.0 scope: no signature production)
+  - bin/forge-verify.js             # legacy: replay-verifier CLI (0.4.0 scope: no CLI readiness)
+  - spec/receipt-v0.json            # legacy: ProposalReceipt v0 schema
 interfaces:
   core:
     - ForgeConstruct        # src/index.js:37
@@ -36,13 +44,13 @@ interfaces:
     - regime_shift          # src/theatres/regime-shift.js
     - anomaly               # src/theatres/anomaly.js
     - persistence           # src/theatres/persistence.js
-  receipts:
-    - buildReceipt          # src/receipt/receipt-builder.js:24
-    - signReceipt           # src/receipt/sign.js
-    - verifySignature       # src/receipt/sign.js
-    - canonicalize          # src/receipt/canonicalize.js
-    - loadKeyring           # src/receipt/keyring.js
-    - forge-verify (CLI)    # bin/forge-verify.js
+  receipts_legacy_codemap:   # NOT current product claims — ProposalReceipt/signing pipeline from earlier cycles; see "Release Posture & Claim Ceiling"
+    - buildReceipt          # src/receipt/receipt-builder.js:24  (legacy)
+    - signReceipt           # src/receipt/sign.js                (legacy: no signature production in 0.4.0 scope)
+    - verifySignature       # src/receipt/sign.js                (legacy)
+    - canonicalize          # src/receipt/canonicalize.js        (shared primitive: content-addressing IS in-ceiling for the bundle digest)
+    - loadKeyring           # src/receipt/keyring.js             (legacy)
+    - forge-verify (CLI)    # bin/forge-verify.js                (legacy: no CLI readiness in 0.4.0 scope)
   oracles:
     - oracle-trust (T0-T3)  # src/trust/oracle-trust.js:61
 dependencies: []
@@ -57,7 +65,7 @@ ecosystem:
     protocol: echelon-theatres@0.1.0
 capability_requirements:
   - filesystem: read (scope: fixture files)
-version: v0.3.0
+version: v0.4.0
 installation_mode: standalone
 trust_level: L1-local
 -->
@@ -65,10 +73,14 @@ trust_level: L1-local
 # FORGE
 
 <!-- provenance: OPERATIONAL -->
-FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre Factory — the feed-native supply side that turns any structured event stream into prediction market proposals without human curation. It classifies feeds across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, exports Brier-scored RLMF training certificates, and generates signed ProposalReceipts that prove a specific envelope was produced from a specific input under a specific policy and code version. Receipts are independently verifiable via the `forge-verify` CLI. FORGE is not one of many possible Theatre Factory inputs — it is the specific component that makes the factory automatic, covering domains where statistical structure in live data is the only reliable signal. The Uniswap factory for prediction surfaces.
+FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's feed-native supply side — it turns a structured event stream into prediction-market proposals without human curation. It classifies feeds across five grammar dimensions (cadence, distribution, noise, density, thresholds), selects matching Theatre templates via 13 rule-based matching rules, proposes composed theatres from feed pairs, and emits a versioned ProposalEnvelope (IR). It covers domains where statistical structure in live data is the only reliable classification signal.
+
+> **Current standing claim ceiling.** FORGE can emit a local, content-addressed ConstructAdmissionBundle producer artifact for the narrow BREATH worked path matching the Cycle-113 receiving surface shape — and nothing stronger. The "Release Posture & Claim Ceiling" section below is the authoritative statement and **overrides any broader capability implied by the code-map sections** (Key Capabilities / Architecture / Interfaces / Module Map). Those sections enumerate what is present in the tree, including legacy / held surfaces from earlier cycles (the ProposalReceipt + ed25519-signing pipeline, the `forge-verify` CLI, RLMF certificate export, and the ForgeRuntime lifecycle) that are **not** current product claims.
 
 ## Key Capabilities
 <!-- provenance: CODE-FACTUAL -->
+
+> **Code map, not a claim ceiling.** This section enumerates functions present in the tree — it is a code map, NOT a statement of current product claims. The receipt / ed25519-signing entries (`buildReceipt`, `signReceipt`, `verifySignature`, `loadKeyring`, `getPublicKey`, `getCodeIdentity`, `computePolicyHash`), the `forge-verify` CLI, the RLMF certificate export (`exportCertificate`), and the `ForgeRuntime` lifecycle are **legacy / held surfaces from earlier cycles and are NOT current product claims** (0.4.0 scope: no signature production/verification, no certification, no runtime/CLI readiness). `canonicalize` / `sha256` are shared primitives — content-addressing IS in the current ceiling (the bundle digest); their ProposalReceipt use is legacy. The current standing claim is the ConstructAdmissionBundle BREATH producer only — see "Release Posture & Claim Ceiling".
 
 - **classify** — 5-dimension feed grammar classifier. Orchestrates all five classifiers and returns a `FeedProfile` with cadence, distribution, noise, density, and threshold classifications. (`src/classifier/feed-grammar.js:34`)
 - **classifyCadence** — Cadence classifier: `event_driven` / `seconds` / `minutes` / `hours` / `multi_cadence` / `irregular`. Uses median inter-event delta, jitter coefficient, and bimodal histogram detection. (`src/classifier/cadence.js:129`)
@@ -86,8 +98,10 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **computeUsefulness** — Scores a Theatre proposal across four dimensions: `population_impact`, `regulatory_relevance`, `predictability`, `actionability`. Returns a 0–1 composite usefulness score. (`src/filter/usefulness.js:113`)
 - **buildBundle** — Evidence bundle constructor: computes quality score, doubt price (uncertainty), settlement assessment, and assembles the full bundle object from a raw feed event. (`src/processor/bundles.js:49`)
 - **getTrustTier** / **canSettle** / **validateSettlement** — T0–T3 oracle trust enforcement. `canSettle` returns true only for T0/T1. PurpleAir (T3) enforced as non-settling source. (`src/trust/oracle-trust.js:61`)
-- **exportCertificate** — RLMF training certificate export with Brier score, position history, and calibration bucket. Supports binary and multi-class scoring. (`src/rlmf/certificates.js:91`)
+- **exportCertificate** *(legacy / held — NOT a current product claim)* — RLMF training certificate export with Brier score, position history, and calibration bucket. Supports binary and multi-class scoring. (`src/rlmf/certificates.js:91`)
 - **createReplay** — Deterministic replay of a recorded feed session. Loads a fixture, replays events with configurable speed, and produces reproducible pipeline output. (`src/replay/deterministic.js:84`)
+**Legacy receipt / signing / replay-verifier pipeline** — code-map only, **NOT current product claims** (0.4.0 scope: no signature production/verification, no CLI readiness). `canonicalize` / `sha256` are shared primitives whose content-addressing use IS in-ceiling for the bundle digest:
+
 - **buildReceipt** — Orchestrates receipt construction: canonicalizes raw input, computes input/output/policy hashes, assembles code identity, and optionally signs. Returns a ProposalReceipt conforming to `spec/receipt-v0.json`. (`src/receipt/receipt-builder.js:24`)
 - **canonicalize** — JCS-subset/v0 canonical JSON serializer. Deterministic key ordering, type-safe value encoding (no `undefined`, `NaN`, `Infinity`). (`src/receipt/canonicalize.js`)
 - **sha256** — SHA-256 hash with `sha256:` prefix for receipt fields. (`src/receipt/hash.js`)
@@ -96,11 +110,13 @@ FORGE (Feed-Adaptive Oracle & Runtime Generator) is Echelon's automatic Theatre 
 - **getCodeIdentity** — Returns code identity triple `{ git_sha, package_lock_sha, node_version }` for the receipt `builder` block. `package_lock_sha` is null (zero-dep posture). (`src/receipt/code-identity.js`)
 - **computePolicyHash** — Hashes the active rule set and regulatory tables to produce the receipt `policy.policy_hash` field. (`src/receipt/policy-hasher.js`)
 - **forge-verify** — Independent replay verifier CLI. Re-runs the pipeline on original input and compares output hash against receipt. Exit codes: 0=MATCH, 1=MISMATCH, 2=ERROR. (`bin/forge-verify.js`)
-- **ForgeConstruct** — Top-level construct class. `.analyze(fixturePath)` runs the full pipeline (ingest → classify → select). `.analyze(path, { receipt: true })` adds a ProposalReceipt to the result. `.getCertificates()` returns accumulated RLMF state (defensive copy). (`src/index.js:37`)
+- **ForgeConstruct** — Top-level construct class. `.analyze(fixturePath)` runs the classify → select pipeline. *(The `{ receipt: true }` ProposalReceipt option and the `.getCertificates()` RLMF accessor are legacy / held — NOT current product claims.)* (`src/index.js:37`)
 
 ## Architecture
 <!-- provenance: DERIVED -->
-FORGE follows a linear pipeline: fixture files flow through an ingester, then a 5-dimension classifier, then a rule-based selector that emits Theatre proposals. A parallel processor layer handles evidence bundle construction and trust enforcement. Feed pairs enter the composer for composed Theatre proposals. All resolved theatres export RLMF certificates.
+FORGE follows a linear pipeline: fixture files flow through an ingester, then a 5-dimension classifier, then a rule-based selector that emits Theatre proposals. A parallel processor layer handles evidence bundle construction and trust enforcement. Feed pairs enter the composer for composed Theatre proposals.
+
+> **Code map, not a claim ceiling.** The diagram below traces the full code in the tree, including legacy / held stages. The **Receipt Layer** (`canonicalize → buildReceipt → signReceipt`), the **forge-verify CLI**, **ForgeRuntime**, and the **RLMF** nodes are legacy / held surfaces — NOT current product claims (0.4.0 scope: no signature production, no certification, no runtime/CLI readiness). The current standing claim is the ConstructAdmissionBundle BREATH producer only (see "Release Posture & Claim Ceiling"); it is a separate producer path not depicted in this pre-Cycle-002 diagram.
 
 ```mermaid
 flowchart TD
@@ -263,9 +279,11 @@ Directory structure:
 
 ### Construct API
 
+> **Code map, not a claim ceiling.** Rows tagged _(legacy)_ — the ProposalReceipt/signing pipeline (`buildReceipt`, `signReceipt`, `verifySignature`, `loadKeyring`/`getPublicKey`, `canonicalize`), the `forge-verify` CLI, the RLMF `exportCertificate`, and `ForgeRuntime` — are present in the tree but are **NOT current product claims** (0.4.0 scope: no signature production, no certification, no runtime/CLI readiness). Current standing claim = ConstructAdmissionBundle BREATH producer (see "Release Posture & Claim Ceiling").
+
 | Export | Type | Description |
 |--------|------|-------------|
-| `ForgeConstruct` | Class | Main construct. `.analyze(fixturePath)` → full pipeline. `.getCertificates()` → RLMF state |
+| `ForgeConstruct` | Class | Main construct. `.analyze(fixturePath)` → classify → select pipeline. _(legacy: `.getCertificates()` RLMF accessor, `{ receipt: true }` option)_ |
 | `classify` | Function | events[] + options → FeedProfile (5-dimension grammar) |
 | `classifyCadence` | Function | events[] → cadence classification |
 | `classifyDistribution` | Function | events[] → distribution classification |
@@ -288,18 +306,18 @@ Directory structure:
 | `checkAdversarial` | Function | bundle → adversarial detection result |
 | `checkChannelConsistency` | Function | bundle → channel consistency result |
 | `ECHELON_PROVENANCE_MAP` | Frozen Constant | T0–T3 → provenance + confidence mapping (`src/trust/oracle-trust.js`) |
-| `exportCertificate` | Function | theatre + config → RLMF certificate |
-| `brierScoreBinary` | Function | outcome + probability → Brier score |
-| `brierScoreMultiClass` | Function | outcome_bucket + distribution → Brier score |
+| `exportCertificate` | Function _(legacy)_ | theatre + config → RLMF certificate — **NOT a current product claim** |
+| `brierScoreBinary` | Function _(legacy)_ | outcome + probability → Brier score (RLMF convergence tooling) |
+| `brierScoreMultiClass` | Function _(legacy)_ | outcome_bucket + distribution → Brier score (RLMF convergence tooling) |
 | `computeUsefulness` | Function | proposal + feedProfile → usefulness score (0–1) |
 | `emitEnvelope` | Function | feed_id + feed_profile + proposals + options → ProposalEnvelope (IR contract). With `receipt: true`, returns `{ envelope, receipt }` |
-| `buildReceipt` | Function | rawInput + envelope + options → ProposalReceipt (spec/receipt-v0.json) |
-| `signReceipt` | Function | canonicalPayload + privateKeyPem → `{ signature, key_id }` (ed25519) |
-| `verifySignature` | Function | canonicalPayload + signature + publicKeyPem → boolean |
-| `canonicalize` | Function | any JS value → deterministic canonical JSON string (JCS-subset/v0) |
-| `loadKeyring` / `getPublicKey` | Functions | Keyring I/O for receipt verification |
-| `forge-verify` | CLI | `node bin/forge-verify.js receipt.json --input input.json` → exit 0 (MATCH) / 1 (MISMATCH) / 2 (ERROR) |
-| `ForgeRuntime` | Class | Theatre lifecycle orchestrator. `.instantiate(proposals)` → theatre IDs. `.ingestBundle()` → process evidence. `.getCertificates()` → RLMF state |
+| `buildReceipt` | Function _(legacy)_ | rawInput + envelope + options → ProposalReceipt (spec/receipt-v0.json) — **NOT a current product claim** |
+| `signReceipt` | Function _(legacy)_ | canonicalPayload + privateKeyPem → `{ signature, key_id }` (ed25519) — **NOT a current product claim** (0.4.0: no signature production) |
+| `verifySignature` | Function _(legacy)_ | canonicalPayload + signature + publicKeyPem → boolean — **NOT a current product claim** |
+| `canonicalize` | Function | any JS value → deterministic canonical JSON string (JCS-subset/v0) — shared primitive; content-addressing IS in-ceiling for the bundle digest |
+| `loadKeyring` / `getPublicKey` | Functions _(legacy)_ | Keyring I/O for receipt verification — **NOT a current product claim** |
+| `forge-verify` | CLI _(legacy)_ | `node bin/forge-verify.js receipt.json --input input.json` → exit 0 (MATCH) / 1 (MISMATCH) / 2 (ERROR) — **NOT a current product claim** (0.4.0: no CLI readiness) |
+| `ForgeRuntime` | Class _(legacy)_ | Theatre lifecycle orchestrator. `.instantiate(proposals)` → theatre IDs. `.ingestBundle()` → process evidence. `.getCertificates()` → RLMF state — **NOT a current product claim** (0.4.0: no runtime readiness) |
 | `createReplay` | Function | fixturePath + options → deterministic replay session |
 | `ingest` / `ingestFile` | Functions | Raw data / file path → events[] |
 | `USGSLiveAdapter` | Class | Live USGS seismic feed adapter |
@@ -330,6 +348,8 @@ Directory structure:
 ## Module Map
 <!-- provenance: DERIVED -->
 
+> **Code map, not a claim ceiling.** Rows tagged _(legacy)_ — the ProposalReceipt pipeline (`src/receipt/`), RLMF export (`src/rlmf/`), ForgeRuntime (`src/runtime/`), and the `forge-verify` CLI (`bin/`) — enumerate code present in the tree; they are legacy / held, **NOT current product claims**. Current standing claim = ConstructAdmissionBundle BREATH producer (see "Release Posture & Claim Ceiling"). The ConstructAdmissionBundle producer subsystem (`src/bundle/`, added Cycle-002) post-dates this map's last full generation and is documented in "Release Posture & Claim Ceiling" rather than here.
+
 | Module | Files | Purpose |
 |--------|-------|---------|
 | `src/ingester/` | 1 | Generic JSON event stream ingester |
@@ -338,33 +358,44 @@ Directory structure:
 | `src/theatres/` | 6 | Theatre template definitions (threshold_gate, cascade, divergence, regime_shift, persistence, anomaly) |
 | `src/processor/` | 4 | Evidence bundle pipeline (quality scoring, doubt pricing, settlement assessment, bundle orchestration) |
 | `src/trust/` | 2 | Oracle trust enforcement (T0–T3 model) + adversarial detection (channel consistency, coordinate drift, peer divergence) |
-| `src/rlmf/` | 1 | RLMF certificate export (Brier scoring for binary and multi-class, calibration bucket) |
+| `src/rlmf/` | 1 | _(legacy / held — NOT a current product claim)_ RLMF certificate export (Brier scoring for binary and multi-class, calibration bucket) |
 | `src/filter/` | 1 | Usefulness scoring across four dimensions: population_impact, regulatory_relevance, predictability, actionability |
 | `src/composer/` | 1 | Feed composition: temporal alignment (sliding window), causal ordering (mean offset analysis) |
 | `src/replay/` | 1 | Deterministic replay of recorded feed sessions |
-| `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary. Receipt generation wired here |
-| `src/receipt/` | 7 | ProposalReceipt pipeline: canonicalization (JCS-subset/v0), SHA-256 hashing, policy hashing, code identity, receipt builder, ed25519 signing/verification, keyring management |
-| `src/runtime/` | 1 | ForgeRuntime — theatre lifecycle orchestrator (instantiate, ingest, expire, resolve) |
+| `src/ir/` | 1 | Proposal IR envelope emitter — the Echelon integration boundary. _(The optional receipt-generation wiring is legacy / held.)_ |
+| `src/receipt/` | 7 | _(legacy / held — NOT a current product claim)_ ProposalReceipt pipeline: canonicalization (JCS-subset/v0), SHA-256 hashing, policy hashing, code identity, receipt builder, ed25519 signing/verification, keyring management. (`canonicalize`/`sha256` are shared primitives; content-addressing IS in-ceiling for the bundle digest.) |
+| `src/runtime/` | 1 | _(legacy / held — NOT a current product claim)_ ForgeRuntime — theatre lifecycle orchestrator (instantiate, ingest, expire, resolve) |
 | `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
-| `bin/` | 1 | `forge-verify` — independent replay verifier CLI for ProposalReceipts |
-| `spec/` | 5 | Construct spec, Proposal IR schema, Receipt v0 schema (`receipt-v0.json`), stability policy |
-| `test/unit/` | 26 | Unit test suite — 735 tests (node:test, zero dependencies) |
-| `test/integration/` | 1 | Receipt pipeline E2E tests — round-trip verify for all 3 backing specs |
+| `bin/` | 1 | _(legacy / held — NOT a current product claim)_ `forge-verify` — independent replay verifier CLI for ProposalReceipts |
+| `spec/` | 5 | Construct spec, Proposal IR schema, Receipt v0 schema (`receipt-v0.json` — legacy), stability policy |
+| `test/unit/` | 34 | Unit test suite — 923 tests (node:test, zero dependencies) |
+| `test/integration/` | 1 | _(legacy / held)_ Receipt pipeline E2E tests — round-trip verify for all 3 backing specs |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
 ## Verification
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 735 unit tests (`node --test test/unit/*.spec.js`), 750 total with convergence + integration
+- 923 unit tests (`node --test test/unit/*.spec.js`), 938 total with convergence + integration (`npm run test:all`: 938 pass / 0 fail / 241 suites)
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 735
+# ℹ pass 923
 # ℹ fail 0
 ```
+
+## Release Posture & Claim Ceiling
+<!-- provenance: OPERATIONAL -->
+
+**Release:** `package.json` version `0.4.0` (unchanged); latest tag `v0.4.0`; `v0.5.0` absent. Cycle-003 is closed — landed on `master` (`master` = `origin/master` = `82f4db89e88e26aa2f0f5dfe25aeb5317b050d70`). Sprints S06/S07 remain deferred carry-forward — **not** Cycle-004 scope.
+
+**Proposal IR:** envelope `ir_version` is `0.3.0` — `emitted_at` renamed to `emitted_at_ms` (BREAKING, both the IR envelope and the bundle manifest/receipt surfaces) and `normalization_trace` added (additive, populated producer-provenance array). Bundle manifest `ir_version` stays `0.2.0` — a separate version domain from the envelope `ir_version`, by design (no coupling between the two). See `spec/STABILITY.md`.
+
+**Claim ceiling:** FORGE can emit a local, content-addressed ConstructAdmissionBundle producer artifact for the narrow BREATH worked path matching the Cycle-113 receiving surface shape — and nothing stronger.
+
+**Held gates / non-claims:** `composed_trust` remains reserved / non-emitted / separately gated — no schema key exists, no producer path constructs it (`test/unit/composed-trust-do-not-emit.spec.js` asserts the non-emission invariant). No populated `scoring.*` field has shipped. FORGE builds no VerificationReceipt substrate — verification remains Echelon-owned unless a future explicit operator/Tobias ownership decision changes that. The ConstructAdmissionBundle producer makes no Echelon admission, parser-acceptance, certification, or calibration-improvement claim, and produces no signature; it is BREATH-only (no TREMOR/CORONA ConstructAdmissionBundle claim) with no runtime/CLI readiness beyond the producer path itself.
 
 ## Culture
 <!-- provenance: OPERATIONAL -->
@@ -382,7 +413,7 @@ node --test test/unit/*.spec.js
 
 ```bash
 # No install needed — zero dependencies, Node.js 20+ only
-node --test test/unit/*.spec.js          # Run unit tests (735 tests)
+node --test test/unit/*.spec.js          # Run unit tests (923 tests)
 node --test test/convergence/*.spec.js   # Run convergence tests
 ```
 
@@ -411,6 +442,10 @@ const pairs = alignFeeds(aqiEvents, windEvents, 300_000);   // ±5 min window
 const causal = detectCausalOrdering(pairs);
 // { leader: 'B', lag_ms: 3600000 }  → wind leads AQI by ~1h
 ```
+
+> **Manual patch note (2026-07-09).** This BUTTERFREEZONE is **currently curated by hand**, not generated: `.claude/scripts/butterfreezone-gen.sh` misdetects this repo's project `type` as `framework` (it documents the Loa `.claude/` scaffolding — skills, personas, `loa-hounfour`) instead of `construct` (the FORGE product surface documented above), so its output cannot be used as authority (follow-up: `task_cbd4f65a`). Two hand passes landed on the `cycle-003-carryforward-doc-hygiene` slice (see `grimoires/loa/a2a/cycle-003/25-cycle-003-carryforward-doc-hygiene-implementation-report.md`): pass 1 refreshed version/test/release posture and added "Release Posture & Claim Ceiling"; pass 2 reconciled the older code-map sections against the current claim ceiling.
+>
+> **Reading order for agents:** the "Release Posture & Claim Ceiling" section is authoritative and **overrides any broader capability implied by the code-map sections** (Key Capabilities / Architecture / Interfaces / Module Map). Those sections are a code map of what is in the tree — they include legacy / held surfaces (ProposalReceipt + ed25519 signing, `forge-verify` CLI, RLMF certificate export, ForgeRuntime lifecycle) that are **not** current product claims, and they do not yet document the current-claim ConstructAdmissionBundle producer (`src/bundle/`, added Cycle-002). Some older machine metadata is stale: the `ground-truth-meta` block below still reflects the last full generator run (`1cace7a`, 2026-04-11, pre-Cycle-002) and was deliberately left untouched — it does not describe these manual patches and should not be read as current.
 
 <!-- ground-truth-meta
 head_sha: 1cace7a

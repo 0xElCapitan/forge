@@ -103,9 +103,10 @@ The following fields are planned as additive (non-breaking) for Cycle 002:
 - `usefulness_breakdown` — decomposition of the composite usefulness score into four component scores (`predictability`, `settlement_clarity`, `actionability`, `population_impact`)
 - `allocation_class` — routing tier derived from usefulness breakdown (`"core"` | `"niche"` | `"experimental"`)
 - `classifier_version` — independent semver for the Pythia classifier, enabling version-aware composition in downstream module pipelines
-- `composed_trust` — trust and settlement authority metadata for Hermes-composed theatres; schema subject to co-design with Echelon before 002 ships
 
-The following fields are planned as additive (non-breaking) for Cycle 003 (nullable in 002, populated in 003):
+`composed_trust` was originally listed here as a Cycle 002 planned addition. It has since moved to [Reserved Field Names](#reserved-field-names) below — see that section for its current, non-emitted status.
+
+The following fields remain reserved and unpopulated. They are not part of any shipped `ir_version` through `0.3.0`, and no populated `scoring.*` field has ever shipped:
 
 - `scoring.benchmark` — naive forecaster comparison scores per theatre type
 - `scoring.skill_adjusted` — difficulty-adjusted skill delta over the benchmark forecaster
@@ -128,6 +129,12 @@ other purposes in any cycle before the relevant spec ships:
   Not emitted until the module contract spec is finalized.
 - `module_id` — reserved as alternative identifier if `module_type` is
   insufficient for routing.
+- `composed_trust` — reserved for trust and settlement authority metadata for
+  Hermes-composed theatres. **Non-emitted**: no schema key exists in any shipped
+  `ir_version` through `0.3.0`, and no producer path constructs this field
+  (`test/unit/composed-trust-do-not-emit.spec.js` asserts the non-emission
+  invariant). Separately gated: schema shape is subject to co-design with
+  Echelon, with no committed target cycle.
 
 ## ConstructAdmissionBundle `bundle_schema_version` — Cycle 003 Sprint 02
 
@@ -154,3 +161,11 @@ Scope / non-claims:
   language only — `frozen_baseline_hash` is NOT added this cycle). Recorded here for
   receiving alignment only: FORGE emits no pointer, adds no schema key, and issues no
   cert.
+
+### Scope statement: no VerificationReceipt substrate
+
+FORGE builds no VerificationReceipt substrate. Verification remains Echelon-owned
+unless a future, explicit operator/Tobias ownership decision changes that. FORGE
+may only carry `null` or reserved pointer material (e.g. `manifest.calibration_ref`
+above) when explicitly scoped to a specific field and cycle — never an implemented
+verification, certification, or admission mechanism of its own.
