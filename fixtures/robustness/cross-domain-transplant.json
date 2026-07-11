@@ -1,0 +1,144 @@
+{
+  "seismic_values_dense_regular_cadence": [
+    {
+      "timestamp": 1700000000000,
+      "value": 4.9,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000060000,
+      "value": 4.7,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000120000,
+      "value": 6.1,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000180000,
+      "value": 4.6,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000240000,
+      "value": 5.1,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000300000,
+      "value": 6.6,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000360000,
+      "value": 4.7,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000420000,
+      "value": 4.5,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000480000,
+      "value": 5.2,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000540000,
+      "value": 4.8,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000600000,
+      "value": 4.7,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000660000,
+      "value": 4.8,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000720000,
+      "value": 4.5,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000780000,
+      "value": 5.2,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000840000,
+      "value": 5.4,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000900000,
+      "value": 5.6,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700000960000,
+      "value": 5,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700001020000,
+      "value": 4.9,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700001080000,
+      "value": 4.7,
+      "metadata": {
+        "has_coords": true
+      }
+    },
+    {
+      "timestamp": 1700001140000,
+      "value": 5,
+      "metadata": {
+        "has_coords": true
+      }
+    }
+  ]
+}

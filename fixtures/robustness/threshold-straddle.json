@@ -1,0 +1,2986 @@
+{
+  "cadence": {
+    "below": [
+      {
+        "timestamp": 1700000000000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000001000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000002000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000003000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000004000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000009000,
+        "value": 5,
+        "metadata": {}
+      }
+    ],
+    "above": [
+      {
+        "timestamp": 1700000000000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000001000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000002000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000003000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000004000,
+        "value": 5,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000009500,
+        "value": 5,
+        "metadata": {}
+      }
+    ]
+  },
+  "value_bound": {
+    "below": [
+      {
+        "timestamp": 1700000000000,
+        "value": 10,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000005000,
+        "value": 50,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000010000,
+        "value": 120,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000015000,
+        "value": 300,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000020000,
+        "value": 599.9,
+        "metadata": {}
+      }
+    ],
+    "above": [
+      {
+        "timestamp": 1700000000000,
+        "value": 10,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000005000,
+        "value": 50,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000010000,
+        "value": 120,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000015000,
+        "value": 300,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000020000,
+        "value": 600.1,
+        "metadata": {}
+      }
+    ]
+  },
+  "noise": {
+    "below": [
+      {
+        "timestamp": 1700000000000,
+        "value": 76.6,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000001000,
+        "value": 100,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000002000,
+        "value": 100,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000003000,
+        "value": 100,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000004000,
+        "value": 123.4,
+        "metadata": {}
+      }
+    ],
+    "above": [
+      {
+        "timestamp": 1700000000000,
+        "value": 100,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000001000,
+        "value": 75.97,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000002000,
+        "value": 100,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000003000,
+        "value": 124.03,
+        "metadata": {}
+      },
+      {
+        "timestamp": 1700000004000,
+        "value": 100,
+        "metadata": {}
+      }
+    ]
+  },
+  "density": {
+    "below": [
+      {
+        "timestamp": 1700000000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      }
+    ],
+    "above": [
+      {
+        "timestamp": 1700000000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700000960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700001980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700002940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700003960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700004980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700005940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700006960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700007980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700008940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009060000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009120000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009180000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009240000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009300000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009360000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009420000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009480000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009540000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009600000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009660000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009720000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009780000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009840000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009900000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700009960000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010020000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010080000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010140000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010200000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010260000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010320000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010380000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010440000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010500000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010560000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010620000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010680000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010740000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010800000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010860000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010920000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700010980000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011040000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011100000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011160000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011220000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011280000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011340000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011400000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011460000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011520000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011580000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011640000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011700000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011760000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011820000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011880000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700011940000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      },
+      {
+        "timestamp": 1700012000000,
+        "value": 1,
+        "metadata": {
+          "has_coords": true
+        }
+      }
+    ]
+  }
+}

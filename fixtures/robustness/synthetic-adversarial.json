@@ -1,0 +1,76 @@
+{
+  "poisoned_values": [
+    {
+      "timestamp": 1700000000000,
+      "value": 10,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000001000,
+      "value": null,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000002000,
+      "value": 20,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000003000,
+      "value": null,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000004000,
+      "value": 30,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000005000,
+      "value": null,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000006000,
+      "value": 1e+308,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000007000,
+      "value": 40,
+      "metadata": {}
+    }
+  ],
+  "boundary_gamed_spike": [
+    {
+      "timestamp": 1700000000000,
+      "value": 50,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000001000,
+      "value": 51,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000002000,
+      "value": 49,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000003000,
+      "value": 52,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000004000,
+      "value": 48,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000005000,
+      "value": 68,
+      "metadata": {}
+    }
+  ]
+}

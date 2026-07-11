@@ -1,0 +1,22 @@
+{
+  "empty": [],
+  "single_event": [
+    {
+      "timestamp": 1700000000000,
+      "value": 5,
+      "metadata": {}
+    }
+  ],
+  "two_events": [
+    {
+      "timestamp": 1700000000000,
+      "value": 5,
+      "metadata": {}
+    },
+    {
+      "timestamp": 1700000001000,
+      "value": 6,
+      "metadata": {}
+    }
+  ]
+}
