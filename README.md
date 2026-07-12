@@ -6,7 +6,7 @@ FORGE is Echelon's automatic Theatre Factory — the feed-native supply side tha
 
 > The Uniswap factory for prediction surfaces.
 
-FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 938 tests, zero external dependencies.
+FORGE is not one of many possible Theatre Factory inputs. It is the specific component that makes the factory automatic — covering domains where statistical structure in live data is the only reliable signal and where human language is inadequate as a classification tool. Three validated backing specs (TREMOR: seismic, CORONA: space weather, BREATH: air quality), 20.5/20.5 convergence on raw and anonymized fixtures, 1001 tests, zero external dependencies.
 
 > **Current standing claim ceiling.** FORGE can emit a local, content-addressed ConstructAdmissionBundle producer artifact for the narrow BREATH worked path matching the Cycle-113 receiving surface shape — and nothing stronger. The signed-ProposalReceipt / Ed25519-signing / `forge-verify` CLI / RLMF-certificate surfaces referenced below are **legacy / code-map** — present in the tree from earlier cycles, but **not current product claims**. See `spec/STABILITY.md` and `BUTTERFREEZONE.md`'s "Release Posture & Claim Ceiling" for the authoritative statement.
 
@@ -111,13 +111,13 @@ cd forge
 ## Tests
 
 ```bash
-# Unit tests (923 tests)
+# Unit tests (986 tests)
 npm run test:unit
 
 # Convergence tests — TREMOR, CORONA, BREATH backing specs
 npm test
 
-# Everything (938 tests — unit + convergence + integration)
+# Everything (1001 tests — unit + convergence + integration)
 npm run test:all
 ```
 

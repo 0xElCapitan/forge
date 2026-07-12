@@ -368,7 +368,7 @@ Directory structure:
 | `src/adapter/` | 2 | Live feed adapters (USGS seismic, SWPC space weather) |
 | `bin/` | 1 | _(legacy / held — NOT a current product claim)_ `forge-verify` — independent replay verifier CLI for ProposalReceipts |
 | `spec/` | 5 | Construct spec, Proposal IR schema, Receipt v0 schema (`receipt-v0.json` — legacy), stability policy |
-| `test/unit/` | 34 | Unit test suite — 923 tests (node:test, zero dependencies) |
+| `test/unit/` | 36 | Unit test suite — 986 tests (node:test, zero dependencies) |
 | `test/integration/` | 1 | _(legacy / held)_ Receipt pipeline E2E tests — round-trip verify for all 3 backing specs |
 | `test/convergence/` | 3 spec + 5 support | Convergence loop: 3 backing specs × raw + anonymized modes (TREMOR, CORONA, BREATH) |
 
@@ -376,20 +376,22 @@ Directory structure:
 <!-- provenance: CODE-FACTUAL -->
 
 - Trust Level: **L1 — Local**
-- 923 unit tests (`node --test test/unit/*.spec.js`), 938 total with convergence + integration (`npm run test:all`: 938 pass / 0 fail / 241 suites)
+- 986 unit tests (`node --test test/unit/*.spec.js`), 1001 total with convergence + integration (`npm run test:all`: 1001 pass / 0 fail / 267 suites)
 - Zero external dependencies (Node.js 20+ built-in test runner)
 - Regulatory tables: EPA AQI (6 breakpoints), NOAA Kp (9 levels), NOAA R (5 scales)
 
 ```bash
 node --test test/unit/*.spec.js
-# ℹ pass 923
+# ℹ pass 986
 # ℹ fail 0
 ```
 
 ## Release Posture & Claim Ceiling
 <!-- provenance: OPERATIONAL -->
 
-**Release:** `package.json` version `0.4.0` (unchanged); latest tag `v0.4.0`; `v0.5.0` absent. Cycle-003 is closed — landed on `master` (`master` = `origin/master` = `82f4db89e88e26aa2f0f5dfe25aeb5317b050d70`). Sprints S06/S07 remain deferred carry-forward — **not** Cycle-004 scope.
+**Release:** `package.json` version `0.4.0` (unchanged); latest tag `v0.4.0`; `v0.5.0` absent. Cycle-003 is closed — landed on `master` (`master` = `origin/master` = `3bdc6d5bcec16f781405963dd9dfa334ccb75334`). Sprints S06 (classifier robustness) and S07 (structural baseline forecasters) were completed as Cycle-003 deferred carry-forward — implemented, reviewed, audited (both PASS), landed on `master`, and branch-pruned. M0 ("carry-forward closed") is complete. Cycle-004 planning has not yet started.
+
+**Next direction (planning-stage, not yet started).** The accepted next direction is Cycle-004 planning for a thin harness, a default-OFF derivation kernel, a selection/census apparatus, pre-registration, and an M3 freeze commit. The Instrument Compiler remains a research north star, not a shipped capability or current product claim. Census execution and candidate-feed data contact are not authorized in Cycle-004.
 
 **Proposal IR:** envelope `ir_version` is `0.3.0` — `emitted_at` renamed to `emitted_at_ms` (BREAKING, both the IR envelope and the bundle manifest/receipt surfaces) and `normalization_trace` added (additive, populated producer-provenance array). Bundle manifest `ir_version` stays `0.2.0` — a separate version domain from the envelope `ir_version`, by design (no coupling between the two). See `spec/STABILITY.md`.
 
@@ -413,7 +415,7 @@ node --test test/unit/*.spec.js
 
 ```bash
 # No install needed — zero dependencies, Node.js 20+ only
-node --test test/unit/*.spec.js          # Run unit tests (923 tests)
+node --test test/unit/*.spec.js          # Run unit tests (986 tests)
 node --test test/convergence/*.spec.js   # Run convergence tests
 ```
 
