@@ -188,3 +188,36 @@ describe('bundle boundaries — CF-9 multi-line import detection (cycle-003 S03)
     assert.deepEqual(importSpecifiers(prose), []);
   });
 });
+
+// ── S07 (cycle-003 carry-forward): producer must not import baseline/forecast ─
+//
+// FR-10 structural baseline forecasters (src/baseline/*, or src/forecast/* per
+// the SDD's naming allowance) are comparison/reference instruments only — the
+// ConstructAdmissionBundle producer (src/bundle/) MUST NOT import them. The
+// general "external imports allowlisted" walk above already enforces this
+// transitively (neither directory is in EXTERNAL_IMPORT_ALLOWLIST, so any
+// producer import of either would already fail that check); this block adds an
+// explicit, directly-named assertion per the S07 critical boundary requirement.
+
+const BASELINE_DIR = join(SRC, 'baseline');
+const FORECAST_DIR = join(SRC, 'forecast');
+
+describe('bundle boundaries — src/bundle/ does not import S07 baseline/forecast modules (cycle-003 carry-forward)', () => {
+  it('no src/bundle/ file imports src/baseline/ or src/forecast/', () => {
+    const offenders = [];
+    for (const file of bundleFiles) {
+      for (const spec of importSpecifiers(readFileSync(file, 'utf8'))) {
+        if (!spec.startsWith('.')) continue; // bare/builtin: cannot point into src/baseline or src/forecast
+        const target = resolve(dirname(file), spec);
+        if (isInside(target, BASELINE_DIR) || isInside(target, FORECAST_DIR)) {
+          offenders.push(`${toSrcRel(file)} -> ${spec}`);
+        }
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      `src/bundle/ must not import baseline/forecast modules; found: ${offenders.join(', ')}`,
+    );
+  });
+});
