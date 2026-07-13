@@ -1,0 +1,1843 @@
+{
+  "vector_set_version": "1.0.0",
+  "algorithm_version": "1.0.0",
+  "consumer_scope": "product",
+  "description": "Cycle-004 S01 product-consumed derivation-kernel known-answer vectors (F-5: authored from the written SDD spec BEFORE the kernel exists; expected values NEVER generated from the implementation under test). CP-B correction: existence-bound vectors pin the EXACT IEEE left-fold bound_value (a hashed evidence field) + gate decision, add an underflow-region category, and the full-kernel derive/reject vectors pin the COMPLETE SDD ParameterRecord v0 / RejectionRecord shapes including exact bound_value. Binomial/CI/n*/existence-bound expectations independently computed by exact-rational BigInt reference and cross-checked against the pinned IEEE recurrence. S02 lab-consumed categories (scoring, origin-schedule/purge, manifest-enumeration) are intentionally ABSENT.",
+  "digest_conventions": {
+    "canonicalization": "src/receipt/canonicalize.js (JCS-subset: sorted object keys, stable array order, no insignificant whitespace)",
+    "hash": "src/receipt/hash.js sha256 → lowercase \"sha256:<64hex>\"",
+    "expected_digest": "sha256(canonicalize(expected))",
+    "entry_digest": "sha256(canonicalize(vector object with entry_digest omitted)) — covers id/consumer/category/op/input/expected/expectation_source/derivation_note/expected_digest",
+    "product_subset_digest": "sha256(canonicalize(lexicographically-id-sorted [{id, entry_digest}] over every consumer:\"product\" vector))"
+  },
+  "harness_conventions": {
+    "p_and_alpha": "decimal strings parsed per DR-6 to {num, den=10^d} (e.g. \"0.95\"→{95,100}, \"0.05\"→{5,100})",
+    "existenceBound_edge": "op existenceBound returns the pinned-left-fold JS Number; harness asserts existenceBound(n,p) === expected.bound_value (EXACT Number equality — JS canonical number serialization is part of the deterministic contract) AND (existenceBound(n,p) <= alphaFloat) === expected.passes. Applies to categories existence-bound-edge and existence-bound-underflow.",
+    "throws": "expected {throws:true, reason} ⇒ harness asserts the op throws (DR-5 invalid input); reason is a documentation slug",
+    "kernel_projection": "op deriveThresholdParameter: derive (RANKED_CANDIDATES) and insufficient_history reject vectors pin the COMPLETE SDD record (ParameterRecord v0 §Lane-L1:373-395 / RejectionRecord :400-409) incl. exact bound_value — harness deep-equals the record. The no_nontrivial_parameter vector pins the deterministic pre-existence-gate fields only (state, reason_code, evidence{window, effective_information}); existence-gate fields (bound_value, n_star, reconsideration.needed_n) are absent by design because that gate never runs, and the fuller record shape is not pinned by the Phase-0 SDD.",
+    "effectiveInformation_input": "input.qualifying is the F-3-ordered qualifying array (already filtered/sorted)"
+  },
+  "product_subset_digest": "sha256:59a14ea4a8142828fe8b8b192de2524cf31b174e97728648f19d3a1a25c6a317",
+  "vectors": [
+    {
+      "id": "ci-ranks-equaltail-01",
+      "category": "ci-ranks",
+      "op": "orderStatCIRanks",
+      "description": "CI equal-tail branch n=20 p=0.5 α=0.05",
+      "input": {
+        "n": 20,
+        "p": "0.5",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "l": 6,
+        "u": 15,
+        "widened": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Exact-rational Binomial(20,½) CDF: l=6 (F(5)=21700/2^20≈0.02069≤0.025<F(6)), u=15 (F(14)≈0.97931≥0.975>F(13)); coverage F(14)−F(5)≈0.9586≥0.95 → no widen. Cross-checked vs IEEE pmf-recurrence (agree).",
+      "consumer": "product",
+      "expected_digest": "sha256:701df5f70f9642d591ddf528dd6c981deb1c6d4b2a182fbdb4ec5643d5ec7841",
+      "entry_digest": "sha256:318f544f3be1a436bf6b8ea911fae67229e3ad9e79b6c1efc7441746253948e1"
+    },
+    {
+      "id": "ci-ranks-equaltail-02",
+      "category": "ci-ranks",
+      "op": "orderStatCIRanks",
+      "description": "CI equal-tail branch n=30 p=0.5 α=0.05",
+      "input": {
+        "n": 30,
+        "p": "0.5",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "l": 10,
+        "u": 21,
+        "widened": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Exact-rational Binomial(30,½): l=10, u=21, coverage≥0.95 → no widen. Cross-checked vs IEEE recurrence (agree).",
+      "consumer": "product",
+      "expected_digest": "sha256:9fffdf04227249154f45b8331f7d0cc73e951f1aaa5d5d7cf4b20fe4f7c12d57",
+      "entry_digest": "sha256:64b47602a92458c5a35757f01e196bb7c3371e88fb24c38ae74616643e2e02bc"
+    },
+    {
+      "id": "ci-ranks-natural-fullwidth-01",
+      "category": "ci-ranks",
+      "op": "orderStatCIRanks",
+      "description": "CI equal-tail naturally (1,n) n=7 p=0.5 α=0.05",
+      "input": {
+        "n": 7,
+        "p": "0.5",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "l": 1,
+        "u": 7,
+        "widened": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Binomial(7,½): F(0)=1/128≈0.0078≤0.025 (l=1, F(1)>0.025), F(6)=127/128≈0.9922≥0.975 (u=7); coverage 0.9844≥0.95 → equal-tail yields (1,7), widened=false (NOT the coverage-widen path).",
+      "consumer": "product",
+      "expected_digest": "sha256:f6f8186f9ad7114e4b0f87cfafd21ff8495ed0526a2c7a7409616727d36a8447",
+      "entry_digest": "sha256:542af9f7c6d714ffe548eeef8751ced6a11b3d9037177a3d1ea0c183fead71e2"
+    },
+    {
+      "id": "ci-ranks-widened-01",
+      "category": "ci-ranks",
+      "op": "orderStatCIRanks",
+      "description": "CI coverage-widen branch n=59 p=0.95 α=0.05 (asymmetric tail)",
+      "input": {
+        "n": 59,
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "l": 1,
+        "u": 59,
+        "widened": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Exact-rational Binomial(59,0.95): equal-tail l≈53, u=59 (fallback, no j with F(j−1)≥0.975 since max F(58)=1−0.95^59≈0.9515); coverage F(58)−F(52)≈0.934<0.95 → WIDEN to (1,59), widened=true. Cross-checked vs IEEE recurrence (agree).",
+      "consumer": "product",
+      "expected_digest": "sha256:14a20c844860556eb6d66601a10bbf3a74346be483f980f60d3967684ee08d5c",
+      "entry_digest": "sha256:e5e93a4d3be58ef2a288aafad094ac9923b3d9af61badbb14c2c3f0d6808443a"
+    },
+    {
+      "id": "ei-log2-span-00-zero",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(0)",
+      "input": {
+        "span_ms": 0
+      },
+      "expected": null,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "entry_digest": "sha256:1a6fe4427b87ec90b54f58f424b37215a8c8f1be33df21f3c5d5afc1f8e7365a"
+    },
+    {
+      "id": "ei-log2-span-01-min",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(1)",
+      "input": {
+        "span_ms": 1
+      },
+      "expected": -27,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:7526da843f9dcf11e0fdbc79999f907176e81c7295383cf7b9a35c1543065d03",
+      "entry_digest": "sha256:2aab5f3794f58a9694f09b9aab9cac294cf8b9e5d359807c255c3d06dc232f0a"
+    },
+    {
+      "id": "ei-log2-span-02-just-below-day",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(86399999)",
+      "input": {
+        "span_ms": 86399999
+      },
+      "expected": -1,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:1bad6b8cf97131fceab8543e81f7757195fbb1d36b376ee994ad1cf17699c464",
+      "entry_digest": "sha256:c2c166c14e9176e806aabe4099498b498c99eef92876c1bc9843ad4ef8ce9bdf"
+    },
+    {
+      "id": "ei-log2-span-03-one-day",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(86400000)",
+      "input": {
+        "span_ms": 86400000
+      },
+      "expected": 0,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+      "entry_digest": "sha256:a81ac8388854638a172426a3473851fba82b5c95d0fcd519f742fb9cc3999d33"
+    },
+    {
+      "id": "ei-log2-span-04-two-days",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(172800000)",
+      "input": {
+        "span_ms": 172800000
+      },
+      "expected": 1,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "entry_digest": "sha256:c34c3d2741ad28ada856e3c033e5abf6228e7420ea2049f18fdbbd0c96d06757"
+    },
+    {
+      "id": "ei-log2-span-05-1024-days",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(88473600000)",
+      "input": {
+        "span_ms": 88473600000
+      },
+      "expected": 10,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5",
+      "entry_digest": "sha256:5700f317616a410ee7889b008714e91f854839cee04c21e8c560effcd4f7446a"
+    },
+    {
+      "id": "ei-log2-span-06-2p26-days",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(5798205849600000)",
+      "input": {
+        "span_ms": 5798205849600000
+      },
+      "expected": 26,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:5f9c4ab08cac7457e9111a30e4664920607ea2c115a1433d7be98e97e64244ca",
+      "entry_digest": "sha256:3ad3ae3fe6b855ac1ae407b80ed8f28785bc404bfdcebdc9178962c4115f9e56"
+    },
+    {
+      "id": "ei-log2-span-07-max",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "log2_span_days_floor(9007199254740991)",
+      "input": {
+        "span_ms": 9007199254740991
+      },
+      "expected": 26,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Unique integer k with DAY_MS·2^k ≤ span < DAY_MS·2^(k+1) (span_ms=0 ⇒ null); DR-1 pinned conformance value.",
+      "consumer": "product",
+      "expected_digest": "sha256:5f9c4ab08cac7457e9111a30e4664920607ea2c115a1433d7be98e97e64244ca",
+      "entry_digest": "sha256:a8bb1c5d1ab808dc19be33f50e916bcc9a133cac566bc79fb695c33b78e781ee"
+    },
+    {
+      "id": "ei-log2-span-invalid-exceeds-max",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "invalid span > 2^53−1 → throw",
+      "input": {
+        "span_ms": 9007199254740992
+      },
+      "expected": {
+        "throws": true,
+        "reason": "span_exceeds_safe_max"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-1: span_ms > 2^53−1 (=9007199254740991) is not a safe integer ⇒ DR-5 invalid input (throw).",
+      "consumer": "product",
+      "expected_digest": "sha256:035d15f2543cf049f852a92753604f1e9ab964bd452ff96beb7ffe251a65cfe7",
+      "entry_digest": "sha256:b218d93a992a92ae303f92fce318e1704acdcec86621ca289865b89c7a146f27"
+    },
+    {
+      "id": "ei-log2-span-invalid-negative",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "invalid negative span → throw",
+      "input": {
+        "span_ms": -1
+      },
+      "expected": {
+        "throws": true,
+        "reason": "span_negative"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-1: negative span_ms ⇒ DR-5 invalid input (throw). Never coerced/clamped.",
+      "consumer": "product",
+      "expected_digest": "sha256:1764f680775b7e1056f9927b3b5fe41b36bcd2db34857f67eacda71073c566de",
+      "entry_digest": "sha256:3ae00089526671b2aaeb55a9665268bba5a794950d5604baf87d0417227bf224"
+    },
+    {
+      "id": "ei-log2-span-invalid-noninteger",
+      "category": "ei-log2-span",
+      "op": "log2SpanDaysFloor",
+      "description": "invalid non-integer span → throw",
+      "input": {
+        "span_ms": 1.5
+      },
+      "expected": {
+        "throws": true,
+        "reason": "span_non_integer"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-1: non-integer span_ms fails Number.isSafeInteger ⇒ DR-5 invalid input (throw).",
+      "consumer": "product",
+      "expected_digest": "sha256:ba9fd742e2a4598963d59c23a6b40b238fab9644bb8e653c01e96a3289da79d9",
+      "entry_digest": "sha256:65f7250e85f0eb3a8b90de7d802a5c535696348103b59e64f84d9006ed3e09f9"
+    },
+    {
+      "id": "ei-triple-01",
+      "category": "ei-triple",
+      "op": "effectiveInformation",
+      "description": "EI triple, 7 obs, span 60M ms (k<0 branch), 1 transition",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 30000000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 40000000,
+            "value": 20,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 60000000,
+            "value": 40,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 50,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 80000000,
+            "value": 60,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 90000000,
+            "value": 70,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "events": 7,
+        "span_ms": 60000000,
+        "log2_span_days_floor": -1,
+        "transitions": 1
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "events=7; span=90M−30M=60,000,000 (<DAY_MS ⇒ k=−1); median m_W=HF-1(½)=40; indicators over time order [10..70] vs 40 = [0,0,0,0,1,1,1] ⇒ transitions=1.",
+      "consumer": "product",
+      "expected_digest": "sha256:e56ccf485c970b08eacefb749ce971bda61760e9cd7ed6ec2c936eac7b9b5741",
+      "entry_digest": "sha256:20da208cfbaf09154eea470de16796af6a174d99e7070d4beb3c6c1d0ce7133f"
+    },
+    {
+      "id": "ei-triple-02",
+      "category": "ei-triple",
+      "op": "effectiveInformation",
+      "description": "EI triple, 5 obs, span 4000 ms, 4 transitions",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 1000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 2000,
+            "value": 20,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 3000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 4000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 5000,
+            "value": 15,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "events": 5,
+        "span_ms": 4000,
+        "log2_span_days_floor": -15,
+        "transitions": 4
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "events=5; span=4000 (k: 4000·2^15≥DAY_MS, 4000·2^14<DAY_MS ⇒ −15); median of [10,20,5,30,15]=15; indicators [0,1,0,1,0] ⇒ transitions=4.",
+      "consumer": "product",
+      "expected_digest": "sha256:590086acf5bb9b18676caedad913d26eddeb48cc962f40822ee4659123b63921",
+      "entry_digest": "sha256:e3efad687e16d0c933e29c8b495635f70f44d2e08d49093b78583f3192c422c8"
+    },
+    {
+      "id": "ei-triple-03",
+      "category": "ei-triple",
+      "op": "effectiveInformation",
+      "description": "EI triple, 2 obs, span exactly 1 day (k=0)",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 0,
+            "value": 100,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 86400000,
+            "value": 200,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "events": 2,
+        "span_ms": 86400000,
+        "log2_span_days_floor": 0,
+        "transitions": 1
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "events=2; span=86,400,000=DAY_MS ⇒ k=0; median=100; indicators [0,1] ⇒ transitions=1.",
+      "consumer": "product",
+      "expected_digest": "sha256:5407294aa47bcb850b292b9cf8023e46a96d118fa9d9b11c5385586031c9bca3",
+      "entry_digest": "sha256:3d37dc74acc52047dcba4bb94410e695108f5653a090683de8dfb9009a184fb5"
+    },
+    {
+      "id": "ei-triple-single-01",
+      "category": "ei-triple",
+      "op": "effectiveInformation",
+      "description": "EI triple, single qualifying obs, span_ms=0 ⇒ log2 null",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 1700000000000,
+            "value": 42,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "events": 1,
+        "span_ms": 0,
+        "log2_span_days_floor": null,
+        "transitions": 0
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "events=1; span_ms=0 ⇒ log2_span_days_floor=null; transitions=0 (no i≥1).",
+      "consumer": "product",
+      "expected_digest": "sha256:8d0ae2110c68f022f195cd4fd36dd27cf97b8030598159bf5130c12959413386",
+      "entry_digest": "sha256:0ce374901ceacfe34eec2af5e547fd9526d1a683c240ee8a30f10a35c001e976"
+    },
+    {
+      "id": "existence-bound-edge-p090-at",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.90 n=29 (n* pass)",
+      "input": {
+        "n": 29,
+        "p": "0.90",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.04710128697246249,
+        "passes": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 90/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:dd5b4d5389afb152368424ed829b1e4414b59b44bfd36364da5709a108aec198",
+      "entry_digest": "sha256:56d64719eaa3ee93d5a920ba7a04b45871ad041c75085acf83836806cf06cf80"
+    },
+    {
+      "id": "existence-bound-edge-p090-below",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.90 n=28 (n*−1 fail)",
+      "input": {
+        "n": 28,
+        "p": "0.90",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.0523347633027361,
+        "passes": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 90/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:c83b4e6d2cb26c450099d34f5ef87ddd15de53593c40a52e174fb7b3083ff6be",
+      "entry_digest": "sha256:a1a8256430973db5551577065dd1145edaed11dd47c886bc16c0a312b7ea12f7"
+    },
+    {
+      "id": "existence-bound-edge-p090-deep",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.90 n=5 (deep fail)",
+      "input": {
+        "n": 5,
+        "p": "0.90",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.5905000000000001,
+        "passes": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 90/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:4f118e37a3b5bc920f56cf2c85885977dac32f8a483cf68702fafa3ddcd05950",
+      "entry_digest": "sha256:9c5b8ec4687c839d725c133b0cfb109c45acb3d65da2c259607a4a4641499e10"
+    },
+    {
+      "id": "existence-bound-edge-p095-at",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.95 n=59 (n* pass)",
+      "input": {
+        "n": 59,
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.04849452524942309,
+        "passes": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 95/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:b98727ac32c8299f6164ad09671848a5026dd087c4dcf64696f39d686c341385",
+      "entry_digest": "sha256:722053d7a068278e402dbb10a1094ece7dc411c2a8c36e3121c459309bf13d2f"
+    },
+    {
+      "id": "existence-bound-edge-p095-below",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.95 n=58 (n*−1 fail)",
+      "input": {
+        "n": 58,
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.05104686868360325,
+        "passes": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 95/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:bbf1aac94b1b82c7e904be238a7ae50caa8396d1981c01ca87491419cd825c87",
+      "entry_digest": "sha256:31ac11c8733c1b0cec13978b1afcc0f5b83f04cfc87e9a3103901243f57e22de"
+    },
+    {
+      "id": "existence-bound-edge-p095-deep",
+      "category": "existence-bound-edge",
+      "op": "existenceBound",
+      "description": "existence-bound edge p=0.95 n=5 (deep fail)",
+      "input": {
+        "n": 5,
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.7737812499999999,
+        "passes": false
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "bound_value is the EXACT JS Number from the SDD-pinned recurrence (DR-4/§8.1): p_f = 95/100 (one IEEE division); p_f^n and (1−p_f)^n each by sequential left-fold multiplication (acc·=factor, i=1..n, order pinned); final addition p_f^n + (1−p_f)^n. Computed by an independent implementation of the pinned algorithm (NOT the kernel); IEEE-754 double arithmetic is deterministic ⇒ bit-identity cross-runtime. passes = (bound_value ≤ 0.05); the pinned-IEEE decision is cross-checked against the exact-rational BigInt decision ((num^n+(den−num)^n)·20 ≤ den^n) — they agree. Harness asserts existenceBound(n,p) === bound_value AND (existenceBound(n,p) ≤ 0.05) === passes.",
+      "consumer": "product",
+      "expected_digest": "sha256:29a641820e39ffd4e3eb1208f5eab354684940d2a8eda29fa4de4f3155d8d0fc",
+      "entry_digest": "sha256:5298107338a7c3f07b8e17594149a80f092ea8683915ddd66ce99d8f0a943478"
+    },
+    {
+      "id": "existence-bound-underflow-p090-n350",
+      "category": "existence-bound-underflow",
+      "op": "existenceBound",
+      "description": "existence-bound underflow p=0.90 n=350 ((1−p_f)^n underflows to 0.0)",
+      "input": {
+        "n": 350,
+        "p": "0.90",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 9.65780214059184e-17,
+        "passes": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Deep sequential-power / underflow case (DR-4 \"underflow-region powers\", §8.2). Under the pinned left-fold, (1−p_f)^n = (10/100)^350 underflows to EXACTLY 0.0 (the minor term first reaches 0.0 at n=324; IEEE-754 gradual underflow is deterministic), so bound_value = p_f^n + 0.0 = 9.65780214059184e-17 (the surviving term, exact JS Number from the pinned recurrence, independent implementation — NOT the kernel). passes = (bound_value ≤ 0.05); cross-checked vs exact-rational BigInt (agree). This pins the exact underflow outcome so a cross-runtime change in bound_value cannot pass on the Boolean gate alone.",
+      "consumer": "product",
+      "expected_digest": "sha256:dd1c6d1ee428204f5c7e5d0c4c722a259cabd152989494738b93c90639a6bd85",
+      "entry_digest": "sha256:866f7018e631c7b9ec83edfbfbbc5c5db05cf3d72d410519fbd147d66aac513d"
+    },
+    {
+      "id": "existence-bound-underflow-p095-n249",
+      "category": "existence-bound-underflow",
+      "op": "existenceBound",
+      "description": "existence-bound underflow p=0.95 n=249 ((1−p_f)^n underflows to 0.0)",
+      "input": {
+        "n": 249,
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.0000028390805662094717,
+        "passes": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Deep sequential-power / underflow case (DR-4 \"underflow-region powers\", §8.2). Under the pinned left-fold, (1−p_f)^n = (5/100)^249 underflows to EXACTLY 0.0 (the minor term first reaches 0.0 at n=249; IEEE-754 gradual underflow is deterministic), so bound_value = p_f^n + 0.0 = 0.0000028390805662094717 (the surviving term, exact JS Number from the pinned recurrence, independent implementation — NOT the kernel). passes = (bound_value ≤ 0.05); cross-checked vs exact-rational BigInt (agree). This pins the exact underflow outcome so a cross-runtime change in bound_value cannot pass on the Boolean gate alone.",
+      "consumer": "product",
+      "expected_digest": "sha256:b9bd3a094ab9deb0fe275ba9df0f638d7598dc3fe7a9f509ed2ef65634506e0f",
+      "entry_digest": "sha256:b1b51aea4d9272d63fe41cc81e25c82792bc269a67d6805425648583cb8e2d04"
+    },
+    {
+      "id": "existence-bound-underflow-p099-n400",
+      "category": "existence-bound-underflow",
+      "op": "existenceBound",
+      "description": "existence-bound underflow p=0.99 n=400 ((1−p_f)^n underflows to 0.0)",
+      "input": {
+        "n": 400,
+        "p": "0.99",
+        "alpha": "0.05"
+      },
+      "expected": {
+        "bound_value": 0.017950553275045134,
+        "passes": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Deep sequential-power / underflow case (DR-4 \"underflow-region powers\", §8.2). Under the pinned left-fold, (1−p_f)^n = (1/100)^400 underflows to EXACTLY 0.0 (the minor term first reaches 0.0 at n=162; IEEE-754 gradual underflow is deterministic), so bound_value = p_f^n + 0.0 = 0.017950553275045134 (the surviving term, exact JS Number from the pinned recurrence, independent implementation — NOT the kernel). passes = (bound_value ≤ 0.05); cross-checked vs exact-rational BigInt (agree). This pins the exact underflow outcome so a cross-runtime change in bound_value cannot pass on the Boolean gate alone.",
+      "consumer": "product",
+      "expected_digest": "sha256:38ebc505ef54bf1fa89ea20f0417465e4af42ac4a4087a7d6422cfc9bf3a1dfe",
+      "entry_digest": "sha256:b2b646dad94274801e564e8101f8622dcf3e72e59e82e8d008064a4067f9340b"
+    },
+    {
+      "id": "existence-minn-p090",
+      "category": "existence-minn",
+      "op": "existenceMinN",
+      "description": "existence minimum n* for p=0.90, α=0.05",
+      "input": {
+        "p": "0.90",
+        "alpha": "0.05"
+      },
+      "expected": 29,
+      "expectation_source": "independent-reference",
+      "derivation_note": "Smallest n with bound(n,p) ≤ α, found by exact-rational BigInt increment; cross-checked against IEEE left-fold increment (agree). n*(0.90)=29.",
+      "consumer": "product",
+      "expected_digest": "sha256:35135aaa6cc23891b40cb3f378c53a17a1127210ce60e125ccf03efcfdaec458",
+      "entry_digest": "sha256:5410a83aa2f5f787cbf6b2a84d00af5b5579d6f3ff2d11bca62e35c086b0c628"
+    },
+    {
+      "id": "existence-minn-p095",
+      "category": "existence-minn",
+      "op": "existenceMinN",
+      "description": "existence minimum n* for p=0.95, α=0.05",
+      "input": {
+        "p": "0.95",
+        "alpha": "0.05"
+      },
+      "expected": 59,
+      "expectation_source": "independent-reference",
+      "derivation_note": "Smallest n with bound(n,p) ≤ α, found by exact-rational BigInt increment; cross-checked against IEEE left-fold increment (agree). n*(0.95)=59.",
+      "consumer": "product",
+      "expected_digest": "sha256:3e1e967e9b793e908f8eae83c74dba9bcccce6a5535b4b462bd9994537bfe15c",
+      "entry_digest": "sha256:c9d0c3fa38857f414530615db77d05d7d382acb5f32754ecad01e861e4af6ba3"
+    },
+    {
+      "id": "existence-minn-p099",
+      "category": "existence-minn",
+      "op": "existenceMinN",
+      "description": "existence minimum n* for p=0.99, α=0.05",
+      "input": {
+        "p": "0.99",
+        "alpha": "0.05"
+      },
+      "expected": 299,
+      "expectation_source": "independent-reference",
+      "derivation_note": "Smallest n with bound(n,p) ≤ α, found by exact-rational BigInt increment; cross-checked against IEEE left-fold increment (agree). n*(0.99)=299.",
+      "consumer": "product",
+      "expected_digest": "sha256:308831041ea4863c3f87d222c31f759411898c874a9006b4bd6c745858b8f3bd",
+      "entry_digest": "sha256:d9d96a11307b43420b2ba4eef90c64a1cd77f36b3544d6c6151e7591047e6d5d"
+    },
+    {
+      "id": "hf1-boundary-rank-01",
+      "category": "hf1-boundary-rank",
+      "op": "hf1Rank",
+      "description": "exact-boundary rank n=20 p=0.95 (n·p=19 exactly)",
+      "input": {
+        "n": 20,
+        "p": "0.95"
+      },
+      "expected": 19,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=20·95+99=1999; k=(1999−99)/100=19. n·p is exactly integral; exact-integer rank pins k=19 regardless of float rounding (§8.2 named case).",
+      "consumer": "product",
+      "expected_digest": "sha256:9400f1b21cb527d7fa3d3eabba93557a18ebe7a2ca4e471cfe5e4c5b4ca7f767",
+      "entry_digest": "sha256:bf63e19e41c290100d7f4b71c9c57deb9c4720d711d2866b2a3fcfae837f8171"
+    },
+    {
+      "id": "hf1-boundary-rank-02",
+      "category": "hf1-boundary-rank",
+      "op": "hf1Rank",
+      "description": "exact-boundary rank n=100 p=0.90 (n·p=90 exactly)",
+      "input": {
+        "n": 100,
+        "p": "0.90"
+      },
+      "expected": 90,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=100·90+99=9099; k=(9099−99)/100=90. §8.2 named boundary case.",
+      "consumer": "product",
+      "expected_digest": "sha256:69f59c273b6e669ac32a6dd5e1b2cb63333d8b004f9696447aee2d422ce63763",
+      "entry_digest": "sha256:12af4e134064b332710f0f8e991d0d3fe39eee677209699e272f855ccc926de4"
+    },
+    {
+      "id": "hf1-float-ceil-trap-01",
+      "category": "hf1-float-ceil-trap",
+      "op": "hf1Rank",
+      "description": "float-ceil trap class n=200 p=0.95 (n·p=190 exactly)",
+      "input": {
+        "n": 200,
+        "p": "0.95"
+      },
+      "expected": 190,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=200·95+99=19099; k=(19099−99)/100=190. Exactly-integral n·p is the class where Math.ceil(n·p_float) can shift k by 1 depending on platform ULP (DR-4 rationale, risk-2); the exact-integer form pins k=190 invariantly.",
+      "consumer": "product",
+      "expected_digest": "sha256:2397346b45823e070f6fc72ac94c0a999d234c472479f0e26b30cdf5942db854",
+      "entry_digest": "sha256:2ea178b18d0aac4bd4a31ede1157138df48f15368f42589a66df6d6a712c3717"
+    },
+    {
+      "id": "hf1-float-ceil-trap-02",
+      "category": "hf1-float-ceil-trap",
+      "op": "hf1Rank",
+      "description": "float-ceil trap class n=60 p=0.95 (n·p=57 exactly)",
+      "input": {
+        "n": 60,
+        "p": "0.95"
+      },
+      "expected": 57,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=60·95+99=5799; k=(5799−99)/100=57. Exact-integer rank; float-ceil-unsafe class.",
+      "consumer": "product",
+      "expected_digest": "sha256:c837649cce43f2729138e72cc315207057ac82599a59be72765a477f22d14a54",
+      "entry_digest": "sha256:a6e2bae69a16d4c00461e4d3af3dffe981175c08db9b0afc338b8ecb555f7c11"
+    },
+    {
+      "id": "hf1-float-ceil-trap-03",
+      "category": "hf1-float-ceil-trap",
+      "op": "hf1Rank",
+      "description": "float-ceil trap class n=100 p=0.99 (n·p=99 exactly)",
+      "input": {
+        "n": 100,
+        "p": "0.99"
+      },
+      "expected": 99,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=100·99+99=9999; k=(9999−99)/100=99. Exact-integer rank; float-ceil-unsafe class.",
+      "consumer": "product",
+      "expected_digest": "sha256:8c1f1046219ddd216a023f792356ddf127fce372a72ec9b4cdac989ee5b0b455",
+      "entry_digest": "sha256:8da172fff54b060b2feaf740de7b4c47a254a79f192b6200552434536f18dd04"
+    },
+    {
+      "id": "hf1-float-ceil-trap-quantile-01",
+      "category": "hf1-float-ceil-trap",
+      "op": "hf1Quantile",
+      "description": "boundary quantile p=0.95 over [1..20] (k=19)",
+      "input": {
+        "sortedValues": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "p": "0.95"
+      },
+      "expected": 19,
+      "expectation_source": "hand-derived",
+      "derivation_note": "k=ceil(20·0.95)=19 (exact) → v[18]=19.",
+      "consumer": "product",
+      "expected_digest": "sha256:9400f1b21cb527d7fa3d3eabba93557a18ebe7a2ca4e471cfe5e4c5b4ca7f767",
+      "entry_digest": "sha256:5d2b179f68019718214f3b922754c7b8fd364704ff37cac54307dfaae6e6baa4"
+    },
+    {
+      "id": "hf1-interior-quantile-01",
+      "category": "hf1-interior-rank",
+      "op": "hf1Quantile",
+      "description": "interior quantile p=0.5 over [5,10,15,20,30]",
+      "input": {
+        "sortedValues": [
+          5,
+          10,
+          15,
+          20,
+          30
+        ],
+        "p": "0.5"
+      },
+      "expected": 15,
+      "expectation_source": "hand-derived",
+      "derivation_note": "k=ceil(5·0.5)=3 → v[2]=15 (0-based order statistic).",
+      "consumer": "product",
+      "expected_digest": "sha256:e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+      "entry_digest": "sha256:dc96226e56e5dab22edfc686d68a412b7cea9d2b1ad21b5182a763952885610f"
+    },
+    {
+      "id": "hf1-interior-quantile-02",
+      "category": "hf1-interior-rank",
+      "op": "hf1Quantile",
+      "description": "interior quantile p=0.95 over [1..10]",
+      "input": {
+        "sortedValues": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "p": "0.95"
+      },
+      "expected": 10,
+      "expectation_source": "hand-derived",
+      "derivation_note": "k=ceil(10·0.95)=10 → v[9]=10.",
+      "consumer": "product",
+      "expected_digest": "sha256:4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5",
+      "entry_digest": "sha256:7f9a1f1c73ff2d9faa59b5fe5f525a9f1ec65f1032c5605e64c1255cf6f26cdd"
+    },
+    {
+      "id": "hf1-interior-rank-01",
+      "category": "hf1-interior-rank",
+      "op": "hf1Rank",
+      "description": "interior rank n=10 p=0.95 (n·p=9.5, non-integral)",
+      "input": {
+        "n": 10,
+        "p": "0.95"
+      },
+      "expected": 10,
+      "expectation_source": "hand-derived",
+      "derivation_note": "k=ceil(n·num/den): a=10·95+99=1049; k=(1049−49)/100=10 (DR-4/DR-6 exact integer).",
+      "consumer": "product",
+      "expected_digest": "sha256:4a44dc15364204a80fe80e9039455cc1608281820fe2b24f1e5233ade6af1dd5",
+      "entry_digest": "sha256:122647529e239d0ef5ac04ed35157827c0c7c458c0172504339eb1f8118ef27b"
+    },
+    {
+      "id": "hf1-interior-rank-02",
+      "category": "hf1-interior-rank",
+      "op": "hf1Rank",
+      "description": "interior rank n=7 p=0.5 (median, n·p=3.5)",
+      "input": {
+        "n": 7,
+        "p": "0.5"
+      },
+      "expected": 4,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=7·5+9=44; k=(44−4)/10=4 = ceil(3.5).",
+      "consumer": "product",
+      "expected_digest": "sha256:4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+      "entry_digest": "sha256:816faf2abe54f4350c49b4a4c0aac50d0649f03c892ca20352068008c0d50296"
+    },
+    {
+      "id": "hf1-interior-rank-03",
+      "category": "hf1-interior-rank",
+      "op": "hf1Rank",
+      "description": "interior rank n=3 p=0.5 (n·p=1.5)",
+      "input": {
+        "n": 3,
+        "p": "0.5"
+      },
+      "expected": 2,
+      "expectation_source": "hand-derived",
+      "derivation_note": "a=3·5+9=24; k=(24−4)/10=2 = ceil(1.5).",
+      "consumer": "product",
+      "expected_digest": "sha256:d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "entry_digest": "sha256:ef5cca6f49fb90bcf35a7bd8cc39929ba4562d2dd13b06df355d937776207609"
+    },
+    {
+      "id": "kernel-derive-01",
+      "category": "kernel-derive-reject",
+      "op": "deriveThresholdParameter",
+      "description": "full-kernel derive → RANKED_CANDIDATES: COMPLETE ParameterRecord v0 (p=0.5, 7 obs)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 30000000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 40000000,
+            "value": 20,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 60000000,
+            "value": 40,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 50,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 80000000,
+            "value": 60,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 90000000,
+            "value": 70,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "config": {
+          "p": "0.5",
+          "now": 90000000,
+          "window": {
+            "min_days": 1,
+            "n_min": 6
+          }
+        }
+      },
+      "expected": {
+        "state": "RANKED_CANDIDATES",
+        "record": {
+          "name": "threshold",
+          "value": 40,
+          "units": "feed-native (declared)",
+          "origin": "derived",
+          "derivation": {
+            "algorithm_id": "quantile-trailing-window",
+            "algorithm_version": "1.0.0",
+            "quantile_definition": "HF-1",
+            "p": "0.5",
+            "input_window": {
+              "start_ms": 3600000,
+              "end_ms": 90000000,
+              "n_obs": 7
+            },
+            "effective_information": {
+              "events": 7,
+              "span_ms": 60000000,
+              "log2_span_days_floor": -1,
+              "transitions": 1
+            },
+            "quantization": {
+              "grid": "identity/order-statistic",
+              "mode": "none"
+            }
+          },
+          "uncertainty": {
+            "kind": "interval",
+            "lo": 10,
+            "hi": 70,
+            "method": "order-statistic-ci",
+            "coverage_model": "distribution-free; exact if no ties, else conservative",
+            "alpha": "0.05",
+            "ranks": {
+              "l": 1,
+              "u": 7,
+              "widened": false
+            }
+          },
+          "evidence": {
+            "ei_gate": {
+              "gate_id": "quantile-ci-existence",
+              "passed": true,
+              "bound_value": 0.015625,
+              "alpha": "0.05",
+              "n_star": 6
+            }
+          }
+        }
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "qualify→window (W=min_days·DAY_MS=86.4M captures all 7 within [3,600,000, 90,000,000], n_obs=7)→EI over window {events:7, span_ms:60,000,000, log2_span_days_floor:−1, transitions:1}→missingness/degeneracy MAY-gates pass (7≥½·7; spread>0)→existence gate bound(7,½)=0.5^7+0.5^7=0.015625≤0.05 pass (n_star=6). COMPLETE ParameterRecord v0 per SDD §Lane-L1:373-395 pinned: name/units/origin/derivation(algorithm_id/version/quantile_definition/p/input_window/effective_information/quantization)/uncertainty(kind/lo=v[0]=10/hi=v[6]=70/method/coverage_model/alpha/ranks=orderStat(7,½)={l:1,u:7,widened:false})/evidence.ei_gate(gate_id/passed/bound_value=0.015625 exact/alpha/n_star=6). value=HF-1(½)=40. Every deterministic hashed field pinned incl. exact bound_value.",
+      "consumer": "product",
+      "expected_digest": "sha256:035da965d50f9c2e8f5b97e970238b62b03a1d9e3d250450cfd007588c8a53e8",
+      "entry_digest": "sha256:98165c3baedfd27d09952ea3b768e8fbe460ae1132f3647fbef5e8e4d7bd5bd9"
+    },
+    {
+      "id": "kernel-reject-degenerate-01",
+      "category": "kernel-derive-reject",
+      "op": "deriveThresholdParameter",
+      "description": "full-kernel reject → NO_INSTRUMENT no_nontrivial_parameter (pre-existence-gate MAY)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 30000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 40000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 60000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 80000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "config": {
+          "p": "0.5",
+          "now": 90000000,
+          "window": {
+            "min_days": 1,
+            "n_min": 6
+          }
+        }
+      },
+      "expected": {
+        "state": "NO_INSTRUMENT",
+        "reason_code": "no_nontrivial_parameter",
+        "evidence": {
+          "window": {
+            "start_ms": 3600000,
+            "end_ms": 90000000
+          },
+          "effective_information": {
+            "events": 6,
+            "span_ms": 50000000,
+            "log2_span_days_floor": -1,
+            "transitions": 0
+          }
+        }
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "6 identical values (v_min=v_max=5): qualify→window (n=6, [3,600,000, 90,000,000])→EI{events:6,span_ms:50,000,000,log2_span_days_floor:−1,transitions:0}→no_nontrivial_parameter MAY-gate (zero value spread) fires BEFORE the existence gate (SDD:358 ordering) ⇒ NO_INSTRUMENT: no_nontrivial_parameter. The existence gate never runs, so bound_value / n_star / reconsideration.needed_n are ABSENT BY DESIGN (not invented — operator instruction). Deterministic pre-gate fields pinned: state, reason_code, evidence{window, effective_information}. The fuller no_nontrivial_parameter record shape is not pinned by the Phase-0 SDD; finalized in Phase C.",
+      "consumer": "product",
+      "expected_digest": "sha256:a082bcd3cd7ec131870b98568e215e6e53dc4e839a3fd7fab4fa561ee9ecc30d",
+      "entry_digest": "sha256:dee498f2f1f1b2d281126613a6b7cd7e4b35ca0c09f2c320a9528be8722209b1"
+    },
+    {
+      "id": "kernel-reject-insufficient-01",
+      "category": "kernel-derive-reject",
+      "op": "deriveThresholdParameter",
+      "description": "full-kernel reject → NO_INSTRUMENT insufficient_history: COMPLETE RejectionRecord (existence gate)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 30000000,
+            "value": 11,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 22,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 33,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 85000000,
+            "value": 44,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "config": {
+          "p": "0.5",
+          "now": 90000000,
+          "window": {
+            "min_days": 1,
+            "n_min": 3
+          }
+        }
+      },
+      "expected": {
+        "state": "NO_INSTRUMENT",
+        "reason_code": "insufficient_history",
+        "evidence": {
+          "gate_id": "quantile-ci-existence",
+          "n": 4,
+          "p": "0.5",
+          "alpha": "0.05",
+          "bound_value": 0.125,
+          "window": {
+            "start_ms": 3600000,
+            "end_ms": 90000000
+          },
+          "effective_information": {
+            "events": 4,
+            "span_ms": 55000000,
+            "log2_span_days_floor": -1,
+            "transitions": 1
+          }
+        },
+        "reconsideration": {
+          "needed_n": 6,
+          "condition": "window may satisfy the existence bound after (needed_n − n) further qualifying observations"
+        }
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "n_min=3 (below n*=6): window forms with n=4 (all 4 within [3,600,000, 90,000,000]); existence gate bound(4,½)=0.5^4+0.5^4=0.125>0.05 fails ⇒ NO_INSTRUMENT: insufficient_history. COMPLETE RejectionRecord per SDD:400-409 pinned: reason_code, evidence(gate_id=\"quantile-ci-existence\", n=4, p=\"0.5\", alpha=\"0.05\", bound_value=0.125 EXACT, window{start_ms:3,600,000,end_ms:90,000,000}, effective_information{events:4,span_ms:55,000,000,log2_span_days_floor:−1,transitions:1}), reconsideration{needed_n=n*(½)=6, condition}. Exact bound_value pinned.",
+      "consumer": "product",
+      "expected_digest": "sha256:460323f45aae9621f1bb8b00043ee0942f220f72ce74b67b3d698c06d7a91b09",
+      "entry_digest": "sha256:0f52938fec435f58395b1956e5210a797e1fd387b95e5b18964fe1421746dac2"
+    },
+    {
+      "id": "option-validation-off-absent",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "OFF: options with no experimental key ⇒ null",
+      "input": {
+        "options": {}
+      },
+      "expected": null,
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3: absent experimental ⇒ OFF ⇒ parseExperimentalOptions returns null (no throw).",
+      "consumer": "product",
+      "expected_digest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "entry_digest": "sha256:84d8c22bddebb68299b94cd34fb9455f245091297d1827cb39ce732ca7938679"
+    },
+    {
+      "id": "option-validation-off-explicit-false",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "OFF: derivation:false ⇒ null",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": false
+          }
+        }
+      },
+      "expected": null,
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3: canonical explicit-OFF form ⇒ null.",
+      "consumer": "product",
+      "expected_digest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "entry_digest": "sha256:c005f5ab80c78e3b47483606943556fd580e431043b820a27bfd718d22e463ea"
+    },
+    {
+      "id": "option-validation-throw-bad-p-format",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "p malformed decimal string ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": {
+              "p": "0.5x"
+            }
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "invalid_p"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-6: \"0.5x\" fails ^0\\.[0-9]{1,6}$ ⇒ throw.",
+      "consumer": "product",
+      "expected_digest": "sha256:5a846994974f168933638f79740cf50bf18521b720b2176e674ae05eac2da7d2",
+      "entry_digest": "sha256:6eb32e262d1190dd74688d76a57b2cadb3a5328ab54b62d6c94e2de1599fc142"
+    },
+    {
+      "id": "option-validation-throw-bad-p-range",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "p out of (0,1) / bad format ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": {
+              "p": "1.5"
+            }
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "invalid_p"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3/DR-6: p must match ^0\\.[0-9]{1,6}$ and satisfy 0<p<1; \"1.5\" fails both ⇒ throw.",
+      "consumer": "product",
+      "expected_digest": "sha256:5a846994974f168933638f79740cf50bf18521b720b2176e674ae05eac2da7d2",
+      "entry_digest": "sha256:3849b4ee882a2b165f4e186e012b19c829874ec7c953189fdaf0f7ca22320547"
+    },
+    {
+      "id": "option-validation-throw-min-days",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "window.min_days < 1 ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": {
+              "p": "0.95",
+              "window": {
+                "min_days": 0
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "invalid_min_days"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3: min_days is integer ≥ 1; 0 ⇒ throw.",
+      "consumer": "product",
+      "expected_digest": "sha256:b22504b8875fe9a1dfec30390298017f786e6523faaa5fb861ccb75de0fd3590",
+      "entry_digest": "sha256:02f0d687a942bb06896ed2159f21f3ff59f04354c6e168adccb1e5445eeed02a"
+    },
+    {
+      "id": "option-validation-throw-n-min",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "window.n_min < 2 ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": {
+              "p": "0.95",
+              "window": {
+                "n_min": 1
+              }
+            }
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "invalid_n_min"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3: n_min is integer ≥ 2; 1 ⇒ throw.",
+      "consumer": "product",
+      "expected_digest": "sha256:e25ab0baefe22de1c50c12f198bb0e49400f5d3bbcaca1fcf3cccf685e4376f2",
+      "entry_digest": "sha256:dd6136dfae233cd0cddc396d5f99884730adb486e239db6a8776c10171abaf7e"
+    },
+    {
+      "id": "option-validation-throw-unknown-deriv-key",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "unknown key inside derivation ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derivation": {
+              "q": "0.95"
+            }
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "unknown_derivation_key"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3: only p and window recognized inside derivation; unknown key throws.",
+      "consumer": "product",
+      "expected_digest": "sha256:2d7279dbf5bc572ee231cebbe52222648f67b339f2088723fda0b82c0093cf9f",
+      "entry_digest": "sha256:2c2a255e749703797ff5c1adf59695a1a18d558edd3d710215e62d05db7742f6"
+    },
+    {
+      "id": "option-validation-throw-unknown-exp-key",
+      "category": "option-validation",
+      "op": "parseExperimentalOptions",
+      "description": "unknown key inside experimental ⇒ throw",
+      "input": {
+        "options": {
+          "experimental": {
+            "derviation": true
+          }
+        }
+      },
+      "expected": {
+        "throws": true,
+        "reason": "unknown_experimental_key"
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "DR-3 fail-closed: only \"derivation\" recognized inside experimental; the typo \"derviation\" must throw, never silently no-op.",
+      "consumer": "product",
+      "expected_digest": "sha256:515d456f424bd23fb25d97790cd869b737aa8f31d958470596146dc110068b3d",
+      "entry_digest": "sha256:b5068b8c36d6301a2cbf84bc24169b0263c6d1cc8ad9574226c383d96be1c9f5"
+    },
+    {
+      "id": "qual-order-dup-values-dup-ts-01",
+      "category": "qualifying-order",
+      "op": "qualifyingObservations",
+      "description": "duplicate values at duplicate timestamps (all retained)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 4000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 4000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 1000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 1000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "timestamp": 1000,
+          "value": 5,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 1000,
+          "value": 5,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 4000,
+          "value": 5,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 4000,
+          "value": 5,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        }
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "Duplicates never coalesced; sort asc by ts, equal ts tiebroken by input index ⇒ [1000/5(idx2),1000/5(idx3),4000/5(idx0),4000/5(idx1)].",
+      "consumer": "product",
+      "expected_digest": "sha256:273b25c05d7aba9371d8e52367de98b2411b1d225b7ed3aaa4fbd0d1c9a4089f",
+      "entry_digest": "sha256:efd7e68dea916a50846b685618a883248468c49769eb0e80d4eaa1cedfe53e47"
+    },
+    {
+      "id": "qual-order-equal-ts-diff-values-01",
+      "category": "qualifying-order",
+      "op": "qualifyingObservations",
+      "description": "all equal timestamps, differing values, order fixed by input index",
+      "input": {
+        "events": [
+          {
+            "timestamp": 5000,
+            "value": 50,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 5000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 5000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "timestamp": 5000,
+          "value": 50,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 5000,
+          "value": 10,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 5000,
+          "value": 30,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        }
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "All ts equal ⇒ order preserved by input index (stable total order): [50,10,30]. Deterministic transitions/window downstream.",
+      "consumer": "product",
+      "expected_digest": "sha256:567cecf1b27515feaa0bfc52bc6de7744253ba85533cc625f05a4cff50f0a4fd",
+      "entry_digest": "sha256:5bc7a260cfb8415a190f4925ae7a09d465af2f3b21a803b95e2ec7d3246a3274"
+    },
+    {
+      "id": "qual-order-filter-fallback-sources-01",
+      "category": "qualifying-order",
+      "op": "qualifyingObservations",
+      "description": "both fallback ts_source variants filtered (only parsed retained)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 1000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 2000,
+            "value": 20,
+            "metadata": {
+              "ts_source": "fallback_base"
+            }
+          },
+          {
+            "timestamp": 3000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 4000,
+            "value": 40,
+            "metadata": {
+              "ts_source": "fallback_wallclock"
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "timestamp": 1000,
+          "value": 10,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 3000,
+          "value": 30,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        }
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "Qualifying requires metadata.ts_source===\"parsed\"; fallback_base (t=2000) and fallback_wallclock (t=4000) excluded ⇒ [1000/10,3000/30]. (Non-finite numeric values cannot be represented in a JSON vector — that branch is exercised by an in-memory Phase-C unit test, not a KAT.)",
+      "consumer": "product",
+      "expected_digest": "sha256:e756467cc3bdaefbb05dfa8bad2961432209bb870a39b41df836f6b29ba5bc2e",
+      "entry_digest": "sha256:1645addba977b7723818298ed87b4a11cf549562d2962a006eba9465819188f6"
+    },
+    {
+      "id": "qual-order-out-of-order-01",
+      "category": "qualifying-order",
+      "op": "qualifyingObservations",
+      "description": "out-of-order + equal-ts tiebreak + non-parsed filtered",
+      "input": {
+        "events": [
+          {
+            "timestamp": 3000,
+            "value": 30,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 1000,
+            "value": 10,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 2000,
+            "value": 20,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 500,
+            "value": 5,
+            "metadata": {
+              "ts_source": "fallback_base"
+            }
+          },
+          {
+            "timestamp": 1000,
+            "value": 15,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "timestamp": 1000,
+          "value": 10,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 1000,
+          "value": 15,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 2000,
+          "value": 20,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        },
+        {
+          "timestamp": 3000,
+          "value": 30,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        }
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "ts_source!==\"parsed\" (t=500) filtered; sort asc by ts; equal ts=1000 tiebroken by input index (v=10 idx1 before v=15 idx4) ⇒ [1000/10,1000/15,2000/20,3000/30].",
+      "consumer": "product",
+      "expected_digest": "sha256:8c6387ea5b6ae6d1277dfcc6adc3f1194429de8c88f67979ad857c00a00b2363",
+      "entry_digest": "sha256:14fafd78af261b8852d5b02d496c005671152436dd6627f0816ec447ecc5289d"
+    },
+    {
+      "id": "qual-order-single-01",
+      "category": "qualifying-order",
+      "op": "qualifyingObservations",
+      "description": "exactly one qualifying observation (two non-parsed filtered)",
+      "input": {
+        "events": [
+          {
+            "timestamp": 7000,
+            "value": 7,
+            "metadata": {
+              "ts_source": "fallback_wallclock"
+            }
+          },
+          {
+            "timestamp": 2000,
+            "value": 2,
+            "metadata": {
+              "ts_source": "fallback_base"
+            }
+          },
+          {
+            "timestamp": 9000,
+            "value": 9,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ]
+      },
+      "expected": [
+        {
+          "timestamp": 9000,
+          "value": 9,
+          "metadata": {
+            "ts_source": "parsed"
+          }
+        }
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "t=7000 (fallback_wallclock) and t=2000 (fallback_base) filtered as non-parsed; only t=9000 qualifies ⇒ single-entry result [9000/9] (the span_ms=0 / one-qualifying-timestamp case for downstream EI).",
+      "consumer": "product",
+      "expected_digest": "sha256:ddd047c0feafb48e53790cc3b43b1eb4546a87cfed344f1a507a1a6308d20edf",
+      "entry_digest": "sha256:b92f76a8a33214a1a7d2caa7e37c36c8f505a8c57d518b10565beb2ca324124d"
+    },
+    {
+      "id": "window-nmin-exact-01",
+      "category": "window-nmin",
+      "op": "trailingWindow",
+      "description": "n_min met inside min-days window (W=min_days·DAY_MS)",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 30000000,
+            "value": 3,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 7,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "endMs": 90000000,
+        "window": {
+          "min_days": 1,
+          "n_min": 3
+        }
+      },
+      "expected": {
+        "start_ms": 3600000,
+        "end_ms": 90000000,
+        "values": [
+          3,
+          5,
+          7
+        ],
+        "n": 3
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "min window [90M−86.4M, 90M]=[3.6M,90M] contains all 3 (≥ n_min=3) ⇒ W=min_days·DAY_MS, start_ms=3,600,000, n=3.",
+      "consumer": "product",
+      "expected_digest": "sha256:167854b825e537c5302e2ab8c5a63961fcc07114eafcead664eee8b44f2685b0",
+      "entry_digest": "sha256:80b699025705bf17af9bdedfe7da571f97ee43d1debaf3b1fe7a30c827156d9f"
+    },
+    {
+      "id": "window-nmin-expand-01",
+      "category": "window-nmin",
+      "op": "trailingWindow",
+      "description": "n_min forces expansion past min-days to include the n_min-th obs",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 1000000,
+            "value": 1,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 30000000,
+            "value": 3,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 7,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "endMs": 90000000,
+        "window": {
+          "min_days": 1,
+          "n_min": 4
+        }
+      },
+      "expected": {
+        "start_ms": 1000000,
+        "end_ms": 90000000,
+        "values": [
+          1,
+          3,
+          5,
+          7
+        ],
+        "n": 4
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "min window holds 3 (<n_min=4); expand W=max(min_days·DAY_MS, 90M−1M)=89M so the 4th obs (t=1M) is included; start_ms=1,000,000, n=4. Boundary inclusive [start,end].",
+      "consumer": "product",
+      "expected_digest": "sha256:4b9cadf4ba8599bc561f20ece565ecd2fefe5c3e27d4c093caf5cd3d60a72958",
+      "entry_digest": "sha256:bdc3f9addcbb8bd75ee456184b8381bbebdbaf9bb845fdf3d63d75e3bc537e50"
+    },
+    {
+      "id": "window-nmin-null-01",
+      "category": "window-nmin",
+      "op": "trailingWindow",
+      "description": "fewer than n_min qualifying obs ⇒ null (gate will reject)",
+      "input": {
+        "qualifying": [
+          {
+            "timestamp": 30000000,
+            "value": 3,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 50000000,
+            "value": 5,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          },
+          {
+            "timestamp": 70000000,
+            "value": 7,
+            "metadata": {
+              "ts_source": "parsed"
+            }
+          }
+        ],
+        "endMs": 90000000,
+        "window": {
+          "min_days": 1,
+          "n_min": 4
+        }
+      },
+      "expected": null,
+      "expectation_source": "hand-derived",
+      "derivation_note": "Only 3 qualifying obs at/before endMs < n_min=4 ⇒ trailingWindow returns null; the kernel then rejects (insufficient_history).",
+      "consumer": "product",
+      "expected_digest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+      "entry_digest": "sha256:119b780c6e9c24260a2ebf276ff5f7aebe34e6a346ec4a6d758109cb8aa5a0cd"
+    }
+  ]
+}

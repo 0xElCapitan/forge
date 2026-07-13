@@ -31,6 +31,7 @@ import { classify }        from './classifier/feed-grammar.js';
 import { selectTemplates } from './selector/template-selector.js';
 import { emitEnvelope }    from './ir/emit.js';
 import { ForgeRuntime }    from './runtime/lifecycle.js';
+import { parseExperimentalOptions, runExperimentalDerivation } from './derive/experimental-path.js';
 
 // ─── ForgeConstruct ───────────────────────────────────────────────────────────
 
@@ -100,6 +101,15 @@ export class ForgeConstruct {
       throw new Error('deterministic mode requires explicit timestampBase and now');
     }
 
+    // Experimental default-OFF derivation option (DR-3). Parse fail-closed BEFORE
+    // ingestion; OFF (absent/null/{}/derivation:false) ⇒ null ⇒ no derivation-path
+    // logic executes. When ON, the same determinism co-requirement as
+    // `deterministic: true` applies (explicit timestampBase + now required).
+    const experimentalConfig = parseExperimentalOptions(options);
+    if (experimentalConfig != null && (timestampBase == null || now === undefined)) {
+      throw new Error('experimental derivation requires explicit timestampBase and now');
+    }
+
     // Read raw input before ingestion when receipt is requested
     const rawInput = receipt ? JSON.parse(readFileSync(fixturePath, 'utf8')) : null;
 
@@ -108,6 +118,25 @@ export class ForgeConstruct {
       : ingestFile(fixturePath);
     const feed_profile = classify(events);
     const proposals    = selectTemplates(feed_profile);
+
+    // Experimental fallback tier — considered ONLY when derivation is ON (fence 1)
+    // AND the authored domain selector returned zero proposals (fence 2). Authored
+    // rules always outrank the derived fallback. A structured rejection pushes
+    // nothing, leaving the envelope byte-identical to default mode.
+    let experimental_derivation;
+    if (experimentalConfig != null) {
+      if (proposals.length === 0) {
+        const outcome = runExperimentalDerivation({ events, config: experimentalConfig, now });
+        if (outcome.state === 'RANKED_CANDIDATES') {
+          proposals.push(outcome.proposal);
+          experimental_derivation = { state: 'RANKED_CANDIDATES', record: outcome.record };
+        } else {
+          experimental_derivation = { state: 'NO_INSTRUMENT', rejection: outcome.rejection };
+        }
+      } else {
+        experimental_derivation = { state: 'AUTHORED_PROPOSALS_PRESENT', authored_count: proposals.length };
+      }
+    }
 
     const emitOpts = {
       feed_id,
@@ -138,6 +167,10 @@ export class ForgeConstruct {
     const result = { feed_profile, proposals, envelope, log };
     if (receipt) {
       result.receipt = emitResult.receipt;
+    }
+    // DR-3 result surface (non-envelope): present only in experimental mode.
+    if (experimental_derivation !== undefined) {
+      result.experimental_derivation = experimental_derivation;
     }
 
     // Optionally instantiate theatres

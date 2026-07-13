@@ -1,0 +1,97 @@
+{
+  "schema": "forge.cycle-004.default-mode-digests",
+  "version": "1.0.0",
+  "description": "BI-1 authoritative default-mode envelope digests captured at the untouched baseline tree, before any src/derive/ code exists. Header fields captured_at_commit, node_line, capture_config, and fixtures[] are IMMUTABLE after CP-A.",
+  "captured_at_commit": "2d7bb157e19ffda86f5e072f92c42c2dbb575f6d",
+  "captured_tree_hash": "678805e512fa4e224e7877818c995161df4aedee",
+  "node_version": "v20.20.2",
+  "node_line": "20",
+  "digest_method": "sha256(canonicalize(envelope)) — src/receipt/canonicalize.js (JCS-subset) + src/receipt/hash.js; matches receipt subject.digest convention (src/receipt/receipt-builder.js:42-43)",
+  "capture_config": {
+    "timestampBase": 1700000000000,
+    "now": 1700000000000,
+    "feed_id_rule": "repository-relative POSIX fixture path (equal to fixture)"
+  },
+  "fixtures": [
+    "fixtures/airnow-sf-bay.json",
+    "fixtures/donki-flr-cme.json",
+    "fixtures/forge-snapshots-breath.json",
+    "fixtures/forge-snapshots-corona.json",
+    "fixtures/forge-snapshots-tremor.json",
+    "fixtures/purpleair-sf-bay.json",
+    "fixtures/swpc-goes-xray.json",
+    "fixtures/usgs-m4.5-day.json",
+    "fixtures/robustness/correlated-upstream.json",
+    "fixtures/robustness/cross-domain-transplant.json",
+    "fixtures/robustness/no-ground-truth.json",
+    "fixtures/robustness/synthetic-adversarial.json",
+    "fixtures/robustness/threshold-straddle.json"
+  ],
+  "digests": [
+    {
+      "fixture": "fixtures/airnow-sf-bay.json",
+      "feed_id": "fixtures/airnow-sf-bay.json",
+      "digest": "sha256:0c11a2d47a5cef7f3cf525af323749a7f32af8d42192f4c6e1d3cf318bf2d596"
+    },
+    {
+      "fixture": "fixtures/donki-flr-cme.json",
+      "feed_id": "fixtures/donki-flr-cme.json",
+      "digest": "sha256:5fc20ea4582e0308c898ac41fab150d88e66921179c8e28c8ff0a345748cd556"
+    },
+    {
+      "fixture": "fixtures/forge-snapshots-breath.json",
+      "feed_id": "fixtures/forge-snapshots-breath.json",
+      "digest": "sha256:55cc72ef6f82b4200561f13e8d2696d8b25d78f547daadc9ec4a24a8226a054e"
+    },
+    {
+      "fixture": "fixtures/forge-snapshots-corona.json",
+      "feed_id": "fixtures/forge-snapshots-corona.json",
+      "digest": "sha256:cb710815f664a43b2881c2f2a05c60788beadaa4314fad031fb2f80b554275de"
+    },
+    {
+      "fixture": "fixtures/forge-snapshots-tremor.json",
+      "feed_id": "fixtures/forge-snapshots-tremor.json",
+      "digest": "sha256:aaeb47a6d0c9e581a2b81d679f7cd7abaeb0eae3846a84867d96a18f2aaff735"
+    },
+    {
+      "fixture": "fixtures/purpleair-sf-bay.json",
+      "feed_id": "fixtures/purpleair-sf-bay.json",
+      "digest": "sha256:3b13c374c7f50fc378cf1bf3a325215c6576fbcf3c11f9e68e2c2163ec42cfec"
+    },
+    {
+      "fixture": "fixtures/swpc-goes-xray.json",
+      "feed_id": "fixtures/swpc-goes-xray.json",
+      "digest": "sha256:0335df5e4168476a6c8b979daede2fb6ade22d45b57259ca8857f1a85f352855"
+    },
+    {
+      "fixture": "fixtures/usgs-m4.5-day.json",
+      "feed_id": "fixtures/usgs-m4.5-day.json",
+      "digest": "sha256:a76c0c84a1c376fd69dc5e82ea88beef17bab44a06525875ee5177cbff967411"
+    },
+    {
+      "fixture": "fixtures/robustness/correlated-upstream.json",
+      "feed_id": "fixtures/robustness/correlated-upstream.json",
+      "digest": "sha256:d2bbabcb9b4f27f2de7a09c47532ac3a1b40c4b1f30860aa094f88dedf8a8689"
+    },
+    {
+      "fixture": "fixtures/robustness/cross-domain-transplant.json",
+      "feed_id": "fixtures/robustness/cross-domain-transplant.json",
+      "digest": "sha256:f72730fd65f47ba57caf9cf9c7e2d0fe0adfee78c118babf78fa83b931a76b82"
+    },
+    {
+      "fixture": "fixtures/robustness/no-ground-truth.json",
+      "feed_id": "fixtures/robustness/no-ground-truth.json",
+      "digest": "sha256:2796b63a3a1eadafe9d6551a4a36861da039cf90cfec6550812d175ebb71ba59"
+    },
+    {
+      "fixture": "fixtures/robustness/synthetic-adversarial.json",
+      "feed_id": "fixtures/robustness/synthetic-adversarial.json",
+      "digest": "sha256:eeba6f53211ba7b14054c49e6e66fcafa056734929674de666452889e042c473"
+    },
+    {
+      "fixture": "fixtures/robustness/threshold-straddle.json",
+      "feed_id": "fixtures/robustness/threshold-straddle.json",
+      "digest": "sha256:89ae9916d7d142efc8a8339e52dfd7524c60998e84e8cda7022d7dd9ce308683"
+    }
+  ]
+}

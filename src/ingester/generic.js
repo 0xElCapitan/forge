@@ -182,7 +182,9 @@ function parseGeoJSON(data, timestampBase = null) {
 
     // Timestamp
     const tsEntry = findTimestampField(leaves);
-    const timestamp = tsEntry?.epochMs ?? (timestampBase != null ? timestampBase + i : Date.now());
+    const parsedMs = tsEntry?.epochMs;
+    const ts_source = parsedMs != null ? 'parsed' : (timestampBase != null ? 'fallback_base' : 'fallback_wallclock');
+    const timestamp = parsedMs ?? (timestampBase != null ? timestampBase + i : Date.now());
 
     // Value
     const value = valueField ? (leaves[valueField] ?? 0) : 0;
@@ -198,6 +200,7 @@ function parseGeoJSON(data, timestampBase = null) {
       value,
       metadata: {
         shape: 'geojson_feature',
+        ts_source,
         ...coordMeta,
       },
     };
@@ -222,7 +225,9 @@ function parseArrayOfObjects(data, timestampBase = null) {
   return data.map((item, i) => {
     const leaves = collectLeaves(item);
     const tsEntry = findTimestampField(leaves);
-    const timestamp = tsEntry?.epochMs ?? (timestampBase != null ? timestampBase + i : Date.now() + i);
+    const parsedMs = tsEntry?.epochMs;
+    const ts_source = parsedMs != null ? 'parsed' : (timestampBase != null ? 'fallback_base' : 'fallback_wallclock');
+    const timestamp = parsedMs ?? (timestampBase != null ? timestampBase + i : Date.now() + i);
     const value = valueField ? (leaves[valueField] ?? 0) : 0;
 
     const coordMeta = coordResult
@@ -234,6 +239,7 @@ function parseArrayOfObjects(data, timestampBase = null) {
       value,
       metadata: {
         shape: 'object',
+        ts_source,
         ...coordMeta,
       },
     };
@@ -317,6 +323,7 @@ function parseArrayOfArrays(data, headers = null, timestampBase = null) {
 
   return dataRows.map((row, i) => {
     const tsVal = tsCol >= 0 ? tryTimestamp(row[tsCol]) : null;
+    const ts_source = tsVal != null ? 'parsed' : (timestampBase != null ? 'fallback_base' : 'fallback_wallclock');
     const timestamp = tsVal ?? (timestampBase != null ? timestampBase + i : Date.now() + i);
     const value = valueCol >= 0 ? (row[valueCol] ?? 0) : 0;
 
@@ -325,6 +332,7 @@ function parseArrayOfArrays(data, headers = null, timestampBase = null) {
       value,
       metadata: {
         shape: 'array_row',
+        ts_source,
         col_count: colCount,
       },
     };
