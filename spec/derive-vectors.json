@@ -1838,6 +1838,558 @@
       "consumer": "product",
       "expected_digest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
       "entry_digest": "sha256:119b780c6e9c24260a2ebf276ff5f7aebe34e6a346ec4a6d758109cb8aa5a0cd"
+    },
+    {
+      "id": "lab-pinball-ge-p05",
+      "category": "scoring-pinball",
+      "op": "pinball",
+      "description": "Pinball loss, y ≥ q̂, p=0.5",
+      "input": {
+        "y": 10,
+        "qHat": 8,
+        "p": "0.5"
+      },
+      "expected": 1,
+      "expectation_source": "hand-derived",
+      "derivation_note": "ρ = p_f·(y−q̂) with p_f=0.5, y≥q̂: 0.5·(10−8)=1. Exact (SDD Lane L3).",
+      "consumer": "lab",
+      "expected_digest": "sha256:6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "entry_digest": "sha256:2afc7a474a8a10c212f67b0f262d60850b95788ed96e43475d02b6d3982e6a44"
+    },
+    {
+      "id": "lab-pinball-lt-p05",
+      "category": "scoring-pinball",
+      "op": "pinball",
+      "description": "Pinball loss, y < q̂, p=0.5",
+      "input": {
+        "y": 5,
+        "qHat": 8,
+        "p": "0.5"
+      },
+      "expected": 1.5,
+      "expectation_source": "hand-derived",
+      "derivation_note": "ρ = (1−p_f)·(q̂−y) with p_f=0.5, y<q̂: 0.5·(8−5)=1.5. Exact.",
+      "consumer": "lab",
+      "expected_digest": "sha256:9f29a130438b81170b92a42650f9a94291ecad60bd47af2a3886e75f7f728725",
+      "entry_digest": "sha256:f1c32dcb424879a9de7bed641a027317046ffc28153d36e99c9e56fbaa2016ed"
+    },
+    {
+      "id": "lab-pinball-ge-p075",
+      "category": "scoring-pinball",
+      "op": "pinball",
+      "description": "Pinball loss asymmetry, y ≥ q̂, p=0.75",
+      "input": {
+        "y": 10,
+        "qHat": 8,
+        "p": "0.75"
+      },
+      "expected": 1.5,
+      "expectation_source": "hand-derived",
+      "derivation_note": "p_f=0.75 (exact 3/4), y≥q̂: 0.75·(10−8)=1.5. Pins the asymmetric weight.",
+      "consumer": "lab",
+      "expected_digest": "sha256:9f29a130438b81170b92a42650f9a94291ecad60bd47af2a3886e75f7f728725",
+      "entry_digest": "sha256:41dc8020434cec1f66fb311e72910f86d4ebfb687e390ced888a9b808c543e9b"
+    },
+    {
+      "id": "lab-pinball-lt-p075",
+      "category": "scoring-pinball",
+      "op": "pinball",
+      "description": "Pinball loss asymmetry, y < q̂, p=0.75",
+      "input": {
+        "y": 5,
+        "qHat": 8,
+        "p": "0.75"
+      },
+      "expected": 0.75,
+      "expectation_source": "hand-derived",
+      "derivation_note": "(1−p_f)=0.25 (exact 1/4), y<q̂: 0.25·(8−5)=0.75. Pins the asymmetric weight.",
+      "consumer": "lab",
+      "expected_digest": "sha256:ce5d3aa79ae56155078af52e8fac68eb2d0a78489f82bc26c1e1bbc667ba9fde",
+      "entry_digest": "sha256:7c48f0deca278e676983398ba335314c58cef5d0342464b064748fa9b14373ea"
+    },
+    {
+      "id": "lab-perorigin-pinball-p05",
+      "category": "scoring-pinball",
+      "op": "perOriginPinball",
+      "description": "Per-origin pinball = left-fold sum ÷ count, p=0.5",
+      "input": {
+        "outcomes": [
+          10,
+          5,
+          12,
+          6
+        ],
+        "qHat": 8,
+        "p": "0.5"
+      },
+      "expected": 1.375,
+      "expectation_source": "hand-derived",
+      "derivation_note": "p_f=0.5: losses [0.5·2, 0.5·3, 0.5·4, 0.5·2]=[1,1.5,2,1]; sum 5.5 ÷ 4 = 1.375. Exact.",
+      "consumer": "lab",
+      "expected_digest": "sha256:da22917605caa3024e853558ca5c00e66dda05204d918a5296a95dc937c52075",
+      "entry_digest": "sha256:14a3378553911f42d778acaafa86eb8deaee6d432d4e87f67a936931d6bb0328"
+    },
+    {
+      "id": "lab-median-odd",
+      "category": "scoring-median",
+      "op": "median",
+      "description": "HF-1 median (exact order statistic, p=1/2), odd count",
+      "input": {
+        "values": [
+          3,
+          1,
+          2
+        ]
+      },
+      "expected": 2,
+      "expectation_source": "hand-derived",
+      "derivation_note": "sorted [1,2,3]; HF-1 rank ⌈3·(1/2)⌉=2 ⇒ v[1]=2. Order statistic, no averaging (DR-4).",
+      "consumer": "lab",
+      "expected_digest": "sha256:d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "entry_digest": "sha256:ce6d7f47358bba5c12989e9fae7f50cec2f6a29c645ff1bc15cda10bc1de675d"
+    },
+    {
+      "id": "lab-median-even",
+      "category": "scoring-median",
+      "op": "median",
+      "description": "HF-1 median (order statistic), even count — lower median, no averaging",
+      "input": {
+        "values": [
+          4,
+          1,
+          3,
+          2
+        ]
+      },
+      "expected": 2,
+      "expectation_source": "hand-derived",
+      "derivation_note": "sorted [1,2,3,4]; HF-1 rank ⌈4·(1/2)⌉=2 ⇒ v[1]=2. Pure order statistic (never (v[1]+v[2])/2).",
+      "consumer": "lab",
+      "expected_digest": "sha256:d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35",
+      "entry_digest": "sha256:023d3ac5f79a53abfd2619038e5104ac8975ad65d51d626847ae48b0493e9897"
+    },
+    {
+      "id": "lab-signtest-mixed",
+      "category": "scoring-signtest",
+      "op": "signTest",
+      "description": "Two-sided sign test at p=1/2, 6 vs 2, no ties",
+      "input": {
+        "positives": 6,
+        "negatives": 2,
+        "ties": 0
+      },
+      "expected": {
+        "n_effective": 8,
+        "positives": 6,
+        "negatives": 2,
+        "ties_dropped": 0,
+        "p_value": 0.2890625
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "n_eff=8, k=min(6,2)=2; exact-rational Binomial(8,½): F(2)=(1+8+28)/256=37/256; p=2·37/256=74/256=0.2890625. Cross-checked BigInt.",
+      "consumer": "lab",
+      "expected_digest": "sha256:22fea069c981c8f325cba0931c0865af6effd3127b1ad7ce15214323f7cd9747",
+      "entry_digest": "sha256:d43edf0175a7bc1bebc90e2272861aaeecd9670535fba020535d08b6440c357d"
+    },
+    {
+      "id": "lab-signtest-ties-dropped",
+      "category": "scoring-signtest",
+      "op": "signTest",
+      "description": "Sign-test ties dropped SEPARATELY; two-sided p clamps at 1",
+      "input": {
+        "positives": 3,
+        "negatives": 3,
+        "ties": 4
+      },
+      "expected": {
+        "n_effective": 6,
+        "positives": 3,
+        "negatives": 3,
+        "ties_dropped": 4,
+        "p_value": 1
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "4 ties excluded from the sign-test population (n_eff=6, not 10); k=3; 2·F(3)=84/64>1 ⇒ clamp to 1. Ties are dropped separately from rejections (F-2).",
+      "consumer": "lab",
+      "expected_digest": "sha256:3294f6527499aa542f8344b773da24cc04dedcbcc7216f7e0e5ab0a43b754849",
+      "entry_digest": "sha256:12eb237384b26ee7630d75a1a15b2c85e1ac1092d9fd512105431b4daab4d59d"
+    },
+    {
+      "id": "lab-binomial-band-p05",
+      "category": "scoring-exceedance",
+      "op": "binomialBand",
+      "description": "95% binomial band by CDF inversion, n=20, prob=0.5",
+      "input": {
+        "n": 20,
+        "prob": 0.5
+      },
+      "expected": {
+        "k_lo": 6,
+        "k_hi": 14,
+        "rate_lo": 0.3,
+        "rate_hi": 0.7
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Binomial(20,½) exact-rational: cumC(5)=21700<26214.4≤cumC(6)=60460 ⇒ k_lo=6 (F(k)≥1/40); cumC(13)=988116<1022361.6≤cumC(14)=1026876 ⇒ k_hi=14 (F(k)≥39/40). rates 6/20, 14/20.",
+      "consumer": "lab",
+      "expected_digest": "sha256:c98f3524f831fec78b0a12f50554322a85c96c12ae6d6260042734accd16e67e",
+      "entry_digest": "sha256:1496a8a1afc342e51ac02a47bfb81912df6f39e2e850ff2997797d907a2edd72"
+    },
+    {
+      "id": "lab-exceedance-stats-p05",
+      "category": "scoring-exceedance",
+      "op": "exceedanceStats",
+      "description": "Exceedance calibration: empirical rate vs target 1−p_f, in-band, p=0.5",
+      "input": {
+        "outcomes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "qHat": 12,
+        "p": "0.5"
+      },
+      "expected": {
+        "n": 20,
+        "count_exceed": 8,
+        "empirical_rate": 0.4,
+        "target": 0.5,
+        "band": {
+          "k_lo": 6,
+          "k_hi": 14,
+          "rate_lo": 0.3,
+          "rate_hi": 0.7
+        },
+        "in_band": true
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "y>12 for 13..20 ⇒ 8 exceedances; empirical 8/20=0.4; target 1−0.5=0.5; band {6,14} (see lab-binomial-band-p05); 8∈[6,14] ⇒ in_band.",
+      "consumer": "lab",
+      "expected_digest": "sha256:b6abbedb8d429401ca9a563aed0e79b58981ea41536d6a796979da3143091058",
+      "entry_digest": "sha256:e53cc21e12906199a68d023ca22f351a4636f3d514c5767bc282a1d290504573"
+    },
+    {
+      "id": "lab-brier-diagnostic-p05",
+      "category": "scoring-brier",
+      "op": "brierDiagnostic",
+      "description": "Brier diagnostic: forecast prob = 1−p_f; mean squared error, p=0.5",
+      "input": {
+        "outcomes": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20
+        ],
+        "qHat": 12,
+        "p": "0.5"
+      },
+      "expected": {
+        "forecast_prob": 0.5,
+        "n": 20,
+        "brier": 0.25
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "forecast=1−0.5=0.5; each term (0.5−o)²=0.25 for o∈{0,1}; mean=0.25. Diagnostic only — never primary.",
+      "consumer": "lab",
+      "expected_digest": "sha256:f9edd1fa959af9bd7420af42131dc8876cd333335420d835115d168c7cfdbc38",
+      "entry_digest": "sha256:5ae66f49b4c773bf568a2d41ea221be23ed4e4e009444dcec4aabe675c44d72d"
+    },
+    {
+      "id": "lab-aggregate-f2-mixed",
+      "category": "scoring-rejection-metrics",
+      "op": "aggregate",
+      "description": "F-2 mixed candidate/rejected run: rejection_metrics + decision_statistics; ties dropped from sign-test only",
+      "input": {
+        "primaryBaseline": "naive",
+        "origins": [
+          {
+            "origin_ms": 1000,
+            "method": {
+              "state": "NO_INSTRUMENT",
+              "reason_code": "insufficient_history"
+            },
+            "scores": {
+              "pinball": {
+                "method": null,
+                "naive": 2
+              }
+            }
+          },
+          {
+            "origin_ms": 2000,
+            "method": {
+              "state": "RANKED_CANDIDATES",
+              "reason_code": null
+            },
+            "scores": {
+              "pinball": {
+                "method": 2,
+                "naive": 3
+              }
+            }
+          },
+          {
+            "origin_ms": 3000,
+            "method": {
+              "state": "RANKED_CANDIDATES",
+              "reason_code": null
+            },
+            "scores": {
+              "pinball": {
+                "method": 4,
+                "naive": 3
+              }
+            }
+          },
+          {
+            "origin_ms": 4000,
+            "method": {
+              "state": "RANKED_CANDIDATES",
+              "reason_code": null
+            },
+            "scores": {
+              "pinball": {
+                "method": 2,
+                "naive": 2
+              }
+            }
+          },
+          {
+            "origin_ms": 5000,
+            "method": {
+              "state": "NO_INSTRUMENT",
+              "reason_code": "no_nontrivial_parameter"
+            },
+            "scores": {
+              "pinball": {
+                "method": null,
+                "naive": 1
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "rejection_metrics": {
+          "eligible_origins": 5,
+          "candidate_emitting_origins": 3,
+          "rejected_origins": 2,
+          "numeric_comparison_coverage": 0.6,
+          "reason_code_distribution": {
+            "insufficient_history": 1,
+            "no_nontrivial_parameter": 1
+          },
+          "included_origin_ids": [
+            2000,
+            3000,
+            4000
+          ]
+        },
+        "decision_statistics": {
+          "primary_baseline": "naive",
+          "numeric_population": 3,
+          "median_delta": 0,
+          "sign_test": {
+            "n_effective": 2,
+            "positives": 1,
+            "negatives": 1,
+            "ties_dropped": 1,
+            "p_value": 1
+          }
+        }
+      },
+      "expectation_source": "hand-derived",
+      "derivation_note": "F-2: 2 rejections carry no Δ (excluded from median+sign-test, kept in eligible denominator). Δ over candidate-emitting: 3−2=1, 3−4=−1, 2−2=0 ⇒ [1,−1,0]; median (order-statistic ⌈3/2⌉=2 of sorted [−1,0,1]) = 0; sign-test drops the Δ=0 tie separately ⇒ n_eff=2, k=1, 2·F(1) Binom(2,½)=6/4>1⇒1. coverage 3/5=0.6.",
+      "consumer": "lab",
+      "expected_digest": "sha256:2a4c4814054306431413a89114c9b4892e804a1045966ee315ed1768453c09c0",
+      "entry_digest": "sha256:9ab3f8875606bef91fa20e9754c8cb1461793c67b983315e5654fb1479ecdfdb"
+    },
+    {
+      "id": "lab-schedule-8month",
+      "category": "origin-schedule",
+      "op": "computeSchedule",
+      "description": "Origin schedule: UTC month boundaries, purge fields, Feb-adjacency skip, locked-tail exclusion",
+      "input": {
+        "tMin": 1609459200000,
+        "tMax": 1630368000000,
+        "minDays": 1
+      },
+      "expected": {
+        "tMin": 1609459200000,
+        "tMax": 1630368000000,
+        "tailStartMs": 1626186240000,
+        "candidates": [
+          1609459200000,
+          1612137600000,
+          1614556800000,
+          1617235200000,
+          1619827200000,
+          1622505600000,
+          1625097600000,
+          1627776000000
+        ],
+        "eligible": [
+          1612137600000,
+          1614556800000,
+          1617235200000,
+          1619827200000,
+          1622505600000
+        ],
+        "kept": [
+          {
+            "origin_ms": 1612137600000,
+            "training_cutoff_ms": 1609545600000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1612137600000,
+            "evaluation_end_ms": 1614729600000
+          },
+          {
+            "origin_ms": 1617235200000,
+            "training_cutoff_ms": 1614643200000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1617235200000,
+            "evaluation_end_ms": 1619827200000
+          },
+          {
+            "origin_ms": 1619827200000,
+            "training_cutoff_ms": 1617235200000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1619827200000,
+            "evaluation_end_ms": 1622419200000
+          },
+          {
+            "origin_ms": 1622505600000,
+            "training_cutoff_ms": 1619913600000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1622505600000,
+            "evaluation_end_ms": 1625097600000
+          }
+        ]
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "Date.UTC 2021 month starts. tail_start=tMax−⌊(tMax−tMin)/5⌋=1630368000000−4181760000=1626186240000. Eligible: m−P≥tMin+1·DAY (m≥Feb1) ∧ m+H≤tail_start (m≤Jun1) ⇒ Feb..Jun. Keep-rule (gap≥H=30d): Feb kept; Mar−Feb=28d<30 ⇒ SKIP (Feb-adjacency); Apr(59d),May(30d),Jun(31d) kept. Jul/Aug excluded by the locked tail.",
+      "consumer": "lab",
+      "expected_digest": "sha256:842057d546bb34fa2edcd16aafb3f3fe7b06876daf174b6d99f1ec01aa3a77ec",
+      "entry_digest": "sha256:7a90a95b4b47f628efdd81fc7433243af7f12c1cac0292892a9f795ff188138f"
+    },
+    {
+      "id": "lab-schedule-history-ineligible",
+      "category": "origin-schedule",
+      "op": "computeSchedule",
+      "description": "Origin made ineligible by the pre-cutoff history floor (min_days=60)",
+      "input": {
+        "tMin": 1609459200000,
+        "tMax": 1630368000000,
+        "minDays": 60
+      },
+      "expected": {
+        "tMin": 1609459200000,
+        "tMax": 1630368000000,
+        "tailStartMs": 1626186240000,
+        "candidates": [
+          1609459200000,
+          1612137600000,
+          1614556800000,
+          1617235200000,
+          1619827200000,
+          1622505600000,
+          1625097600000,
+          1627776000000
+        ],
+        "eligible": [
+          1617235200000,
+          1619827200000,
+          1622505600000
+        ],
+        "kept": [
+          {
+            "origin_ms": 1617235200000,
+            "training_cutoff_ms": 1614643200000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1617235200000,
+            "evaluation_end_ms": 1619827200000
+          },
+          {
+            "origin_ms": 1619827200000,
+            "training_cutoff_ms": 1617235200000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1619827200000,
+            "evaluation_end_ms": 1622419200000
+          },
+          {
+            "origin_ms": 1622505600000,
+            "training_cutoff_ms": 1619913600000,
+            "purge_gap_ms": 2592000000,
+            "evaluation_start_ms": 1622505600000,
+            "evaluation_end_ms": 1625097600000
+          }
+        ]
+      },
+      "expectation_source": "independent-reference",
+      "derivation_note": "History floor tMin+60·DAY makes rule (a) m−P≥tMin+60·DAY ⇒ m≥tMin+90d≈Apr1; Feb1/Mar1 become history-ineligible (distinct from the tail control). Eligible/kept = Apr,May,Jun.",
+      "consumer": "lab",
+      "expected_digest": "sha256:f35926e76521c11b8a60ffe9be34bfe94189e34652581effa4518b2e31d84fa0",
+      "entry_digest": "sha256:aa23af680c789e9f2a3c337dff47e9bd0910117dc91ce4c5b2f16c3c2d26c466"
+    },
+    {
+      "id": "lab-enumeration-sorted-paths",
+      "category": "manifest-enumeration",
+      "op": "sortAssetPaths",
+      "description": "F-7 deterministic asset enumeration: POSIX-normalize + lexicographic sort (cross-platform ordering)",
+      "input": {
+        "paths": [
+          "src/derive/quantile.js",
+          "lab\\harness\\run.js",
+          "lab/harness/baselines.js",
+          "README.md",
+          "src/classifier/cadence.js"
+        ]
+      },
+      "expected": [
+        "README.md",
+        "lab/harness/baselines.js",
+        "lab/harness/run.js",
+        "src/classifier/cadence.js",
+        "src/derive/quantile.js"
+      ],
+      "expectation_source": "hand-derived",
+      "derivation_note": "Backslashes → forward; lexicographic (UTF-16/byte) sort is the sole ordering authority (never readdir). \"R\"(82)<\"lab\"(108)<\"src\"(115); within lab/harness, \"baselines\"<\"run\"; within src, \"classifier\"<\"derive\". Windows and Ubuntu yield identical order.",
+      "consumer": "lab",
+      "expected_digest": "sha256:5da1443259e2c2f562e82ae7b7b5b24a1701530c0265347e6cb0aa26e381d236",
+      "entry_digest": "sha256:be98cb5abf18b776c5bb3ee4d694810e1ad86f27e8b984a628c132f908f79371"
     }
   ]
 }

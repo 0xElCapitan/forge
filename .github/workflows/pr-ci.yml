@@ -71,3 +71,62 @@ jobs:
 
       - name: Run full test suite (unit + integration + convergence)
         run: npm run test:all
+
+  # ── FR-12 cross-runtime determinism matrix (cycle-004 S02 T2.10; DR-7). ──
+  # Asserts the committed golden digests in spec/derive-vectors.json across
+  # ubuntu+windows × node {20,24} — any mismatch is a red build (a specification
+  # failure, never a tolerance). Explicit file args (no globs — cmd.exe/Node 20).
+  kernel-vectors:
+    name: Kernel vectors (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '24']
+
+    steps:
+      - name: Checkout
+        # Pinned to the same SHA the existing job uses (v4.3.1).
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          submodules: false
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Run kernel conformance vectors (explicit file args — no globs)
+        run: node --test test/unit/derive-quantile.spec.js test/unit/derive-ei.spec.js test/unit/derive-kernel.spec.js test/unit/derive-vectors.spec.js test/unit/derive-lint.spec.js
+
+  # ── Lab checks (cycle-004 S02 T2.10). Fail-closed lab runner; reported as its
+  # own check, never merged into the product test:all counts. ──
+  lab-check:
+    name: Lab checks (ubuntu, node 20)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          submodules: false
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Run lab checks (fail-closed runner; separate from test:all)
+        run: node --test lab/test/run-all.js
