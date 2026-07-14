@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate3-existence-margin",
+  "_expect": "eligible=false; fails gate 3 on the existence-bound margin: at n=30, existenceBound(30, \"0.90\")=0.0424 > alpha/3=0.0167. (n=30 also fails the 10^4 count sub-gate, since the margin is only ever binding below the count floor; the fixture demonstrates the margin sub-check specifically.) FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-tiny-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 30,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated sparse"
+}

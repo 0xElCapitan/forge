@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate1-authority",
+  "_expect": "eligible=false; fails gate 1 (not public, not free). FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-paywalled-series",
+  "authority_published": true,
+  "public": false,
+  "machine_readable": true,
+  "free": false,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 50000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated hourly"
+}

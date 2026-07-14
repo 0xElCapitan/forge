@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate2-exogeneity",
+  "_expect": "eligible=false; fails gate 2 (judged non-exogenous — plausible reflexivity, an exogeneity concern). Judgment IS recorded. FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-reflexive-demand-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: mild endogeneity — plausible reflexivity with a market/price signal",
+  "exogenous": false,
+  "history_years": 6,
+  "n_observations": 60000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1189400000000 },
+  "cadence": "fabricated hourly"
+}

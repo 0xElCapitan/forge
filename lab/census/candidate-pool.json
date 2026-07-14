@@ -1,0 +1,52 @@
+{
+  "authority": "candidate-pool",
+  "status": "frozen-specification-level",
+  "schema_version": "1.0.0",
+  "description": "Frozen candidate-pool enumeration for the Cycle-005 held-out census (E2 step 1). SPECIFICATION-LEVEL ONLY: no provider was queried, no live metadata was inspected, no values were fetched, no candidate feed was contacted. Enumeration order is fixed and expressed explicitly by `rank`. This is NOT a census result and carries no measured aggregates; the mechanical selection rule is applied to census-measured aggregate metadata only at C-005 M4, post-freeze. Descriptors (cadence, vintage_structure) are documented specification-level characteristics transcribed from the architecture, not measured values.",
+  "provenance": "architecture 2026-07-10 (grimoires/loa/research/forge-instrument-compiler-architecture-2026-07-10.md) §9:254-260; PRD FR-11b; SDD Lane L5 (07-cycle-004-sdd.md:534)",
+  "prior_exposure_check": "every candidate below is documented not-in-burned-list at specification time; the binding check is gate 5 (provider-product join against the frozen lab/census/burned-list.json) evaluated mechanically at census time",
+  "candidates": [
+    {
+      "rank": 1,
+      "provider": "USGS",
+      "product": "NWIS river stage/discharge",
+      "cadence": "15-min",
+      "vintage_structure": "provisional -> approved (strong)",
+      "notes": "thesis section 23-E2 worked example. Not in burned list: USGS earthquake/seismic is a burned product, but this is a different USGS data product with a different statistical structure (provider-product granularity; residual author-familiarity recorded as a note)."
+    },
+    {
+      "rank": 2,
+      "provider": "NOAA",
+      "product": "CO-OPS coastal water level",
+      "cadence": "6-min",
+      "vintage_structure": "preliminary -> verified (strong)",
+      "notes": "Not in burned list: NOAA SWPC space-weather products are burned, but this is a different NOAA data product. Same provider identity (NOAA), different product, therefore NOT burned under the provider-product join."
+    },
+    {
+      "rank": 3,
+      "provider": "NOAA",
+      "product": "NDBC buoy significant wave height",
+      "cadence": "~hourly",
+      "vintage_structure": "archival QC (moderate)",
+      "notes": "Not in burned list: NOAA SWPC space-weather products are burned, but this is a different NOAA data product. Same provider identity (NOAA), different product, therefore NOT burned under the provider-product join."
+    },
+    {
+      "rank": 4,
+      "provider": "NWS/ISD",
+      "product": "station weather observations (temp/wind)",
+      "cadence": "hourly",
+      "vintage_structure": "QC re-issues (moderate)",
+      "notes": "Not in burned list."
+    },
+    {
+      "rank": 5,
+      "provider": "EIA",
+      "product": "hourly electricity demand",
+      "cadence": "hourly",
+      "vintage_structure": "restatements (moderate)",
+      "notes": "Not in burned list.",
+      "endogeneity_flag": true,
+      "endogeneity_note": "Mild endogeneity flagged (arch section 9:260): electricity demand may exhibit reflexivity with market/price signals. The exogeneity gate (gate 2) records the authored judgment; this flag is carried explicitly so the mechanical selection rule and later review can weigh it."
+    }
+  ]
+}

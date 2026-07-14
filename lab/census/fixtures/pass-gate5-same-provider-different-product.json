@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "pass-gate5-same-provider-different-product",
+  "_expect": "eligible=true; PASSES gate 5 despite sharing provider identity 'NOAA' with burned NOAA SWPC space-weather products. The product 'CO-OPS coastal water level' differs, so the provider-product join does NOT burn it. This is the over-burn-prevention case. FABRICATED metadata only.",
+  "provider": "NOAA",
+  "product": "CO-OPS coastal water level",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous (tidal forcing is astronomical, not reflexive)",
+  "exogenous": true,
+  "history_years": 12,
+  "n_observations": 800000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 800000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated 6-min"
+}

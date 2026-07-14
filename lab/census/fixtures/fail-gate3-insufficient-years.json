@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate3-insufficient-years",
+  "_expect": "eligible=false; fails gate 3 on years (2 < 3). Observation count and existence-bound margin both PASS, isolating the years sub-gate. FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-young-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 2,
+  "n_observations": 50000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1063100000000 },
+  "cadence": "fabricated hourly"
+}

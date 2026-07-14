@@ -16,7 +16,7 @@
 
 import { canonicalize } from '../../src/receipt/canonicalize.js';
 import { sha256 } from '../../src/receipt/hash.js';
-import { writeCanonicalJsonAtomic } from './slice-fixtures.js';
+import { writeCanonicalJsonAtomic, writeTextAtomic } from './slice-fixtures.js';
 
 /** Content address of any JSON-compatible object: `sha256(canonicalize(obj))`. */
 export function contentAddress(obj) {
@@ -273,5 +273,190 @@ export function validateFreezeManifestShape(m) {
   }
   if (typeof m.grammar_version !== 'string') throw new Error('freeze manifest grammar_version required');
   if (typeof m.algorithm_version !== 'string') throw new Error('freeze manifest algorithm_version required');
+  // The `milestone_evidence` block is OPTIONAL in the shape (a pre-S03 freeze
+  // manifest carries none); validate it only when present (backward-compatible).
+  if ('milestone_evidence' in m) validateMilestoneEvidenceBlock(m.milestone_evidence);
   return true;
+}
+
+// ─── Freeze builder (S03 additive; PR-4/PR-5; DR-8; FR-9b) ─────────────────────
+// Composes the F-7 enumeration primitives above into the freeze manifest builder.
+// The functions are PURE — git state and file bytes are gathered by the thin CLI
+// (lab/freeze/build-freeze.js) and passed in; NO real freeze artifact is written by
+// this module and the real build is NOT invoked in S03. Tests use temp dirs +
+// fabricated evidence (T3.10).
+
+/** The FR-9b pin set (PRD FR-9b; SDD DR-8 point 1; Sprint Plan T3.9). Directory pins
+ * expand into individual files at build time; single-file pins are named directly.
+ * `src/selector/rules.js` is a single-file pin (NOT all of src/selector). */
+export const FR9B_ASSET_SET = Object.freeze({
+  files: Object.freeze(['spec/derive-vectors.json', 'src/selector/rules.js', 'lab/preregistration/preregistration.md']),
+  dirs: Object.freeze(['lab/census', 'lab/harness', 'src/classifier', 'src/derive']),
+});
+
+/** Paths that are NEVER part of the runtime-rehashed assets[] (R-9; DR-8). */
+export const FR9B_EXCLUDED_FROM_ASSETS = Object.freeze([
+  'lab/test/run-all.js', 'lab/test/*.spec.js', '.github/**', 'lab/ledgers/burn-ledger.jsonl',
+  'lab/freeze/build-freeze.js', 'lab/freeze/freeze-manifest.json', 'lab/freeze/freeze-manifest.sha256',
+]);
+
+/** The required CI checks that MUST be green at C_pre for both M1 and M2 (Sprint Plan §8.6 step 5). */
+export const REQUIRED_CI_CHECKS = Object.freeze([
+  'test',
+  'kernel-vectors (ubuntu-latest, 20)',
+  'kernel-vectors (ubuntu-latest, 24)',
+  'kernel-vectors (windows-latest, 20)',
+  'kernel-vectors (windows-latest, 24)',
+  'lab-check',
+]);
+
+/** The milestone-evidence attestation class (procedural-attestation; State-Zone, not rehashed). */
+export const MILESTONE_EVIDENCE_CLASS = 'procedural-attestation';
+
+/** A freeze-build refusal — a DR-5 specification error. Thrown before any artifact is produced. */
+export class FreezeRefusal extends Error {
+  constructor(message) { super(message); this.name = 'FreezeRefusal'; }
+}
+
+/**
+ * Expand the FR-9b asset set into a sorted, deduped list of repo-relative POSIX paths.
+ * `listDirFiles(dir)` returns the repo-relative POSIX paths of the tracked files under a
+ * directory (supplied by the CLI via `git ls-files`; injected in tests). Excludes any
+ * path in the runtime-exclusion set. The lexicographic sort is the sole ordering authority.
+ *
+ * @param {{listDirFiles:(dir:string)=>string[]}} io
+ * @returns {string[]}
+ */
+export function enumerateFr9bAssetPaths({ listDirFiles }) {
+  if (typeof listDirFiles !== 'function') throw new Error('enumerateFr9bAssetPaths: listDirFiles function required');
+  const excluded = new Set(['lab/test/run-all.js', 'lab/ledgers/burn-ledger.jsonl', 'lab/freeze/build-freeze.js', 'lab/freeze/freeze-manifest.json', 'lab/freeze/freeze-manifest.sha256']);
+  const isExcluded = (p) => excluded.has(p) || /\.spec\.js$/.test(p) || p.startsWith('.github/') || p.startsWith('lab/test/');
+  const collected = [];
+  for (const f of FR9B_ASSET_SET.files) collected.push(f);
+  for (const d of FR9B_ASSET_SET.dirs) {
+    for (const f of listDirFiles(d)) collected.push(normalizePosixPath(f));
+  }
+  return sortAssetPaths(collected.filter(p => !isExcluded(p)));
+}
+
+/**
+ * Compute the milestone-evidence block for a State-Zone attestation record.
+ * Digest = `sha256(LF-normalized full-file bytes)` (UTF-8, entire file, no rewrite,
+ * lowercase-hex `sha256:<hex>`). The record carries no self-digest and no companion file;
+ * this block is NOT part of the runtime-rehashed assets[].
+ *
+ * @param {{path:string, content:string}} record
+ * @returns {{path:string, sha256:string, class:string}}
+ */
+export function computeMilestoneEvidenceBlock({ path, content }) {
+  if (typeof path !== 'string' || path.length === 0) throw new Error('computeMilestoneEvidenceBlock: path required');
+  if (typeof content !== 'string') throw new Error('computeMilestoneEvidenceBlock: content (file bytes) required');
+  return { path, sha256: sha256LFNormalized(content), class: MILESTONE_EVIDENCE_CLASS };
+}
+
+/** Validate a milestone-evidence block shape (path, sha256:<hex>, procedural-attestation class). */
+export function validateMilestoneEvidenceBlock(block) {
+  if (block === null || typeof block !== 'object') throw new Error('milestone_evidence must be an object');
+  if (typeof block.path !== 'string' || block.path.length === 0) throw new Error('milestone_evidence.path required');
+  if (typeof block.sha256 !== 'string' || !/^sha256:[0-9a-f]{64}$/.test(block.sha256)) throw new Error('milestone_evidence.sha256 must be sha256:<64 lowercase hex>');
+  if (block.class !== MILESTONE_EVIDENCE_CLASS) throw new Error(`milestone_evidence.class must be "${MILESTONE_EVIDENCE_CLASS}"`);
+  return true;
+}
+
+/** Verify a pinned milestone-evidence digest against the record bytes. Throws
+ *  {@link FreezeRefusal} on mismatch (the verify-time counterpart to the digest pin). */
+export function assertMilestoneDigestMatches(block, recordContent) {
+  const recomputed = sha256LFNormalized(recordContent);
+  if (block.sha256 !== recomputed) {
+    throw new FreezeRefusal(`freeze refuses: milestone-evidence digest mismatch (pinned ${block.sha256} != recomputed ${recomputed})`);
+  }
+  return true;
+}
+
+/**
+ * Assemble the freeze manifest from asset entries + versions + the milestone block.
+ * Fixed key order; validates shape (including the milestone block). No self-hash.
+ *
+ * @param {{assetEntries:Array<{path:string,content:string}>, grammar_version:string, algorithm_version:string, milestone_evidence:Object}} p
+ * @returns {Object} the freeze manifest
+ */
+export function assembleFreezeManifest({ assetEntries, grammar_version, algorithm_version, milestone_evidence }) {
+  validateMilestoneEvidenceBlock(milestone_evidence);
+  const manifest = {
+    manifest_kind: 'freeze',
+    schema_version: '1.0.0',
+    assets: buildAssetInventory(assetEntries),
+    grammar_version,
+    algorithm_version,
+    milestone_evidence,
+  };
+  validateFreezeManifestShape(manifest);
+  return manifest;
+}
+
+/** Serialize a freeze manifest to its on-disk bytes (canonical JSON + explicit LF). */
+export function serializeFreezeManifest(manifest) {
+  return canonicalize(manifest) + '\n';
+}
+
+/** The manifest's own digest = `sha256(LF-normalized manifest bytes)`, recorded OUTSIDE
+ *  the manifest (companion file + commit trailer). Never stored inside the manifest. */
+export function computeManifestCompanionDigest(manifest) {
+  return sha256LFNormalized(serializeFreezeManifest(manifest));
+}
+
+/**
+ * Fail-closed freeze preconditions (DR-8 point 3; AC-19). Throws {@link FreezeRefusal}
+ * (DR-5 specification error) on any of: missing M1/M2 evidence; evidence citing a
+ * different commit; any required check not green; dirty tree; HEAD mismatch.
+ *
+ * @param {{gitState:{headSha:string, treeClean:boolean}, evidence:{citedSha:string, m1Present:boolean, m2Present:boolean, checks:Array<{name:string,conclusion:string}>}, freezeTargetSha:string}} p
+ */
+export function assertFreezePreconditions({ gitState, evidence, freezeTargetSha }) {
+  if (typeof freezeTargetSha !== 'string' || freezeTargetSha.length === 0) throw new FreezeRefusal('freeze refuses: freezeTargetSha required');
+  if (evidence === null || typeof evidence !== 'object') throw new FreezeRefusal('freeze refuses: milestone evidence required');
+  if (!evidence.m1Present) throw new FreezeRefusal('freeze refuses: missing M1 evidence');
+  if (!evidence.m2Present) throw new FreezeRefusal('freeze refuses: missing M2 evidence');
+  if (evidence.citedSha !== freezeTargetSha) throw new FreezeRefusal(`freeze refuses: evidence cites a different commit (${evidence.citedSha} != ${freezeTargetSha})`);
+
+  const checks = Array.isArray(evidence.checks) ? evidence.checks : [];
+  const byName = new Map(checks.map(c => [c.name, c.conclusion]));
+  for (const name of REQUIRED_CI_CHECKS) {
+    if (!byName.has(name)) throw new FreezeRefusal(`freeze refuses: required check missing/incomplete: ${name}`);
+    if (byName.get(name) !== 'success') throw new FreezeRefusal(`freeze refuses: required check not green: ${name} (${byName.get(name)})`);
+  }
+
+  if (gitState === null || typeof gitState !== 'object') throw new FreezeRefusal('freeze refuses: git state required');
+  if (gitState.treeClean !== true) throw new FreezeRefusal('freeze refuses: dirty working tree');
+  if (gitState.headSha !== freezeTargetSha) throw new FreezeRefusal(`freeze refuses: HEAD (${gitState.headSha}) != cited freeze-target SHA (${freezeTargetSha})`);
+  return true;
+}
+
+/**
+ * The composed freeze builder. Asserts preconditions, then assembles the manifest and
+ * computes the companion digest. PURE: returns the artifacts, writes nothing (the CLI
+ * writes). Refuses (throws {@link FreezeRefusal}) on any precondition failure, producing
+ * no partial artifact. NOT invoked against the real repository in S03.
+ *
+ * @returns {{manifest:Object, manifestBytes:string, companionDigest:string, companionBytes:string}}
+ */
+export function buildFreezeManifest({ assetEntries, milestoneRecord, grammar_version, algorithm_version, gitState, evidence, freezeTargetSha }) {
+  assertFreezePreconditions({ gitState, evidence, freezeTargetSha });
+  const milestone_evidence = computeMilestoneEvidenceBlock(milestoneRecord);
+  const manifest = assembleFreezeManifest({ assetEntries, grammar_version, algorithm_version, milestone_evidence });
+  const manifestBytes = serializeFreezeManifest(manifest);
+  const companionDigest = sha256LFNormalized(manifestBytes);
+  return { manifest, manifestBytes, companionDigest, companionBytes: companionDigest + '\n' };
+}
+
+/**
+ * Write the two freeze artifacts atomically (manifest JSON + companion digest). Kept
+ * separate from {@link buildFreezeManifest} so the pure build path is testable without
+ * touching disk. NOT invoked against lab/freeze/ in S03 (that would create the real
+ * artifact — a lifecycle violation). Tests write to temp dirs only.
+ */
+export function writeFreezeArtifacts({ manifestPath, companionPath, manifestBytes, companionBytes, writeText = writeTextAtomic }) {
+  writeText(manifestPath, manifestBytes);
+  writeText(companionPath, companionBytes);
+  return { manifestPath, companionPath };
 }

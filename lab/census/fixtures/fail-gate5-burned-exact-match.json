@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate5-burned-exact-match",
+  "_expect": "eligible=false; fails gate 5 (provider-product EXACT match against the frozen burned list: USGS / seismic (earthquake magnitude)). FABRICATED metadata only — this is a burned-domain identity used to exercise the join, not a candidate feed.",
+  "provider": "USGS",
+  "product": "seismic (earthquake magnitude)",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 20,
+  "n_observations": 500000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 800000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated event-driven"
+}

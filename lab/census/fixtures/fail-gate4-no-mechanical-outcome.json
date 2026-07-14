@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate4-no-mechanical-outcome",
+  "_expect": "eligible=false; fails gate 4 (mechanical outcome function not declared — would require human labeling). FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-human-labeled-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 50000,
+  "mechanical_outcome_declared": false,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated hourly"
+}

@@ -1,7 +1,14 @@
 {
-  "description": "Cycle-004 S02 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds census/freeze specs by editing this array — never .github/workflows/.",
+  "description": "Cycle-004 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds the census + freeze specs by editing this array — never .github/workflows/.",
   "specs": [
     "lab/test/baselines.spec.js",
+    "lab/test/census-burned-list.spec.js",
+    "lab/test/census-candidate-pool.spec.js",
+    "lab/test/census-cli.spec.js",
+    "lab/test/census-eligibility.spec.js",
+    "lab/test/census-no-network.spec.js",
+    "lab/test/census-selection.spec.js",
+    "lab/test/freeze-builder.spec.js",
     "lab/test/ledgers.spec.js",
     "lab/test/manifests.spec.js",
     "lab/test/run-all-guard.spec.js",

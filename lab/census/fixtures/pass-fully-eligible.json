@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "pass-fully-eligible",
+  "_expect": "eligible=true; passes all six gates. FABRICATED metadata only — no real provider, no candidate-feed values, no network.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-exogenous-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: no plausible reflexivity for this fabricated series",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 50000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated ~15-min"
+}

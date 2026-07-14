@@ -1,0 +1,136 @@
+{
+  "authority": "burned-list",
+  "status": "generated-then-frozen",
+  "schema_version": "1.0.0",
+  "description": "Burned-family authority for the Cycle-005 held-out census (FR-11a). Mechanically generated from FORGE local exposure surfaces (fixtures, selector rules, top-level docs) then reviewed and frozen. Provider-product granularity: `isBurned` matches only when BOTH provider AND product are equal. NO candidate feed inspected; NO network contact.",
+  "provenance": "arch section 8-1:222 / section 9:249; PRD FR-11a; SDD Lane L5 (07-cycle-004-sdd.md:533)",
+  "entries": [
+    {
+      "provider": "AirNow",
+      "product": "AQI",
+      "evidence": [
+        "fixtures/airnow-sf-bay.json",
+        "fixtures/forge-snapshots-breath.json",
+        "src/selector/rules.js"
+      ]
+    },
+    {
+      "provider": "FORGE-snapshots",
+      "product": "breath snapshot",
+      "evidence": [
+        "fixtures/forge-snapshots-breath.json"
+      ]
+    },
+    {
+      "provider": "FORGE-snapshots",
+      "product": "corona snapshot",
+      "evidence": [
+        "fixtures/forge-snapshots-corona.json"
+      ]
+    },
+    {
+      "provider": "FORGE-snapshots",
+      "product": "tremor snapshot",
+      "evidence": [
+        "fixtures/forge-snapshots-tremor.json"
+      ]
+    },
+    {
+      "provider": "NOAA",
+      "product": "SWPC DONKI CME arrival",
+      "evidence": [
+        "fixtures/donki-flr-cme.json",
+        "src/selector/rules.js"
+      ],
+      "note": "NOAA CO-OPS and NOAA NDBC are different NOAA data products and are NOT burned (same provider, different product)."
+    },
+    {
+      "provider": "NOAA",
+      "product": "SWPC DONKI solar flares (FLR)",
+      "evidence": [
+        "fixtures/donki-flr-cme.json",
+        "src/selector/rules.js"
+      ],
+      "note": "NOAA CO-OPS and NOAA NDBC are different NOAA data products and are NOT burned (same provider, different product)."
+    },
+    {
+      "provider": "NOAA",
+      "product": "SWPC GOES X-ray flux",
+      "evidence": [
+        "fixtures/swpc-goes-xray.json",
+        "src/selector/rules.js"
+      ],
+      "note": "NOAA CO-OPS and NOAA NDBC are different NOAA data products and are NOT burned (same provider, different product)."
+    },
+    {
+      "provider": "NOAA",
+      "product": "SWPC planetary K-index (Kp)",
+      "evidence": [
+        "src/selector/rules.js"
+      ],
+      "note": "NOAA CO-OPS and NOAA NDBC are different NOAA data products and are NOT burned (same provider, different product)."
+    },
+    {
+      "provider": "NOAA",
+      "product": "SWPC solar wind",
+      "evidence": [
+        "src/selector/rules.js"
+      ],
+      "note": "NOAA CO-OPS and NOAA NDBC are different NOAA data products and are NOT burned (same provider, different product)."
+    },
+    {
+      "provider": "PurpleAir",
+      "product": "AQI",
+      "evidence": [
+        "fixtures/purpleair-sf-bay.json",
+        "src/selector/rules.js"
+      ]
+    },
+    {
+      "provider": "synthetic-robustness",
+      "product": "correlated-upstream",
+      "evidence": [
+        "fixtures/robustness/correlated-upstream.json"
+      ]
+    },
+    {
+      "provider": "synthetic-robustness",
+      "product": "cross-domain-transplant",
+      "evidence": [
+        "fixtures/robustness/cross-domain-transplant.json"
+      ]
+    },
+    {
+      "provider": "synthetic-robustness",
+      "product": "no-ground-truth",
+      "evidence": [
+        "fixtures/robustness/no-ground-truth.json"
+      ]
+    },
+    {
+      "provider": "synthetic-robustness",
+      "product": "synthetic-adversarial",
+      "evidence": [
+        "fixtures/robustness/synthetic-adversarial.json"
+      ]
+    },
+    {
+      "provider": "synthetic-robustness",
+      "product": "threshold-straddle",
+      "evidence": [
+        "fixtures/robustness/threshold-straddle.json"
+      ]
+    },
+    {
+      "provider": "USGS",
+      "product": "seismic (earthquake magnitude)",
+      "evidence": [
+        "BUTTERFREEZONE.md",
+        "fixtures/forge-snapshots-tremor.json",
+        "fixtures/usgs-m4.5-day.json",
+        "src/selector/rules.js"
+      ],
+      "note": "USGS *water*/NWIS products are a different USGS data product and are NOT burned (residual author-familiarity only)."
+    }
+  ]
+}

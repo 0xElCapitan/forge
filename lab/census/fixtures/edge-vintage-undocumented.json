@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "edge-vintage-undocumented",
+  "_expect": "eligible=true; gate 6 (revision/vintage semantics) is UNDOCUMENTED here, but gate 6 is a TIE-BREAKER only, not a hard gate, so eligibility (gates 1-5) still holds. The gate-6 result is recorded (pass=false) for tie-breaking, not for exclusion. FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-undocumented-vintage-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 50000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": false,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated hourly"
+}

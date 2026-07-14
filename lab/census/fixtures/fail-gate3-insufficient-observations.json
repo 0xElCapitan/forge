@@ -1,0 +1,19 @@
+{
+  "_fabricated": true,
+  "_label": "fail-gate3-insufficient-observations",
+  "_expect": "eligible=false; fails gate 3 on observation count (5000 < 10^4). Years pass and the existence-bound margin PASSES at n=5000 (bound << alpha/3), cleanly isolating the count sub-gate. FABRICATED metadata only.",
+  "provider": "FABRICATED-authority",
+  "product": "fabricated-sparse-series",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "authored: exogenous",
+  "exogenous": true,
+  "history_years": 5,
+  "n_observations": 5000,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true,
+  "span": { "start_ms": 1000000000000, "end_ms": 1157800000000 },
+  "cadence": "fabricated daily"
+}

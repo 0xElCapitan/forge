@@ -65,7 +65,14 @@ test('burn-ledger entry is a reserved shape (event ∈ {fetch, retest}); never a
   assert.throws(() => buildBurnEntry({ family: 'x', event: 'nope', consumed_at: 1, cycle: 'c', authorization: 'a' }), /fetch.*retest/);
 });
 
-test('AC-6/AC-21: the tracked ledgers are byte-empty (harness never populates them)', () => {
-  assert.equal(statSync(join(REPO_ROOT, TRIALS_LEDGER_PATH)).size, 0, 'trials-ledger.jsonl is 0 bytes');
+test('AC-6/AC-21: burn ledger byte-empty; trials ledger holds exactly one pre-registered primary (S03 T3.8)', () => {
+  // Burn ledger stays byte-empty (AC-6 at M1, AC-21 at M3 — no family selected or burned).
   assert.equal(statSync(join(REPO_ROOT, BURN_LEDGER_PATH)).size, 0, 'burn-ledger.jsonl is 0 bytes');
+  // Trials ledger gained exactly one pre-registered primary line in S03 T3.8 (semantic
+  // invariant: one valid primary record, not a particular incidental byte count).
+  const trialsText = readFileSync(join(REPO_ROOT, TRIALS_LEDGER_PATH), 'utf8');
+  assert.equal(trialsText.endsWith('\n'), true, 'trials-ledger.jsonl is newline-terminated');
+  const records = readLedger(join(REPO_ROOT, TRIALS_LEDGER_PATH)); // parses each line; throws on malformed
+  assert.equal(records.length, 1, 'exactly one complete JSONL record');
+  assert.equal(records.filter(e => e.status === 'primary').length, 1, 'exactly one status:"primary" record — no second primary');
 });

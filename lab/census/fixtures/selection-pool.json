@@ -1,0 +1,69 @@
+{
+  "_fabricated": true,
+  "_label": "selection-pool",
+  "_expect": "Mechanical selection over a fabricated pool. Ineligible ranks are skipped; primary = first passing (rank 2), reserve = second passing (rank 4). Demonstrates sealed ascending-rank selection with no human choice. FABRICATED metadata only — NOT the real candidate pool, NO candidate-feed values.",
+  "expected_primary_rank": 2,
+  "expected_reserve_rank": 4,
+  "candidates": [
+    {
+      "rank": 1,
+      "provider": "FABRICATED-authority-A",
+      "product": "fabricated-paywalled",
+      "metadata": {
+        "provider": "FABRICATED-authority-A", "product": "fabricated-paywalled",
+        "authority_published": true, "public": false, "machine_readable": true, "free": false,
+        "exogeneity_judgment": "authored: exogenous", "exogenous": true,
+        "history_years": 5, "n_observations": 50000,
+        "mechanical_outcome_declared": true, "revision_vintage_documented": true
+      }
+    },
+    {
+      "rank": 2,
+      "provider": "FABRICATED-authority-B",
+      "product": "fabricated-clean-primary",
+      "metadata": {
+        "provider": "FABRICATED-authority-B", "product": "fabricated-clean-primary",
+        "authority_published": true, "public": true, "machine_readable": true, "free": true,
+        "exogeneity_judgment": "authored: exogenous", "exogenous": true,
+        "history_years": 8, "n_observations": 120000,
+        "mechanical_outcome_declared": true, "revision_vintage_documented": true
+      }
+    },
+    {
+      "rank": 3,
+      "provider": "USGS",
+      "product": "seismic (earthquake magnitude)",
+      "metadata": {
+        "provider": "USGS", "product": "seismic (earthquake magnitude)",
+        "authority_published": true, "public": true, "machine_readable": true, "free": true,
+        "exogeneity_judgment": "authored: exogenous", "exogenous": true,
+        "history_years": 20, "n_observations": 500000,
+        "mechanical_outcome_declared": true, "revision_vintage_documented": true
+      }
+    },
+    {
+      "rank": 4,
+      "provider": "FABRICATED-authority-C",
+      "product": "fabricated-clean-reserve",
+      "metadata": {
+        "provider": "FABRICATED-authority-C", "product": "fabricated-clean-reserve",
+        "authority_published": true, "public": true, "machine_readable": true, "free": true,
+        "exogeneity_judgment": "authored: exogenous", "exogenous": true,
+        "history_years": 6, "n_observations": 90000,
+        "mechanical_outcome_declared": true, "revision_vintage_documented": true
+      }
+    },
+    {
+      "rank": 5,
+      "provider": "FABRICATED-authority-D",
+      "product": "fabricated-clean-unselected",
+      "metadata": {
+        "provider": "FABRICATED-authority-D", "product": "fabricated-clean-unselected",
+        "authority_published": true, "public": true, "machine_readable": true, "free": true,
+        "exogeneity_judgment": "authored: exogenous", "exogenous": true,
+        "history_years": 7, "n_observations": 70000,
+        "mechanical_outcome_declared": true, "revision_vintage_documented": true
+      }
+    }
+  ]
+}
