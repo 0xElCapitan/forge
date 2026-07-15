@@ -23,7 +23,11 @@ test('AC-1: burned-list generation is deterministic (idempotent + matches the fr
   const b = generateBurnedList(surfaces);
   assert.deepStrictEqual(a, b, 'two generations from identical surfaces are deep-equal');
   assert.deepStrictEqual(a, FROZEN, 'generated list deep-equals the frozen lab/census/burned-list.json');
-  const frozenBytes = readFileSync(fileURLToPath(new URL('../census/burned-list.json', import.meta.url)), 'utf8');
+  // LF-normalize before comparing (mirrors sha256LFNormalized in lab/harness/manifests.js):
+  // decouples this byte-identity check from local checkout EOL config (e.g. Windows
+  // core.autocrlf), which normalizes the working-tree copy to CRLF while the git blob
+  // and serializeBurnedList() output are both LF.
+  const frozenBytes = readFileSync(fileURLToPath(new URL('../census/burned-list.json', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
   assert.equal(serializeBurnedList(a), frozenBytes, 'serialization is byte-identical to the frozen authority');
 });
 

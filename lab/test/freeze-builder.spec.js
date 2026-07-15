@@ -204,11 +204,29 @@ test('CLI propagates builder refusals (dirty tree) and writes nothing', () => {
   } finally { rmSync(out, { recursive: true, force: true }); }
 });
 
-test('the real freeze artifacts do NOT exist during the S03 pre-freeze phase', () => {
-  assert.equal(existsSync(join(REPO, 'lab/freeze/freeze-manifest.json')), false, 'no real freeze-manifest.json yet');
-  assert.equal(existsSync(join(REPO, 'lab/freeze/freeze-manifest.sha256')), false, 'no real companion digest yet');
+// cycle-004 post-M3 cleanup: the original assertion here checked the REAL repo root for the
+// absence of lab/freeze/freeze-manifest.json/.sha256, which was phase-correct only during the
+// S03 pre-freeze window. The accepted C_freeze commit legitimately created those files on landed
+// master (final freeze review PASS / final freeze audit PASS / M3 acceptance), so that repo-root
+// check is now stale by design, not a freeze-correctness regression (classified NON-BLOCKING
+// PHASE GUARD). The safety property worth keeping — the builder must not silently leave real
+// freeze artifacts behind before it is legitimately invoked — is re-exercised below in an
+// isolated freezeDir, decoupled from the real repo's evolving phase, using the same buildFreeze()
+// + cliIo() harness as the "Thin CLI" tests above.
+test('builder CLI is tracked + excluded from assets[]; freeze artifacts are not silently pre-populated before a legitimate build (pre-freeze absence invariant, isolated)', () => {
   assert.ok(existsSync(join(REPO, 'lab/freeze/build-freeze.js')), 'the builder CLI exists');
   assert.ok(Array.isArray(FR9B_EXCLUDED_FROM_ASSETS) && FR9B_EXCLUDED_FROM_ASSETS.includes('lab/freeze/build-freeze.js'), 'the CLI is excluded from assets[]');
+
+  const out = mkdtempSync(join(tmpdir(), 'forge-freeze-prefreeze-'));
+  try {
+    assert.equal(existsSync(join(out, 'freeze-manifest.json')), false, 'no freeze-manifest.json before build');
+    assert.equal(existsSync(join(out, 'freeze-manifest.sha256')), false, 'no companion digest before build');
+    buildFreeze({ repoRoot: '/repo', freezeDir: out, milestoneRecordPath: '/rec.md', milestoneRecordRepoRel: 'x', evidence: goodEvidence(), freezeTargetSha: SHA, io: cliIo() });
+    assert.equal(existsSync(join(out, 'freeze-manifest.json')), true, 'freeze-manifest.json exists once legitimately built');
+    assert.equal(existsSync(join(out, 'freeze-manifest.sha256')), true, 'companion digest exists once legitimately built');
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
 });
 
 // ─── Tracked-tree cleanliness: real git-backed regression ─────────────────────
