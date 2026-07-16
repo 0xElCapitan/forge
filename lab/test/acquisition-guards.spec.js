@@ -93,7 +93,7 @@ test('DR-3 contamination procedure end-to-end: value-bearing → class 4 + HALT 
   });
 
   const candidates = [
-    { rank: 1, provider: 'EIA', product: 'hourly electricity demand', route_method_id: 'eia-electricity-demand-count', route_class: 'series-metadata', contact_params: { period_of_record_start: '2015-01-01', api_key: PLANTED_KEY }, authored_inputs: {}, measured_methods: {} },
+    { rank: 1, provider: 'EIA', product: 'hourly electricity demand', route_method_id: 'eia-electricity-demand-count', route_class: 'series-metadata', contact_params: { period_of_record_start: '2015-01-01' }, authored_inputs: {}, measured_methods: {} },
     { rank: 2, provider: 'USGS', product: 'NWIS river stage/discharge', route_method_id: 'usgs-nwis-site-metadata', route_class: 'metadata', contact_params: { sites: '01646500' }, authored_inputs: {}, measured_methods: {} },
   ];
   const out = await acquirePool({ candidates, evidenceDir, io: { fetchImpl, env: { FORGE_EIA_API_KEY: PLANTED_KEY } }, now: () => '2026-01-01T00:00:00Z' });

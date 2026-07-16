@@ -1,9 +1,10 @@
 {
-  "description": "Cycle-004 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds the census + freeze specs by editing this array — never .github/workflows/. Cycle-005 S01 adds the 11 acquisition/resolution specs the same way; a review-remediation pass (F1) adds one more (acquisition-acquire.spec.js).",
+  "description": "Cycle-004 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds the census + freeze specs by editing this array — never .github/workflows/. Cycle-005 S01 adds the 11 acquisition/resolution specs the same way; a review-remediation pass (F1) adds one more (acquisition-acquire.spec.js); a pre-Gate-A security correction adds one more (acquisition-contact.spec.js, contact.js credential-hardening).",
   "specs": [
     "lab/test/acquisition-acquire.spec.js",
     "lab/test/acquisition-assemble.spec.js",
     "lab/test/acquisition-boundaries.spec.js",
+    "lab/test/acquisition-contact.spec.js",
     "lab/test/acquisition-extract.spec.js",
     "lab/test/acquisition-guards.spec.js",
     "lab/test/baselines.spec.js",

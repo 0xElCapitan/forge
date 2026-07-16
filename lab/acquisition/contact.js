@@ -17,8 +17,10 @@
  *     once the cap is exceeded, marking the response `truncated` (→ guards.js
  *     classifies it indeterminate / fail-closed);
  *   - GET-only (no request body; a non-GET method is refused, G5);
- *   - credential read from env AT SEND TIME only, and never returned in any field
- *     that leaves this module except as a G4-redacted URL.
+ *   - credential read from env AT SEND TIME only, injected internally immediately
+ *     before URL construction, never accepted as a caller-supplied argument, and
+ *     never returned in any field that leaves this module except as a G4-redacted
+ *     URL.
  *
  * S01 CONSTRAINT: this module is built and unit-tested with an INJECTED fetch only;
  * it makes NO live provider request in S01 (pre-G0). The default `fetchImpl` is the
@@ -28,12 +30,20 @@
  * @module lab/acquisition/contact
  */
 
-import { matchRoute, isAllowlistedHost, RouteRefusal } from './routes.js';
+import { ROUTES, matchRoute, isAllowlistedHost, RouteRefusal } from './routes.js';
 import { redactUrl } from './guards.js';
 
 const DEFAULT_TIMEOUT_MS = 20000;
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECT_HOPS = 3;
+
+/**
+ * The route-params key that carries a route's resolved credential value. The sole
+ * credentialed route (`eia-electricity-demand-count`) names this placeholder
+ * `{api_key}` in its `query_template` (routes.js). Never accepted from the caller
+ * (G4) — `contactRoute` injects the env-resolved value under this key itself.
+ */
+const CREDENTIAL_PARAM_NAME = 'api_key';
 
 /** A contact-level failure (timeout, transport error, redirect escape). */
 export class ContactRefusal extends Error {
@@ -85,7 +95,8 @@ async function readCappedBody(response, maxBytes, controller) {
  * `{ status, contentType, bodyBuffer, truncated, url_redacted, hops }`.
  * The `bodyBuffer` is handed to `guards.js` for classification and NEVER persisted
  * by this module (G3). Throws {@link ContactRefusal} / {@link RouteRefusal} on
- * refusal (redirect escape, timeout, transport error, credential missing).
+ * refusal (redirect escape, timeout, transport error, credential missing, or a
+ * caller-supplied credential argument — G4, the key is never an argument).
  *
  * @param {string} routeId
  * @param {Object} params
@@ -103,11 +114,24 @@ export async function contactRoute(routeId, params = {}, opts = {}) {
   const maxBytes = opts.maxBytes || DEFAULT_MAX_BYTES;
   if (typeof fetchImpl !== 'function') throw new ContactRefusal('no fetch implementation available', 'no_transport');
 
-  const plan = matchRoute(routeId, params); // builds the URL from the allowlist ONLY
-  const credential = resolveCredential(plan.credential, env);
-  // The credential (if any) is already bound into the URL by the route template's
-  // {api_key} placeholder via matchRoute(params). We never echo the live URL; every
-  // returned/logged URL is G4-redacted.
+  // G4: for a credentialed route, the key is NEVER a caller-supplied argument. It is
+  // resolved from env and injected into the route params HERE, immediately before
+  // matchRoute constructs the URL — the caller cannot supply, override, or observe it.
+  const routeDef = ROUTES[routeId];
+  let effectiveParams = params;
+  if (routeDef && routeDef.credential) {
+    if (Object.prototype.hasOwnProperty.call(params, CREDENTIAL_PARAM_NAME)) {
+      throw new ContactRefusal(
+        `route ${routeId}: caller-supplied "${CREDENTIAL_PARAM_NAME}" is refused — the credential is read from env ${routeDef.credential} only, never an argument (G4)`,
+        'credential_argument_refused',
+      );
+    }
+    const credential = resolveCredential(routeDef.credential, env);
+    effectiveParams = { ...params, [CREDENTIAL_PARAM_NAME]: credential };
+  }
+
+  const plan = matchRoute(routeId, effectiveParams); // builds the URL from the allowlist ONLY
+  // We never echo the live URL; every returned/logged URL is G4-redacted.
   let currentUrl = plan.url;
   let hops = 0;
 
