@@ -1,0 +1,15 @@
+{
+  "_label": "HYPOTHETICAL-BRANCH: DR-5 invariance enumeration only — NEVER a census input, NEVER contacts a provider. Real provider/product identity is injected at enumeration time so gate 5 (burned join) runs on truth.",
+  "n_observations": 1000000,
+  "history_years": 100,
+  "span": { "start_ms": 0, "end_ms": 3155760000000 },
+  "cadence": "hourly",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "HYPOTHETICAL-BRANCH: invariance enumeration only",
+  "exogenous": true,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true
+}

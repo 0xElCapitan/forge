@@ -1,0 +1,16 @@
+{
+  "provider": "USGS",
+  "product": "NWIS river stage/discharge",
+  "n_observations": 1200000,
+  "history_years": 34.2,
+  "span": { "start_ms": 631152000000, "end_ms": 1704067200000 },
+  "cadence": "15-min",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "FABRICATED REHEARSAL FIXTURE (FR-A2): physical hydrological measurement, exogenous. NOT a real measurement; NEVER a real census input; NO provider was contacted.",
+  "exogenous": true,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true
+}

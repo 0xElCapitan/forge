@@ -1,0 +1,15 @@
+{
+  "_label": "HYPOTHETICAL-BRANCH: DR-5 invariance enumeration only — NEVER a census input, NEVER contacts a provider. Real provider/product identity is injected at enumeration time. Gate-failing flags across every hard gate.",
+  "n_observations": 1000000,
+  "history_years": 100,
+  "span": null,
+  "cadence": "hourly",
+  "authority_published": false,
+  "public": false,
+  "machine_readable": false,
+  "free": false,
+  "exogeneity_judgment": "HYPOTHETICAL-BRANCH: invariance enumeration only",
+  "exogenous": false,
+  "mechanical_outcome_declared": false,
+  "revision_vintage_documented": false
+}

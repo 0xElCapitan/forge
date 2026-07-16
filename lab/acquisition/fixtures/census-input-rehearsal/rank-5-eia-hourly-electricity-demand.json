@@ -1,0 +1,16 @@
+{
+  "provider": "EIA",
+  "product": "hourly electricity demand",
+  "n_observations": 87600,
+  "history_years": 10.0,
+  "span": { "start_ms": 1388534400000, "end_ms": 1704067200000 },
+  "cadence": "hourly",
+  "authority_published": true,
+  "public": true,
+  "machine_readable": true,
+  "free": true,
+  "exogeneity_judgment": "FABRICATED REHEARSAL FIXTURE (FR-A2): endogeneity flagged for the real candidate; this fixture value is fabricated, NOT a real measurement, NEVER a real census input, NO provider contacted.",
+  "exogenous": false,
+  "mechanical_outcome_declared": true,
+  "revision_vintage_documented": true
+}

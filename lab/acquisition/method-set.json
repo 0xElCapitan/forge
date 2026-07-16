@@ -1,0 +1,153 @@
+{
+  "authority": "acquisition-method-set",
+  "status": "PROPOSED-PENDING-GATE-A",
+  "schema_version": "1.0.0",
+  "cycle": "cycle-005",
+  "routes_version": "1.0.0",
+  "description": "Cycle-005 S01 Gate-A method set (PROPOSED, not accepted). Per frozen-pool candidate: the route method_id, the DR-8 authored-input flags (fixed pre-contact at Gate A; injected verbatim by assemble.js into the 14-field census-input metadata), and the DR-7 per-measured-field method with its intended FR-A6 class and compatibility reference. Authored values are PROPOSALS for the operator's Gate-A decision (never operator acceptance). The one substantive authored call — EIA exogeneity (endogeneity_flag:true) — is flagged for the operator. No provider was contacted; measured n_observations/history_years/span values are NOT present here (they are acquired at S02 contact and classified at that time).",
+  "provenance": "PRD FR-A6/UD-1/UD-2; SDD DR-2/DR-7/DR-8; candidate-pool.json (identity + cadence + EIA endogeneity_flag); research report 01 §4/§13 (planning-grade provider facts, docs-only, confirmed at contact)",
+  "candidates": {
+    "1": {
+      "rank": 1,
+      "provider": "USGS",
+      "product": "NWIS river stage/discharge",
+      "route_method_id": "usgs-nwis-site-metadata",
+      "authored_inputs": {
+        "authority_published": true,
+        "public": true,
+        "machine_readable": true,
+        "free": true,
+        "exogeneity_judgment": "River stage/discharge is a physical hydrological measurement exogenous to any market, price, or betting signal.",
+        "exogenous": true,
+        "mechanical_outcome_declared": true,
+        "revision_vintage_documented": true,
+        "cadence": "15-min"
+      },
+      "authored_sources": {
+        "authority_published": "USGS is a federal scientific authority (candidate-pool rank 1)",
+        "machine_readable": "NWIS site service returns machine-readable RDB (routes.js usgs-nwis-site-metadata)",
+        "revision_vintage_documented": "candidate-pool vintage_structure: provisional -> approved (strong)",
+        "cadence": "candidate-pool.json rank 1 cadence descriptor (transcribed authored input; not a gate input)",
+        "exogeneity_judgment": "authored judgment; physical measurement, no reflexivity flagged"
+      },
+      "measured_methods": {
+        "history_years": { "method_id": "usgs-nwis-site-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: (end_ms - begin_ms)/YEAR_MS, YEAR_MS=365.25d — conservative for the >=3y gate; operator acceptance required (UD-1)" },
+        "span": { "method_id": "usgs-nwis-site-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: site-catalog begin_date/end_date period of record" },
+        "n_observations": { "method_id": "usgs-nwis-site-metadata", "intended_class": "iii", "compatibility_ref": "DR-7: no documented aggregate count surface; cadence x span is an UPPER (inflating) estimate that fails the conservative-bound criterion; no availability-floor constant exists in authority; class (ii) empty -> candidate n-unresolved (SS 9.1 class 3) absent an operator-accepted demonstrable method (UD-1)" }
+      }
+    },
+    "2": {
+      "rank": 2,
+      "provider": "NOAA",
+      "product": "CO-OPS coastal water level",
+      "route_method_id": "noaa-coops-station-metadata",
+      "authored_inputs": {
+        "authority_published": true,
+        "public": true,
+        "machine_readable": true,
+        "free": true,
+        "exogeneity_judgment": "Coastal water level is a physical oceanographic measurement exogenous to any market or betting signal.",
+        "exogenous": true,
+        "mechanical_outcome_declared": true,
+        "revision_vintage_documented": true,
+        "cadence": "6-min"
+      },
+      "authored_sources": {
+        "authority_published": "NOAA CO-OPS is a federal scientific authority (candidate-pool rank 2)",
+        "machine_readable": "CO-OPS Metadata API returns machine-readable JSON (routes.js noaa-coops-station-metadata)",
+        "revision_vintage_documented": "candidate-pool vintage_structure: preliminary -> verified (strong)",
+        "cadence": "candidate-pool.json rank 2 cadence descriptor (transcribed authored input)"
+      },
+      "measured_methods": {
+        "history_years": { "method_id": "noaa-coops-station-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: CO-OPS Metadata API established/period fields; YEAR_MS=365.25d conservative for >=3y (UD-1)" },
+        "span": { "method_id": "noaa-coops-station-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: station period of record" },
+        "n_observations": { "method_id": "noaa-coops-station-metadata", "intended_class": "iii", "compatibility_ref": "DR-7: data API is date-range-capped and counting would page VALUES (forbidden, FR-B2); no aggregate count surface documented; class (ii) empty -> class 3 (UD-1)" }
+      }
+    },
+    "3": {
+      "rank": 3,
+      "provider": "NOAA",
+      "product": "NDBC buoy significant wave height",
+      "route_method_id": "noaa-ndbc-station-metadata",
+      "authored_inputs": {
+        "authority_published": true,
+        "public": true,
+        "machine_readable": true,
+        "free": true,
+        "exogeneity_judgment": "Buoy significant wave height is a physical oceanographic measurement exogenous to any market or betting signal.",
+        "exogenous": true,
+        "mechanical_outcome_declared": true,
+        "revision_vintage_documented": true,
+        "cadence": "~hourly"
+      },
+      "authored_sources": {
+        "authority_published": "NOAA NDBC is a federal scientific authority (candidate-pool rank 3)",
+        "machine_readable": "NDBC station table is machine-parseable text; metadata-surface machine-readability to CONFIRM at Gate-A fixture time (research SS4)",
+        "revision_vintage_documented": "candidate-pool vintage_structure: archival QC (moderate)",
+        "cadence": "candidate-pool.json rank 3 cadence descriptor (transcribed authored input)"
+      },
+      "measured_methods": {
+        "history_years": { "method_id": "noaa-ndbc-station-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: NDBC station/deployment metadata period of record (CONFIRM metadata-surface machine-readability at Gate A); YEAR_MS=365.25d conservative (UD-1)" },
+        "span": { "method_id": "noaa-ndbc-station-metadata", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: deployment period of record" },
+        "n_observations": { "method_id": "noaa-ndbc-station-metadata", "intended_class": "iii", "compatibility_ref": "DR-7: flat-file provider; counting = downloading observation files (= VALUES, forbidden FR-B2); class (ii) empty -> class 3 (UD-1)" }
+      }
+    },
+    "4": {
+      "rank": 4,
+      "provider": "NWS/ISD",
+      "product": "station weather observations (temp/wind)",
+      "route_method_id": "nws-isd-station-inventory",
+      "authored_inputs": {
+        "authority_published": true,
+        "public": true,
+        "machine_readable": true,
+        "free": true,
+        "exogeneity_judgment": "Station temperature/wind observations are physical meteorological measurements exogenous to any market or betting signal.",
+        "exogenous": true,
+        "mechanical_outcome_declared": true,
+        "revision_vintage_documented": true,
+        "cadence": "hourly"
+      },
+      "authored_sources": {
+        "authority_published": "NWS/ISD (NOAA NCEI) is a federal scientific authority (candidate-pool rank 4)",
+        "machine_readable": "ISD station inventory is a machine-readable CSV with period-of-record BEGIN/END columns (routes.js nws-isd-station-inventory)",
+        "revision_vintage_documented": "candidate-pool vintage_structure: QC re-issues (moderate)",
+        "cadence": "candidate-pool.json rank 4 cadence descriptor (transcribed authored input)"
+      },
+      "measured_methods": {
+        "history_years": { "method_id": "nws-isd-station-inventory", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: ISD isd-history.csv BEGIN/END period-of-record columns; YEAR_MS=365.25d conservative for >=3y (UD-1)" },
+        "span": { "method_id": "nws-isd-station-inventory", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: BEGIN/END columns" },
+        "n_observations": { "method_id": "nws-isd-station-inventory", "intended_class": "iii", "compatibility_ref": "DR-7: flat-file provider; counting = downloading observation files (= VALUES, forbidden FR-B2); class (ii) empty -> class 3 (UD-1)" }
+      }
+    },
+    "5": {
+      "rank": 5,
+      "provider": "EIA",
+      "product": "hourly electricity demand",
+      "route_method_id": "eia-electricity-demand-count",
+      "authored_inputs": {
+        "authority_published": true,
+        "public": true,
+        "machine_readable": true,
+        "free": true,
+        "exogeneity_judgment": "OPERATOR DECISION REQUIRED (DR-8 substantive authored call): candidate-pool endogeneity_flag:true flags mild reflexivity of electricity demand with market/price signals (arch SS9:260). Default proposed reading: NON-exogenous (exogenous:false) — the conservative honest reading of the flag; if the operator authors exogenous:false, EIA fails gate 2 and is ineligible in every completion (DR-7 Tier-2), making its n-classification outcome-irrelevant.",
+        "exogenous": false,
+        "mechanical_outcome_declared": true,
+        "revision_vintage_documented": true,
+        "cadence": "hourly"
+      },
+      "authored_sources": {
+        "authority_published": "EIA is a federal statistical authority (candidate-pool rank 5)",
+        "free": "EIA v2 API is free but requires a personally-obtained API key (UD-2, NFR-SEC)",
+        "revision_vintage_documented": "candidate-pool vintage_structure: restatements (moderate)",
+        "cadence": "candidate-pool.json rank 5 cadence descriptor (transcribed authored input)",
+        "exogeneity_judgment": "candidate-pool.json rank 5 endogeneity_flag:true + endogeneity_note (arch SS9:260) — the DR-8 substantive authored call, surfaced for the operator at Gate A"
+      },
+      "measured_methods": {
+        "history_years": { "method_id": "eia-electricity-demand-count", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: EIA series metadata start/end period; YEAR_MS=365.25d conservative for >=3y (UD-1)" },
+        "span": { "method_id": "eia-electricity-demand-count", "intended_class": "ii", "compatibility_ref": "DR-7 documented-equivalence: series metadata start/end period" },
+        "n_observations": { "method_id": "eia-electricity-demand-count", "intended_class": "i", "compatibility_ref": "DR-7: the SOLE class-(i)-attempt candidate — EIA v2 data envelope reports response.total (exact row count) requested with length=0; contingent on UD-2 credential + empirical zero-row behavior. A rows-despite-length=0 outcome is a class-4 CONTAMINATION event (G2 value-bearing), never an n-classification fallback and never class 3." }
+      }
+    }
+  }
+}
