@@ -407,13 +407,14 @@ test('Design A: the driver defaults to the real repository paths, and an isolate
 
   const before = readdirSync(LIVE_EVIDENCE_DIR).sort();
   const isolated = tmpEvidenceDir();
+  assert.ok(!existsSync(join(isolated, PIN_INVARIANCE_G0_NAME)), 'absent before the run in the isolated evidence root');
+
   const { code, calls, err } = await driveWithStubbedTransport(['--execute'], { repoRoot: REPO_ROOT, evidenceDir: isolated });
   assert.equal(code, 1, 'no gate records exist in the isolated evidence directory');
   assert.match(err, /acquisition manifest not found/);
   assert.equal(calls.length, 0, 'ZERO transport');
   assert.deepStrictEqual(readdirSync(LIVE_EVIDENCE_DIR).sort(), before, 'the real evidence directory is unchanged');
-  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, PIN_INVARIANCE_G0_NAME)), 'no live pin-invariance artifact was written');
-  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, 'contact-log.jsonl')), 'no live contact log was written');
+  assert.deepStrictEqual(readdirSync(isolated), [], 'the isolated evidence root — the one actually exercised — received no evidence; the refusal preceded pin-invariance preparation');
 });
 
 // ─── Exclusivity: no other production execution path ───────────────────────────

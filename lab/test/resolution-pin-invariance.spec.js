@@ -357,10 +357,28 @@ test('T2.2: main --execute with the PRODUCTION preparer persists the artifact be
   assert.equal(readFileSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8'), before, 'the artifact is byte-identical');
 });
 
-test('T2.2: the repository evidence directory holds no live pin-invariance artifact', () => {
-  // This node builds the production boundary; it does not exercise it against the real
-  // evidence directory. A live artifact there would be un-adjudicated run evidence. G0
-  // authorization existing is not itself run evidence — it is the authority record — so
-  // its presence is not asserted here; only the absence of the one-shot run artifact is.
-  assert.ok(!existsSync(join(REPO_ROOT, 'lab/evidence/cycle-005', PIN_INVARIANCE_G0_NAME)), 'no live g0 pin-invariance record exists');
+test('T2.2: the artifact is absent before preparation, written under valid isolated authority, and one-shot thereafter', () => {
+  // State-independent by construction: every assertion below runs against a fresh
+  // temporary evidence root, never the live `lab/evidence/cycle-005`. The one-shot
+  // boundary this node protects is a property of the production preparer, not of
+  // which operational phase the repository currently happens to be in.
+  const evidenceDir = tmpEvidenceDir();
+  assert.ok(!existsSync(join(evidenceDir, PIN_INVARIANCE_G0_NAME)), 'absent before preparation in a fresh evidence root');
+
+  const rec = prepareG0PinInvariance(lawfulArgs(evidenceDir));
+  assert.ok(existsSync(join(evidenceDir, PIN_INVARIANCE_G0_NAME)), 'the production preparer wrote the artifact under valid isolated authority');
+  const verified = verifyPersistedG0PinInvariance({
+    evidenceDir,
+    apparatus_identity: rec.apparatus_identity,
+    freeze_companion_digest: rec.freeze_companion_digest,
+    g0_record_id: rec.refs.g0,
+  });
+  assert.equal(verified.record_id, rec.record_id, 'the same production verifier accepts what the same production preparer wrote');
+
+  // Restart or duplicate preparation over that same evidence root refuses — one-shot
+  // semantics — and the artifact already on disk is left byte-identical.
+  const before = readFileSync(join(evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8');
+  assert.throws(() => prepareG0PinInvariance(lawfulArgs(evidenceDir)), /already exists/);
+  assert.throws(() => prepareG0PinInvariance(lawfulArgs(evidenceDir)), AcquisitionRefusal);
+  assert.equal(readFileSync(join(evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8'), before, 'byte-identical after the refused restart');
 });
