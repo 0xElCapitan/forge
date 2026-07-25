@@ -127,12 +127,15 @@ test('F1: main() refuses (exit 1) on apparatus drift even with both gate records
   assert.match(err, /drift/i);
 });
 
-test('F1: main() passes (exit 0) when self-verify passes and both gate records exist', async () => {
+// Presence is NOT authority (pre-G0 remediation M3): both files exist and the
+// apparatus self-verifies, but the records carry no binding content. The full
+// authority-binding surface is exercised in acquisition-cli.spec.js.
+test('M3: main() refuses (exit 1) when both gate records are present but structurally empty', async () => {
   const { root, evidenceDir } = synthMainFixture({ withGateA: true, withG0: true });
   let err = '';
   const code = await main([], { repoRoot: root, evidenceDir, stderr: (s) => { err += s; } });
-  assert.equal(code, 0);
-  assert.match(err, /self-verify \+ gate records present/);
+  assert.equal(code, 1);
+  assert.match(err, /record_kind must be "gate-a-acceptance"/);
 });
 
 // ─── Behavioral equivalence: Lane A seatbelt vs Lane B authoritative verifier ──

@@ -1,0 +1,67 @@
+{
+  "fixture_kind": "provider-response-rehearsal",
+  "schema_version": "1.0.0",
+  "cycle": "cycle-005",
+  "method_id": "usgs-nwis-site-metadata",
+  "response_decl": "usgs-nwis-site-rdb",
+  "description": "Realistic USGS NWIS site-service (seriesCatalogOutput=true&siteStatus=all) RDB rehearsal responses for the pre-G0 M1 remediation. `catalog_conformant` carries the provider's own `#` preamble — including the `# retrieved: YYYY-MM-DD HH:MM:SS ...` retrieval timestamp that every NWIS RDB body carries — and is metadata-only: the guard must classify it conformant. `catalog_with_observation_row` is the same body with a genuine per-timestamp observation block appended OUTSIDE the preamble: the guard must classify it value_bearing. Bodies are stored as `body_lines` (joined with LF) so the fixture stays canonical JSON and is covered by the DR-2 apparatus manifest.",
+  "provenance": "Preamble/column shape transcribed from publicly documented NWIS RDB output (DOI-USGS/dataRetrieval RDB1Example.txt; hydrofunctions Data Catalog notebook) as cited in grimoires/loa/a2a/cycle-005/15-cycle-005-g0-decision-brief.md §1.3 M1. Values are SYNTHETIC — no provider was contacted; site 01646500 identity is transcribed from repository precedent (lab/test/acquisition-extract.spec.js), not from any response.",
+  "responses": {
+    "catalog_conformant": {
+      "content_type": "text/plain",
+      "note": "metadata-only site/series catalog; the only datetime-with-time in the body is the provider's `# retrieved:` preamble line",
+      "body_lines": [
+        "#",
+        "# U.S. Geological Survey",
+        "# retrieved: 2026-07-24 18:22:31 -04:00\t(sdas01)",
+        "#",
+        "# The Site File stores location and general information about groundwater,",
+        "# surface water, and meteorological sites.",
+        "#",
+        "# Contact:   gs-w_support_nwisweb@usgs.gov",
+        "#",
+        "# The following selected fields are included in this output:",
+        "#",
+        "#  agency_cd       -- Agency",
+        "#  site_no         -- Site identification number",
+        "#  station_nm      -- Site name",
+        "#  site_tp_cd      -- Site type",
+        "#  dec_lat_va      -- Decimal latitude",
+        "#  dec_long_va     -- Decimal longitude",
+        "#  data_type_cd    -- Data type",
+        "#  parm_cd         -- Parameter code",
+        "#  stat_cd         -- Statistical code",
+        "#  begin_date      -- Begin date",
+        "#  end_date        -- End date",
+        "#  count_nu        -- Number of observations",
+        "#",
+        "agency_cd\tsite_no\tstation_nm\tsite_tp_cd\tdec_lat_va\tdec_long_va\tdata_type_cd\tparm_cd\tstat_cd\tbegin_date\tend_date\tcount_nu",
+        "5s\t15s\t50s\t7s\t16s\t16s\t2s\t5s\t5s\t20d\t20d\t8s",
+        "USGS\t01646500\tPOTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA\tST\t38.94977778\t-77.12763889\tdv\t00060\t00003\t1930-09-27\t2026-07-23\t35001",
+        "USGS\t01646500\tPOTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA\tST\t38.94977778\t-77.12763889\tuv\t00060\t\t2007-10-01\t2026-07-23\t164000",
+        "USGS\t01646500\tPOTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA\tST\t38.94977778\t-77.12763889\tuv\t00065\t\t2007-10-01\t2026-07-23\t164000",
+        ""
+      ]
+    },
+    "catalog_with_observation_row": {
+      "content_type": "text/plain",
+      "note": "the same catalog with a genuine per-timestamp observation block appended outside the `#` preamble — value_bearing, contamination",
+      "body_lines": [
+        "#",
+        "# U.S. Geological Survey",
+        "# retrieved: 2026-07-24 18:22:31 -04:00\t(sdas01)",
+        "#",
+        "# Contact:   gs-w_support_nwisweb@usgs.gov",
+        "#",
+        "agency_cd\tsite_no\tstation_nm\tsite_tp_cd\tdec_lat_va\tdec_long_va\tdata_type_cd\tparm_cd\tstat_cd\tbegin_date\tend_date\tcount_nu",
+        "5s\t15s\t50s\t7s\t16s\t16s\t2s\t5s\t5s\t20d\t20d\t8s",
+        "USGS\t01646500\tPOTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA\tST\t38.94977778\t-77.12763889\tuv\t00065\t\t2007-10-01\t2026-07-23\t164000",
+        "agency_cd\tsite_no\tdatetime\ttz_cd\t72255_00065\t72255_00065_cd",
+        "5s\t15s\t20d\t6s\t14n\t10s",
+        "USGS\t01646500\t2026-07-23 14:30\tEDT\t3.41\tP",
+        "USGS\t01646500\t2026-07-23 14:45\tEDT\t3.44\tP",
+        ""
+      ]
+    }
+  }
+}

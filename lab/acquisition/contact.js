@@ -10,8 +10,15 @@
  * unconstructable (FR-B3). Guarantees:
  *
  *   - TLS-only (https) — the route table shape forbids any other scheme (G8);
- *   - manual redirects, ≤ 3 hops, EACH hop's host re-checked against the allowlist,
- *     a non-allowlisted target refused (`redirect_refused`) rather than followed (G8);
+ *   - manual redirects, ≤ 3 hops, EACH hop re-bound to the SAME frozen G0-authorized
+ *     route — same host, same route identity and template path, same authorized
+ *     path-placeholder values and query parameters (order-insensitive), no fragment —
+ *     so a target that leaves that exact scope is refused (`redirect_refused`) rather
+ *     than followed, even when it stays inside the host allowlist (G8);
+ *   - a FINAL (post-redirect) response outside the accepted HTTP success range is
+ *     refused as an evidenced contact refusal carrying the ACTUAL status; its body is
+ *     never read, guarded or extracted, so a non-success response can contribute no
+ *     provider value to any record (and a status alone is never contamination);
  *   - a request timeout via `AbortSignal.timeout`;
  *   - a streamed size cap: the body is read incrementally and the read is aborted
  *     once the cap is exceeded, marking the response `truncated` (→ guards.js
@@ -30,7 +37,7 @@
  * @module lab/acquisition/contact
  */
 
-import { ROUTES, matchRoute, isAllowlistedHost, RouteRefusal } from './routes.js';
+import { ROUTES, matchRoute, isAllowlistedHost, assertAuthorizedRouteUrl, RouteRefusal } from './routes.js';
 import { redactUrl } from './guards.js';
 
 const DEFAULT_TIMEOUT_MS = 20000;
@@ -38,16 +45,35 @@ const DEFAULT_MAX_BYTES = 5 * 1024 * 1024;
 const MAX_REDIRECT_HOPS = 3;
 
 /**
+ * The accepted HTTP success range for a FINAL (post-redirect) response. Anything
+ * outside it is refused before the body is read; 3xx is handled earlier by the
+ * redirect branch and never reaches this check.
+ */
+const HTTP_SUCCESS_MIN = 200;
+const HTTP_SUCCESS_MAX = 299;
+
+/**
  * The route-params key that carries a route's resolved credential value. The sole
  * credentialed route (`eia-electricity-demand-count`) names this placeholder
  * `{api_key}` in its `query_template` (routes.js). Never accepted from the caller
  * (G4) — `contactRoute` injects the env-resolved value under this key itself.
  */
-const CREDENTIAL_PARAM_NAME = 'api_key';
+export const CREDENTIAL_PARAM_NAME = 'api_key';
 
-/** A contact-level failure (timeout, transport error, redirect escape). */
+/**
+ * A contact-level failure (timeout, transport error, redirect escape, non-success
+ * final status). `http_status` and `url_redacted` are populated ONLY on a path
+ * where a response genuinely arrived and a URL was genuinely constructed, so the
+ * recorded evidence never fabricates either (they stay `null` otherwise).
+ */
 export class ContactRefusal extends Error {
-  constructor(message, outcome_class) { super(message); this.name = 'ContactRefusal'; this.outcome_class = outcome_class; }
+  constructor(message, outcome_class, { http_status = null, url_redacted = null } = {}) {
+    super(message);
+    this.name = 'ContactRefusal';
+    this.outcome_class = outcome_class;
+    this.http_status = http_status;
+    this.url_redacted = url_redacted;
+  }
 }
 
 /** Read the value of a URL's sensitive query param into the credential slot, keeping it out of records. */
@@ -173,8 +199,34 @@ export async function contactRoute(routeId, params = {}, opts = {}) {
       if (!isAllowlistedHost(next.host)) {
         throw new ContactRefusal(`redirect target host "${next.host}" is not allowlisted — refused (G8)`, 'redirect_refused');
       }
+      // The host allowlist is not enough: the target must be the SAME frozen,
+      // G0-authorized route the operator authorized — same route identity and
+      // template path, same authorized path-placeholder values, same query
+      // parameters (order aside), no fragment. A provider may re-serve the
+      // authorized request; it may never retarget it onto another path, another
+      // parameter set or another frozen method inside the allowlist.
+      try {
+        assertAuthorizedRouteUrl(routeId, next.toString(), plan.url);
+      } catch (e) {
+        if (!(e instanceof RouteRefusal)) throw e;
+        throw new ContactRefusal(`redirect target leaves the authorized route — ${e.message}`, 'redirect_refused');
+      }
       currentUrl = next.toString();
       continue;
+    }
+
+    // A final response outside the accepted success range is NOT a successful
+    // contact: it never reaches the guard or the extractor, and its body is never
+    // read (so no provider value or response fragment can enter any record, G3).
+    // The refusal carries the ACTUAL status and the G4-redacted route — a status
+    // alone is never grounds for contamination.
+    if (response.status < HTTP_SUCCESS_MIN || response.status > HTTP_SUCCESS_MAX) {
+      throw new ContactRefusal(
+        `route ${routeId}: final HTTP status ${response.status} is outside the accepted success range ` +
+        `${HTTP_SUCCESS_MIN}-${HTTP_SUCCESS_MAX} — refused without reading, guarding or extracting the body`,
+        'http_error',
+        { http_status: response.status, url_redacted: redactUrl(currentUrl) },
+      );
     }
 
     const contentType = typeof response.headers?.get === 'function' ? response.headers.get('content-type') : null;
