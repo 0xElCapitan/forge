@@ -5,8 +5,9 @@
  *
  * The Gate-A acquisition-apparatus IDENTITY. Builds the tracked
  * `acquisition-manifest.json` (+ `.sha256` companion) — a content-addressed
- * enumeration of EVERY `.js`/`.json` asset under `lab/acquisition/**` and
- * `lab/resolution/**` (both namespaces), the per-provider method set, the freeze
+ * enumeration of EVERY `.js`/`.json` asset under `lab/acquisition/**`,
+ * `lab/driver/**` and `lab/resolution/**` (see {@link APPARATUS_NAMESPACES}), the
+ * per-provider method set, the freeze
  * anchor, and the ledger baselines — reusing the pinned freeze primitives
  * (`buildAssetInventory`, `sha256LFNormalized`, `canonicalize`), never
  * reimplementing them (house rule).
@@ -29,8 +30,14 @@ import { sha256LFNormalized, buildAssetInventory } from '../harness/manifests.js
 import { TRIALS_LEDGER_PATH, BURN_LEDGER_PATH } from '../harness/ledgers.js';
 import { writeTextAtomic } from '../harness/slice-fixtures.js';
 
-/** The apparatus namespaces enumerated by the Gate-A manifest (DR-2). */
-export const APPARATUS_NAMESPACES = Object.freeze(['lab/acquisition', 'lab/resolution']);
+/**
+ * The apparatus namespaces enumerated by the Gate-A manifest (DR-2): the two fenced
+ * execution lanes plus `lab/driver`, the composition root that wires them together.
+ * The driver is enumerated here — rather than left outside the identity — so the code
+ * that injects the pre-contact pin-invariance preparer is itself content-addressed and
+ * re-hashed by the contact-side seatbelt before any transport (review 27 §5, Design A).
+ */
+export const APPARATUS_NAMESPACES = Object.freeze(['lab/acquisition', 'lab/driver', 'lab/resolution']);
 
 /** The Lane-A Gate-A method-set file (embedded as `method_set`). */
 const METHOD_SET_REL = 'lab/acquisition/method-set.json';

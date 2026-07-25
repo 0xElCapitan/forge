@@ -1,19 +1,23 @@
 // lab/test/acquisition-boundaries.spec.js
 //
-// Cycle-005 S01 (PRD FR-B3, FR-C2, FR-D5, FR-E4; SDD DR-3 G9; Sprint Plan T1.1/T1.8).
-// The G9 import-fence + forbidden-token STRUCTURAL lint for the two new namespaces.
-// Mirrors the census-no-network.spec.js house pattern (executable-reference regexes +
-// planted-violation self-checks so the lint is provably non-vacuous).
+// Cycle-005 S01 (PRD FR-B3, FR-C2, FR-D5, FR-E4; SDD DR-3 G9; Sprint Plan T1.1/T1.8);
+// S02 composition-root extension (review 27 §5, operator Design A).
+// The G9 import-fence + forbidden-token STRUCTURAL lint for the three apparatus
+// namespaces. Mirrors the census-no-network.spec.js house pattern (executable-reference
+// regexes + planted-violation self-checks so the lint is provably non-vacuous).
 //
 //   - networking APIs appear ONLY in lab/acquisition/contact.js;
 //   - child_process appears ONLY in lab/resolution/census-exec.js;
 //   - lab/acquisition/** never imports lab/census/* or lab/resolution/*;
 //   - lab/resolution/** never imports lab/acquisition/*;
+//   - lab/driver/** is the COMPOSITION ROOT: it may import the narrow public execution
+//     interfaces of both lanes and nothing else, and NEITHER lane may import it;
 //   - the ledger-write tokens {appendTrial, buildBurnEntry, trials-ledger, burn-ledger}
-//     are forbidden across BOTH namespaces (nothing writes a scientific ledger);
+//     are forbidden across ALL THREE namespaces (nothing writes a scientific ledger);
 //   - non-GET HTTP methods are forbidden (G5);
-//   - direct fs-WRITE APIs are absent from lab/acquisition/** (G3 zero-raw-persistence:
-//     the only writers are the imported canonical/append helpers).
+//   - direct fs-WRITE APIs are absent from lab/acquisition/** and lab/driver/**
+//     (G3 zero-raw-persistence: the only writers are the imported canonical/append
+//     helpers, and the composition root writes nothing at all).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,6 +27,7 @@ import { fileURLToPath } from 'node:url';
 
 const ACQ_DIR = fileURLToPath(new URL('../acquisition/', import.meta.url));
 const RES_DIR = fileURLToPath(new URL('../resolution/', import.meta.url));
+const DRV_DIR = fileURLToPath(new URL('../driver/', import.meta.url));
 
 function jsFiles(dir) {
   const out = [];
@@ -35,6 +40,26 @@ function jsFiles(dir) {
 }
 const base = (f) => f.replace(/\\/g, '/').split('/').pop();
 const rel2 = (f) => f.replace(/\\/g, '/').split('/').slice(-2).join('/');
+
+/** Every apparatus source file: the two fenced lanes plus the composition root. */
+const apparatusFiles = () => [...jsFiles(ACQ_DIR), ...jsFiles(RES_DIR), ...jsFiles(DRV_DIR)];
+
+/** Every `from '<specifier>'` in a source file. */
+function importSpecifiers(src) {
+  return [...src.matchAll(/\bfrom\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
+}
+
+/**
+ * The ONLY non-builtin modules the composition root may name. Enumerated as exact
+ * specifiers rather than as a namespace glob so the dependency surface stays the two
+ * narrow public execution interfaces the driver actually composes — a namespace-wide
+ * exemption would let a future edit reach `contact.js`, `routes.js` or `seal.js`
+ * directly and quietly become the contact controller the driver must never be.
+ */
+const DRIVER_ALLOWED_IMPORTS = Object.freeze([
+  '../acquisition/acquire.js',
+  '../resolution/pin-invariance.js',
+]);
 
 // Executable network / subprocess reference patterns (the census lint's FORBIDDEN set).
 const NETWORK = [
@@ -71,7 +96,7 @@ const FS_WRITE = [
 const NON_GET = { name: 'non-GET method', re: /\bmethod\s*:\s*['"](?:POST|PUT|DELETE|PATCH|HEAD|OPTIONS)['"]/i };
 
 test('G9: networking APIs appear ONLY in lab/acquisition/contact.js', () => {
-  for (const file of [...jsFiles(ACQ_DIR), ...jsFiles(RES_DIR)]) {
+  for (const file of apparatusFiles()) {
     if (base(file) === 'contact.js') continue; // the sole networking module
     const src = readFileSync(file, 'utf8');
     for (const { name, re } of NETWORK) assert.doesNotMatch(src, re, `${rel2(file)} must not contain ${name}`);
@@ -79,7 +104,7 @@ test('G9: networking APIs appear ONLY in lab/acquisition/contact.js', () => {
 });
 
 test('G9: child_process appears ONLY in lab/resolution/census-exec.js', () => {
-  for (const file of [...jsFiles(ACQ_DIR), ...jsFiles(RES_DIR)]) {
+  for (const file of apparatusFiles()) {
     if (base(file) === 'census-exec.js') continue; // the sole subprocess module
     const src = readFileSync(file, 'utf8');
     for (const { name, re } of SUBPROCESS) assert.doesNotMatch(src, re, `${rel2(file)} must not contain ${name}`);
@@ -99,36 +124,70 @@ test('G9: import fences — acquisition never imports census/resolution; resolut
   }
 });
 
-test('G9: ledger-write tokens forbidden across BOTH namespaces (FR-D5/FR-E4)', () => {
+// ─── The composition root (review 27 §5, operator Design A) ────────────────────
+//
+// The fence above is BIDIRECTIONAL, so neither lane can host the code that hands Lane
+// B's pin-invariance preparer to Lane A's entry point. `lab/driver/**` is the third
+// apparatus namespace that may name both — and the dependency permission runs ONE WAY:
+// the driver may depend on the lanes, the lanes may never depend on the driver. That
+// asymmetry is what keeps the fence's meaning intact: an acquisition module still
+// cannot reach a resolution module, not even by routing through the driver.
+
+test('G9: the driver is the composition root — its dependency surface is exactly the two lane entry points', () => {
+  const files = jsFiles(DRV_DIR);
+  assert.ok(files.length > 0, 'lab/driver/** carries at least one module');
+  for (const file of files) {
+    const src = readFileSync(file, 'utf8');
+    for (const spec of importSpecifiers(src)) {
+      if (spec.startsWith('node:')) continue; // node builtins are always permitted
+      assert.ok(
+        DRIVER_ALLOWED_IMPORTS.includes(spec),
+        `${rel2(file)} (driver) may only import [${DRIVER_ALLOWED_IMPORTS.join(', ')}] or node builtins — found "${spec}"`,
+      );
+    }
+  }
+});
+
+test('G9: NEITHER lane imports the driver — the composition dependency is one-way', () => {
+  const driverImportForbidden = /\bfrom\s+['"][^'"]*\/driver\/[^'"]*['"]/;
   for (const file of [...jsFiles(ACQ_DIR), ...jsFiles(RES_DIR)]) {
+    const src = readFileSync(file, 'utf8');
+    assert.doesNotMatch(src, driverImportForbidden, `${rel2(file)} must not import from lab/driver/* (the composition root depends on the lanes, never the reverse)`);
+  }
+});
+
+test('G9: ledger-write tokens forbidden across ALL THREE namespaces (FR-D5/FR-E4)', () => {
+  for (const file of apparatusFiles()) {
     const src = readFileSync(file, 'utf8');
     for (const { name, re } of LEDGER_TOKENS) assert.doesNotMatch(src, re, `${rel2(file)} must not contain ledger-write token ${name}`);
   }
 });
 
-test('G5: non-GET HTTP methods forbidden across both namespaces', () => {
-  for (const file of [...jsFiles(ACQ_DIR), ...jsFiles(RES_DIR)]) {
+test('G5: non-GET HTTP methods forbidden across all three namespaces', () => {
+  for (const file of apparatusFiles()) {
     const src = readFileSync(file, 'utf8');
     assert.doesNotMatch(src, NON_GET.re, `${rel2(file)} must not contain a ${NON_GET.name}`);
   }
 });
 
-test('G3: direct fs-WRITE APIs absent from lab/acquisition/** (writers are imported helpers)', () => {
-  for (const file of jsFiles(ACQ_DIR)) {
+test('G3: direct fs-WRITE APIs absent from lab/acquisition/** and lab/driver/** (writers are imported helpers)', () => {
+  for (const file of [...jsFiles(ACQ_DIR), ...jsFiles(DRV_DIR)]) {
     const src = readFileSync(file, 'utf8');
-    for (const { name, re } of FS_WRITE) assert.doesNotMatch(src, re, `${rel2(file)} (acquisition) must not call fs-write API ${name} directly (G3)`);
+    for (const { name, re } of FS_WRITE) assert.doesNotMatch(src, re, `${rel2(file)} must not call fs-write API ${name} directly (G3)`);
   }
 });
 
-test('discovery: both namespaces carry their expected apparatus modules (fail-closed)', () => {
+test('discovery: all three namespaces carry their expected apparatus modules (fail-closed)', () => {
   const acq = jsFiles(ACQ_DIR).map(base).sort();
   for (const m of ['routes.js', 'contact.js', 'guards.js', 'extract.js', 'assemble.js', 'classify.js', 'acquire.js']) {
     assert.ok(acq.includes(m), `lab/acquisition/${m} present (found: ${acq.join(', ')})`);
   }
   const res = jsFiles(RES_DIR).map(base).sort();
-  for (const m of ['identity.js', 'verify-pins.js', 'census-exec.js', 'select.js', 'invariance.js', 'pstar.js', 'evidence.js', 'seal.js']) {
+  for (const m of ['identity.js', 'verify-pins.js', 'pin-invariance.js', 'census-exec.js', 'select.js', 'invariance.js', 'pstar.js', 'evidence.js', 'seal.js']) {
     assert.ok(res.includes(m), `lab/resolution/${m} present (found: ${res.join(', ')})`);
   }
+  const drv = jsFiles(DRV_DIR).map(base).sort();
+  assert.deepStrictEqual(drv, ['acquire-run.js'], 'lab/driver carries exactly the one composition root');
 });
 
 test('self-check: the lint catches planted violations (non-vacuous)', () => {
@@ -138,6 +197,12 @@ test('self-check: the lint catches planted violations (non-vacuous)', () => {
   assert.ok(SUBPROCESS.some(({ re }) => re.test(plantedSub)), 'planted child_process import detected');
   const plantedImport = "import { x } from '../census/eligibility.js';";
   assert.match(plantedImport, /\bfrom\s+['"][^'"]*\/(census|resolution)\/[^'"]*['"]/, 'planted cross-namespace import detected');
+  const plantedDriverImport = "import { runAcquisition } from '../driver/acquire-run.js';";
+  assert.match(plantedDriverImport, /\bfrom\s+['"][^'"]*\/driver\/[^'"]*['"]/, 'planted lane→driver import detected');
+  // A driver reaching past the two lane entry points is caught by the allowlist.
+  const plantedWideDriverImport = importSpecifiers("import { contactRoute } from '../acquisition/contact.js';");
+  assert.deepStrictEqual(plantedWideDriverImport, ['../acquisition/contact.js'], 'specifiers extracted');
+  assert.ok(!DRIVER_ALLOWED_IMPORTS.includes(plantedWideDriverImport[0]), 'planted wide driver import rejected by the allowlist');
   const plantedLedger = "appendTrial(path, e); // burn-ledger\n";
   assert.ok(LEDGER_TOKENS.some(({ re }) => re.test(plantedLedger)), 'planted ledger token detected');
   const plantedPost = "await fetch(u, { method: 'POST' });";

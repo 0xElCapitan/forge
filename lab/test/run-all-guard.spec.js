@@ -59,5 +59,5 @@ test('self-consistency: the REAL discovered lab specs equal the REAL inventory e
   const registered = normalizeAndSort(loadInventory());
   assert.deepStrictEqual(discovered, registered, 'on-disk specs and inventory.json agree (the real runner would pass)');
   assert.ok(registered.includes('lab/test/run-all-guard.spec.js'), 'the guard spec itself is registered');
-  assert.equal(registered.length, 30, 'thirty lab specs (fourteen S02/S03 census/freeze + eleven Cycle-005 S01 acquisition/resolution + one F1 review-remediation spec + one pre-Gate-A credential-hardening spec + one pre-G0 acquisition-CLI spec + one pre-G0 F1 path-parameter-authority spec + one pre-G0 C-5/C-6 transport-authority spec)');
+  assert.equal(registered.length, 32, 'thirty-two lab specs (fourteen S02/S03 census/freeze + eleven Cycle-005 S01 acquisition/resolution + one F1 review-remediation spec + one pre-Gate-A credential-hardening spec + one pre-G0 acquisition-CLI spec + one pre-G0 F1 path-parameter-authority spec + one pre-G0 C-5/C-6 transport-authority spec + one S02 T2.2 pre-contact pin-invariance spec + one S02 composition-root spec)');
 });

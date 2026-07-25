@@ -31,7 +31,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { main, acquirePool, parseArgs, verifyContactAuthority, deriveAuthorizedCandidates, requiredContactParams, findHaltRecords, assertNoGoverningHalt, findPriorAcquisitionEvidence, assertNoPriorAcquisition, HALT_RECORD_NAME, AcquisitionRefusal } from '../acquisition/acquire.js';
+import { main, acquirePool, parseArgs, verifyContactAuthority, deriveAuthorizedCandidates, requiredContactParams, findHaltRecords, assertNoGoverningHalt, findPriorAcquisitionEvidence, assertNoPriorAcquisition, ONE_SHOT_SCOPE, PIN_INVARIANCE_G0_NAME, HALT_RECORD_NAME, AcquisitionRefusal } from '../acquisition/acquire.js';
 import { ROUTES } from '../acquisition/routes.js';
 import { buildAssetInventory, contentAddress, sha256LFNormalized } from '../harness/manifests.js';
 import { canonicalize } from '../../src/receipt/canonicalize.js';
@@ -351,6 +351,35 @@ for (const [label, build, expected] of REFUSALS) {
 
 // ─── FR-E3: pin-invariance evidence precedes the first transport call ──────────
 
+/**
+ * A pin-invariance preparer that behaves the way the production one does: it PERSISTS
+ * a well-formed, authority-bound `pin-invariance-g0.json` into the evidence directory
+ * and returns the record it wrote. `over` mutates the body before it is
+ * content-addressed, so an adversarial case tests the mutation and not the integrity
+ * check. `rawBytes` writes bytes verbatim instead (malformed-artifact cases).
+ */
+function writePin({ evidenceDir, apparatus_identity, freeze_companion_digest, g0_record_id, event = 'g0' }, over = {}, rawBytes = null) {
+  const rec = withId({
+    record_kind: 'pin-invariance',
+    schema_version: '1.0.0',
+    cycle: 'cycle-005',
+    event,
+    asset_count: 43,
+    all_match: true,
+    companion_match: true,
+    mismatches: [],
+    apparatus_identity,
+    freeze_companion_digest,
+    refs: { g0: g0_record_id },
+    ...over,
+  });
+  writeFileSync(join(evidenceDir, 'pin-invariance-g0.json'), rawBytes === null ? canonicalize(rec) + '\n' : rawBytes);
+  return rec;
+}
+
+/** The lawful production-shaped preparer used by every execution test below. */
+const PIN_OK = (arg) => writePin(arg);
+
 test('T2.1: --execute refuses when no pin-invariance preparation is supplied', async () => {
   const fx = synthAuthority();
   const calls = [];
@@ -382,9 +411,10 @@ test('T2.1: pin-invariance preparation happens BEFORE the first transport call',
   const fetchImpl = transport(OK_BODIES(), calls);
   const { code } = await runMain(['--execute'], fx, {
     fetchImpl: async (url, init) => { order.push(`contact:${new URL(url).host}`); return fetchImpl(url, init); },
-    preparePinInvariance: ({ event }) => {
-      order.push(`pin:${event}`);
-      return { record_kind: 'pin-invariance', event: 'g0', all_match: true, companion_match: true, mismatches: [] };
+    preparePinInvariance: (arg) => {
+      order.push(`pin:${arg.event}`);
+      assert.ok(!existsSync(join(fx.evidenceDir, 'contact-log.jsonl')), 'no contact evidence exists when the pin record is prepared');
+      return PIN_OK(arg);
     },
   });
   assert.equal(code, 0);
@@ -393,8 +423,6 @@ test('T2.1: pin-invariance preparation happens BEFORE the first transport call',
 });
 
 // ─── Execution: EIA exclusion, class-3 continuation, deterministic evidence ────
-
-const PIN_OK = () => ({ record_kind: 'pin-invariance', event: 'g0', all_match: true, companion_match: true, mismatches: [] });
 
 test('FR-B2/UD-2: EIA never enters execution and FORGE_EIA_API_KEY is never exercised', async () => {
   const fx = synthAuthority();
@@ -922,9 +950,9 @@ test('deriveAuthorizedCandidates refuses when the scope and the method set disag
 // nothing and appends nothing, and an operator holding a completed run needs to be
 // able to inspect the authority chain.
 
-/** The three run-evidence ledgers, and the bytes each holds. */
+/** The run-evidence artifacts, and the bytes each holds (the pre-transport pin record included). */
 const evidenceSnapshot = (dir) => Object.fromEntries(
-  ['contact-log.jsonl', 'acquisition-provenance.jsonl', 'contamination-events.jsonl']
+  ['contact-log.jsonl', 'acquisition-provenance.jsonl', 'contamination-events.jsonl', 'pin-invariance-g0.json']
     .filter(n => existsSync(join(dir, n)))
     .map(n => [n, readFileSync(join(dir, n), 'utf8')]),
 );
@@ -1105,4 +1133,224 @@ test('R-4: no override, resume flag or environment escape exists', () => {
   // `--execute` and `--preflight` remain the ONLY accepted arguments (fail-closed).
   assert.throws(() => parseArgs(['--resume']), AcquisitionRefusal);
   assert.throws(() => parseArgs(['--force']), AcquisitionRefusal);
+});
+
+// ─── T2.2: the pre-contact pin-invariance boundary ─────────────────────────────
+//
+// The FR-E3 obligation is that `pin-invariance-g0.json` is DURABLE on disk before the
+// first transport call, and that the CLI entry-point one-shot set treats it as prior
+// run evidence while the internal pool-entry set does not. The asymmetry is what makes
+// the boundary implementable at all: including the artifact in BOTH sets makes every
+// run refuse the evidence it just created and no run can ever reach transport
+// (24-cycle-005-pre-g0-apparatus-audit.md §7).
+
+test('T2.2: the pin artifact is persisted and authority-bound BEFORE the first transport call', async () => {
+  const fx = synthAuthority();
+  const calls = [];
+  const inner = transport(OK_BODIES(), calls);
+  const seenAtFirstContact = [];
+  const { code } = await runMain(['--execute'], fx, {
+    fetchImpl: async (url, init) => {
+      if (calls.length === 0) seenAtFirstContact.push(existsSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME)));
+      return inner(url, init);
+    },
+    preparePinInvariance: PIN_OK,
+  });
+  assert.equal(code, 0);
+  assert.equal(calls.length, 4);
+  assert.deepEqual(seenAtFirstContact, [true], 'the artifact was already on disk when the wire was first touched');
+
+  const text = readFileSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8');
+  const rec = JSON.parse(text);
+  assert.equal(rec.record_kind, 'pin-invariance');
+  assert.equal(rec.cycle, 'cycle-005');
+  assert.equal(rec.event, 'g0');
+  assert.equal(rec.asset_count, 43, '43/43 frozen Cycle-004 pins');
+  assert.equal(rec.all_match, true);
+  assert.equal(rec.companion_match, true);
+  assert.deepEqual(rec.mismatches, []);
+  assert.equal(rec.apparatus_identity, fx.companion, 'bound to the live apparatus identity');
+  assert.equal(rec.freeze_companion_digest, 'sha256:synthetic', 'bound to the accepted freeze anchor');
+  assert.equal(rec.refs.g0, fx.g0.record_id, 'bound to the governing G0 authorization');
+  const { record_id, ...body } = rec;
+  assert.equal(record_id, contentAddress(body), 'DR-4.3 self-excluded record_id verifies');
+  assert.equal(text, canonicalize(rec) + '\n', 'the bytes are the canonical form of the record');
+});
+
+test('T2.2: --execute refuses with zero transport when the preparer persists nothing', async () => {
+  const fx = synthAuthority();
+  const calls = [];
+  const { code, err } = await runMain(['--execute'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    // A well-formed record that never reaches disk: a claim, not durable evidence.
+    preparePinInvariance: ({ apparatus_identity, freeze_companion_digest, g0_record_id }) => withId({
+      record_kind: 'pin-invariance', schema_version: '1.0.0', cycle: 'cycle-005', event: 'g0',
+      asset_count: 43, all_match: true, companion_match: true, mismatches: [],
+      apparatus_identity, freeze_companion_digest, refs: { g0: g0_record_id },
+    }),
+  });
+  assert.equal(code, 1);
+  assert.match(err, /pin-invariance-g0\.json was not persisted before first contact/);
+  assert.match(err, /DURABLE on disk/);
+  assert.equal(calls.length, 0, 'zero transport without durable pin evidence');
+  assert.ok(!existsSync(join(fx.evidenceDir, 'contact-log.jsonl')), 'no run evidence was written');
+});
+
+test('T2.2: malformed, stale or mismatched PERSISTED pin evidence fails closed with zero transport', async () => {
+  const CASES = [
+    ['stale — another apparatus identity', (a) => writePin(a, { apparatus_identity: 'sha256:some-other-apparatus' }), /STALE PIN EVIDENCE/],
+    ['another freeze anchor', (a) => writePin(a, { freeze_companion_digest: 'sha256:some-other-freeze' }), /names another freeze companion digest/],
+    ['another G0 authorization', (a) => writePin(a, { refs: { g0: 'sha256:some-other-g0' } }), /does not reference the governing G0 authorization/],
+    ['a pin count that is not the frozen 43', (a) => writePin(a, { asset_count: 42 }), /must attest the frozen 43 pinned assets/],
+    ['drift reported in the persisted record', (a) => writePin(a, { all_match: false }), /all_match is not true/],
+    ['mismatches reported in the persisted record', (a) => writePin(a, { mismatches: [{ path: 'x', reason: 'y' }] }), /reports mismatches/],
+    ['the wrong ceremony event', (a) => writePin(a, { event: 'gate-a' }), /event must be "g0"/],
+    ['malformed JSON', (a) => writePin(a, {}, '{ not json'), /malformed pin-invariance-g0\.json/],
+    ['a body edited under a retained record_id', (a) => {
+      const rec = writePin(a);
+      const tampered = { ...rec, apparatus_identity: 'sha256:swapped-after-signing' };
+      writeFileSync(join(a.evidenceDir, PIN_INVARIANCE_G0_NAME), canonicalize(tampered) + '\n');
+      return rec;
+    }, /record_id does not match its content/],
+    ['non-canonical persisted bytes', (a) => {
+      const rec = writePin(a);
+      writeFileSync(join(a.evidenceDir, PIN_INVARIANCE_G0_NAME), JSON.stringify(rec, null, 2) + '\n');
+      return rec;
+    }, /not the canonical form of the record/],
+    ['a returned record that is not the persisted one', (a) => {
+      writePin(a);
+      return withId({
+        record_kind: 'pin-invariance', schema_version: '1.0.0', cycle: 'cycle-005', event: 'g0',
+        asset_count: 43, all_match: true, companion_match: true, mismatches: [],
+        apparatus_identity: a.apparatus_identity, freeze_companion_digest: a.freeze_companion_digest,
+        refs: { g0: a.g0_record_id }, note: 'a different record',
+      });
+    }, /is not the record persisted at pin-invariance-g0\.json/],
+  ];
+  for (const [label, prepare, expected] of CASES) {
+    const fx = synthAuthority();
+    const calls = [];
+    const { code, err } = await runMain(['--execute'], fx, { fetchImpl: transport(OK_BODIES(), calls), preparePinInvariance: prepare });
+    assert.equal(code, 1, `${label}: refused`);
+    assert.match(err, expected, label);
+    assert.equal(calls.length, 0, `${label}: zero transport`);
+    assert.ok(!existsSync(join(fx.evidenceDir, 'contact-log.jsonl')), `${label}: no contact evidence`);
+  }
+});
+
+test('T2.2: the one-shot sets are split — the pool entry accepts the artifact the entry point rejects', () => {
+  const fx = synthAuthority();
+  writePin({ evidenceDir: fx.evidenceDir, apparatus_identity: fx.companion, freeze_companion_digest: 'sha256:synthetic', g0_record_id: fx.g0.record_id });
+
+  // The internal pool-entry boundary must NOT see it: it runs after this run's own
+  // preparation, so seeing it would make every run refuse itself (audit 24 §7).
+  assert.deepEqual(findPriorAcquisitionEvidence(fx.evidenceDir, ONE_SHOT_SCOPE.POOL_ENTRY), []);
+  assert.doesNotThrow(() => assertNoPriorAcquisition(fx.evidenceDir, ONE_SHOT_SCOPE.POOL_ENTRY));
+
+  // The CLI entry-point boundary must see it, and the broader set is the DEFAULT.
+  const found = findPriorAcquisitionEvidence(fx.evidenceDir, ONE_SHOT_SCOPE.ENTRY_POINT);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].name, PIN_INVARIANCE_G0_NAME);
+  assert.match(found[0].detail, /reached the pre-contact boundary/);
+  assert.deepEqual(findPriorAcquisitionEvidence(fx.evidenceDir), found, 'the entry-point set is the default');
+  assert.throws(() => assertNoPriorAcquisition(fx.evidenceDir), AcquisitionRefusal);
+
+  // The ledger set is identical under both scopes — only the pin artifact differs.
+  writeFileSync(join(fx.evidenceDir, 'contact-log.jsonl'), '\n');
+  assert.deepEqual(findPriorAcquisitionEvidence(fx.evidenceDir, ONE_SHOT_SCOPE.POOL_ENTRY), [{ name: 'contact-log.jsonl', detail: '1 bytes' }]);
+
+  // An unknown scope is a refusal, never a silently narrower scan.
+  assert.throws(() => findPriorAcquisitionEvidence(fx.evidenceDir, 'anything-else'), /unknown one-shot boundary scope/);
+});
+
+test('T2.2: a pin artifact with no zero-byte exemption — presence alone is evidence', () => {
+  const fx = synthAuthority();
+  writeFileSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME), '');
+  assert.deepEqual(findPriorAcquisitionEvidence(fx.evidenceDir), [{ name: PIN_INVARIANCE_G0_NAME, detail: '0 bytes — a prior run reached the pre-contact boundary' }]);
+  assert.throws(() => assertNoPriorAcquisition(fx.evidenceDir), AcquisitionRefusal);
+});
+
+test('T2.2: a later invocation over the artifact refuses before transport and mutates nothing', async () => {
+  const fx = synthAuthority();
+  const rec = writePin({ evidenceDir: fx.evidenceDir, apparatus_identity: fx.companion, freeze_companion_digest: 'sha256:synthetic', g0_record_id: fx.g0.record_id });
+  const before = readFileSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8');
+  const calls = [];
+  const { code, err } = await runMain(['--execute'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    preparePinInvariance: () => { throw new Error('pin-invariance must not be prepared a second time'); },
+  });
+  assert.equal(code, 1);
+  assert.match(err, /Cycle-005 acquisition evidence already exists/);
+  assert.match(err, new RegExp(`${PIN_INVARIANCE_G0_NAME.replace('.', '\\.')} \\[\\d+ bytes`), 'the refusal names the artifact it found');
+  assert.match(err, /operator-governed decision/, 'adjudication is operator-reserved');
+  assert.equal(calls.length, 0, 'zero transport');
+  assert.equal(readFileSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME), 'utf8'), before, 'the artifact is byte-identical');
+  assert.equal(JSON.parse(before).record_id, rec.record_id);
+  assert.ok(!existsSync(join(fx.evidenceDir, 'contact-log.jsonl')), 'no run evidence was created');
+});
+
+test('T2.2: an interruption after persistence but before transport blocks the restart', async () => {
+  // The C-3 window, closed: the run dies between the durable write and the wire. The
+  // artifact survives, so the next invocation refuses instead of contacting again.
+  const fx = synthAuthority();
+  const calls = [];
+  const first = await runMain(['--execute'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    preparePinInvariance: (arg) => { PIN_OK(arg); throw new Error('simulated interruption immediately after the durable write'); },
+  });
+  assert.equal(first.code, 1, 'the interrupted run does not complete');
+  assert.equal(calls.length, 0, 'the interruption happened before any transport');
+  assert.ok(existsSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME)), 'the durable artifact survives the interruption');
+  assert.ok(!existsSync(join(fx.evidenceDir, 'contact-log.jsonl')), 'no contact log exists — the ledger set alone would NOT have caught this');
+  const snapshot = evidenceSnapshot(fx.evidenceDir);
+
+  const second = await runMain(['--execute'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    preparePinInvariance: () => { throw new Error('pin-invariance must not be prepared after an interrupted run'); },
+  });
+  assert.equal(second.code, 1, 'the restart is refused');
+  assert.match(second.err, /Cycle-005 acquisition evidence already exists/);
+  // The refusal claims only what the evidence supports: the boundary was reached, and
+  // whether a provider was contacted is the operator's question, not the apparatus's.
+  assert.match(second.err, /reached the pre-contact boundary and persisted its FR-E3 pin-invariance evidence/);
+  assert.match(second.err, /this apparatus cannot determine it/);
+  assert.doesNotMatch(second.err, /contact has already begun/, 'no claim the apparatus cannot support');
+  assert.equal(calls.length, 0, 'zero transport across both invocations');
+  assert.deepEqual(evidenceSnapshot(fx.evidenceDir), snapshot, 'evidence byte-identical');
+});
+
+test('T2.2: --preflight creates no run evidence, and remains available once the artifact exists', async () => {
+  const fx = synthAuthority();
+  const calls = [];
+  const pre = await runMain(['--preflight'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    preparePinInvariance: () => { throw new Error('pin-invariance must never be prepared by --preflight'); },
+  });
+  assert.equal(pre.code, 0);
+  assert.equal(calls.length, 0);
+  assert.ok(!existsSync(join(fx.evidenceDir, PIN_INVARIANCE_G0_NAME)), 'preflight writes no pin evidence');
+  assert.deepEqual(findPriorAcquisitionEvidence(fx.evidenceDir), [], 'preflight leaves no run evidence at all');
+
+  writePin({ evidenceDir: fx.evidenceDir, apparatus_identity: fx.companion, freeze_companion_digest: 'sha256:synthetic', g0_record_id: fx.g0.record_id });
+  const after = evidenceSnapshot(fx.evidenceDir);
+  const again = await runMain(['--preflight'], fx, { fetchImpl: transport(OK_BODIES(), calls) });
+  assert.equal(again.code, 0, 'the operator may still inspect the authority chain');
+  assert.equal(calls.length, 0);
+  assert.deepEqual(evidenceSnapshot(fx.evidenceDir), after, 'preflight appends nothing');
+});
+
+test('T2.2: a governing HALT still outranks the pin artifact', async () => {
+  const fx = synthAuthority();
+  writePin({ evidenceDir: fx.evidenceDir, apparatus_identity: fx.companion, freeze_companion_digest: 'sha256:synthetic', g0_record_id: fx.g0.record_id });
+  const halt = withId({ record_kind: 'halt', schema_version: '1.0.0', cycle: 'cycle-005', class: 'contamination', at: '2026-01-01T00:00:00Z' });
+  writeFileSync(join(fx.evidenceDir, HALT_RECORD_NAME), canonicalize(halt) + '\n');
+  const calls = [];
+  const { code, err } = await runMain(['--execute'], fx, {
+    fetchImpl: transport(OK_BODIES(), calls),
+    preparePinInvariance: () => { throw new Error('pin-invariance must not be prepared under a governing HALT'); },
+  });
+  assert.equal(code, 1);
+  assert.match(err, /a governing Cycle-005 HALT record is already on disk/, 'the HALT rule governs');
+  assert.doesNotMatch(err, /acquisition evidence already exists/, 'the one-shot rule does not displace it');
+  assert.equal(calls.length, 0, 'zero transport');
 });

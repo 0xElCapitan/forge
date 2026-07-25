@@ -40,6 +40,20 @@
  *      numbering at 0 and duplicate the `seq` / `contact_ref` identities the first
  *      run earned. `--preflight` (which contacts nothing and appends nothing) is
  *      deliberately still available to the operator.
+ *   5. …and finally, IMMEDIATELY before the first transport call, the FR-E3
+ *      `pin-invariance-g0.json` evidence must be persisted and verified: 43/43 frozen
+ *      Cycle-004 pins, companion match, zero mismatches, bound to this apparatus
+ *      identity, this freeze anchor and this G0 authorization. The record is produced
+ *      by the injected Lane B preparer (G9 forbids importing it here) but validated
+ *      twice — as the value it returns, and as the artifact that actually landed on
+ *      disk. Because that artifact is written BEFORE the wire is touched, and because
+ *      the entry-point one-shot set (step 0b) includes it, an interruption anywhere at
+ *      or after the contact boundary leaves durable evidence that blocks a restart and
+ *      routes the operator to adjudication instead of a silent second acquisition.
+ *
+ * The one-shot boundary is therefore split by construction: the CLI entry point scans
+ * for the pin artifact, the internal `acquirePool` entry does not — otherwise a run
+ * would refuse the evidence it had just created and contact could never occur.
  *
  * Per-candidate (FR-A5 complete-pool) loop: contact (contact.js) → guard (guards.js)
  * → on a G2 value-bearing/indeterminate outcome, execute the DR-3 CONTAMINATION
@@ -126,7 +140,7 @@ function companionPath(manifestPath) {
  * @param {Object} p
  * @param {string} p.repoRoot
  * @param {string} p.manifestPath - lab/evidence/cycle-005/acquisition-manifest.json
- * @returns {{companion_digest:string, asset_count:number}}
+ * @returns {{companion_digest:string, asset_count:number, freeze_companion_digest:string}}
  */
 export function selfVerifyAcquisitionManifest({ repoRoot, manifestPath }) {
   if (!existsSync(manifestPath)) throw new AcquisitionRefusal(`acquire refuses: acquisition manifest not found: ${manifestPath}`);
@@ -145,7 +159,14 @@ export function selfVerifyAcquisitionManifest({ repoRoot, manifestPath }) {
     const actual = sha256LF(readFileSync(abs, 'utf8'));
     if (actual !== a.sha256) throw new AcquisitionRefusal(`acquire refuses: apparatus asset digest mismatch (identity drift): ${a.path}`);
   }
-  return { companion_digest: recomputed, asset_count: manifest.assets.length };
+  // The FR-E1 freeze anchor the operator accepted with this identity. Carried out so
+  // the pre-contact pin-invariance evidence can be bound to it (FR-E3).
+  const freezeRef = manifest.freeze_ref;
+  const freeze_companion_digest = freezeRef !== null && typeof freezeRef === 'object' ? freezeRef.companion_digest : null;
+  if (typeof freeze_companion_digest !== 'string' || freeze_companion_digest.length === 0) {
+    throw new AcquisitionRefusal('acquire refuses: acquisition manifest carries no freeze_ref.companion_digest (the FR-E1 freeze anchor)');
+  }
+  return { companion_digest: recomputed, asset_count: manifest.assets.length, freeze_companion_digest };
 }
 
 /** Assert the Gate-A acceptance + G0 authorization records exist (FR-B1). */
@@ -455,7 +476,7 @@ export function deriveAuthorizedCandidates({ methodSet, g0, gateA }) {
  * @param {Object} p
  * @param {string} p.repoRoot
  * @param {string} p.evidenceDir
- * @returns {{companion_digest:string, asset_count:number, gate_a_record_id:string, g0_record_id:string, candidates:Array<Object>, excluded_method_ids:string[]}}
+ * @returns {{companion_digest:string, asset_count:number, freeze_companion_digest:string, gate_a_record_id:string, g0_record_id:string, candidates:Array<Object>, excluded_method_ids:string[]}}
  */
 export function verifyContactAuthority({ repoRoot, evidenceDir }) {
   // A governing HALT is the strongest prohibition in the cycle: refuse before the
@@ -481,6 +502,7 @@ export function verifyContactAuthority({ repoRoot, evidenceDir }) {
   return {
     companion_digest: live.companion_digest,
     asset_count: live.asset_count,
+    freeze_companion_digest: live.freeze_companion_digest,
     gate_a_record_id: gateARecordId,
     g0_record_id: g0.record_id,
     candidates,
@@ -488,12 +510,28 @@ export function verifyContactAuthority({ repoRoot, evidenceDir }) {
   };
 }
 
+/** The filename of the FR-E3 pre-contact pin-invariance artifact (SDD §7). */
+export const PIN_INVARIANCE_G0_NAME = 'pin-invariance-g0.json';
+
+/**
+ * The frozen Cycle-004 pinned-asset count (SDD §7 records `asset_count: 43`). Stated
+ * as a constant rather than read from the freeze manifest ON PURPOSE: a tampered
+ * freeze manifest with a self-consistent companion would satisfy a derived count,
+ * but it cannot satisfy this one. The Lane B preparer asserts the same constant
+ * against its own read; G9 forbids sharing the symbol across the fence.
+ */
+export const FROZEN_PIN_ASSET_COUNT = 43;
+
 /**
  * Validate the `pin-invariance-g0` evidence prepared immediately before first
  * contact (FR-E3 / Sprint Plan T2.1). The record itself is produced by the Lane B
  * verifier — G9 forbids importing it here — so the operator entry point supplies it
  * through `io.preparePinInvariance`, and this apparatus refuses to proceed unless it
  * attests 43/43 + companion with no mismatches.
+ *
+ * This checks the record as VALUE. {@link assertPersistedPinInvariance} independently
+ * checks the record as ARTIFACT — what is actually on disk, under whose authority.
+ * Both run before transport; neither is sufficient alone.
  */
 export function assertPinInvarianceRecord(record) {
   if (record === null || typeof record !== 'object' || Array.isArray(record)) throw new AcquisitionRefusal('acquire refuses: pin-invariance evidence is not a record');
@@ -502,7 +540,69 @@ export function assertPinInvarianceRecord(record) {
   if (record.all_match !== true) throw new AcquisitionRefusal('acquire refuses: pin-invariance all_match is not true (pinned-asset drift — void condition 1)');
   if (record.companion_match !== true) throw new AcquisitionRefusal('acquire refuses: pin-invariance companion_match is not true');
   if (!Array.isArray(record.mismatches) || record.mismatches.length !== 0) throw new AcquisitionRefusal('acquire refuses: pin-invariance reports mismatches');
+  if (record.cycle !== 'cycle-005') throw new AcquisitionRefusal('acquire refuses: pin-invariance record is not a cycle-005 record');
+  if (record.asset_count !== FROZEN_PIN_ASSET_COUNT) throw new AcquisitionRefusal(`acquire refuses: pin-invariance must attest the frozen ${FROZEN_PIN_ASSET_COUNT} pinned assets (got ${record.asset_count})`);
   return record;
+}
+
+/**
+ * Verify the pin-invariance evidence that is ACTUALLY ON DISK, immediately before
+ * the first transport call (FR-E3; audit 24 §7; brief 25 §5).
+ *
+ * `io.preparePinInvariance` is injected, so its return value is a claim, not proof.
+ * The obligation the operator accepted is that the artifact is DURABLE before the
+ * wire is touched — so this reads `pin-invariance-g0.json` back from the evidence
+ * directory with Lane A's own allowlisted primitives and refuses unless it:
+ *
+ *   - satisfies {@link assertPinInvarianceRecord} as persisted (not as returned);
+ *   - carries a DR-4.3 self-excluded `record_id` that verifies (not edited after write);
+ *   - was prepared under THIS apparatus identity (a record from another identity is
+ *     stale pin evidence, exactly as a Gate-A record from another identity is stale);
+ *   - names the freeze anchor this identity was accepted against;
+ *   - references the governing G0 authorization;
+ *   - holds bytes that are the canonical form of the record they contain;
+ *   - and is the very record the preparer returned.
+ *
+ * Nothing is written, repaired or removed on refusal: an artifact that exists but
+ * does not verify is evidence a run reached this boundary, and it must keep blocking
+ * a restart until the operator adjudicates.
+ *
+ * @param {string} evidenceDir
+ * @param {Object} p
+ * @param {Object} p.returned - the record `io.preparePinInvariance` returned
+ * @param {string} p.apparatus_identity
+ * @param {string} p.freeze_companion_digest
+ * @param {string} p.g0_record_id
+ * @returns {Object} the verified on-disk record
+ */
+export function assertPersistedPinInvariance(evidenceDir, { returned, apparatus_identity, freeze_companion_digest, g0_record_id }) {
+  const path = join(evidenceDir, PIN_INVARIANCE_G0_NAME);
+  let st;
+  try { st = statSync(path); } catch {
+    throw new AcquisitionRefusal(
+      `acquire refuses: ${PIN_INVARIANCE_G0_NAME} was not persisted before first contact — the FR-E3 pin-invariance evidence must be DURABLE on disk, ` +
+      'not merely computed, so that an interruption at the contact boundary blocks a restart instead of silently permitting one.',
+    );
+  }
+  if (!st.isFile()) throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} is present but not a regular file — fails closed`);
+
+  const text = readFileSync(path, 'utf8');
+  let rec;
+  try { rec = JSON.parse(text); } catch (e) { throw new AcquisitionRefusal(`acquire refuses: malformed ${PIN_INVARIANCE_G0_NAME}: ${e.message}`); }
+  if (rec === null || typeof rec !== 'object' || Array.isArray(rec)) throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} is not a JSON object`);
+
+  assertPinInvarianceRecord(rec);
+  assertRecordIntegrity(rec, PIN_INVARIANCE_G0_NAME);
+  if (rec.apparatus_identity !== apparatus_identity) throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} was prepared under another apparatus identity — STALE PIN EVIDENCE`);
+  if (rec.freeze_companion_digest !== freeze_companion_digest) throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} names another freeze companion digest than the accepted apparatus anchor`);
+  if (rec.refs === null || typeof rec.refs !== 'object' || Array.isArray(rec.refs) || rec.refs.g0 !== g0_record_id) {
+    throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} does not reference the governing G0 authorization`);
+  }
+  if (text !== canonicalize(rec) + '\n') throw new AcquisitionRefusal(`acquire refuses: ${PIN_INVARIANCE_G0_NAME} bytes are not the canonical form of the record they contain`);
+  if (returned === null || typeof returned !== 'object' || returned.record_id !== rec.record_id) {
+    throw new AcquisitionRefusal(`acquire refuses: the pin-invariance record returned by the preparer is not the record persisted at ${PIN_INVARIANCE_G0_NAME}`);
+  }
+  return rec;
 }
 
 // ─── Evidence appenders ────────────────────────────────────────────────────────
@@ -631,6 +731,46 @@ export function assertNoGoverningHalt(evidenceDir) {
  */
 const RUN_EVIDENCE_LEDGERS = Object.freeze(['contact-log.jsonl', 'acquisition-provenance.jsonl', 'contamination-events.jsonl']);
 
+/**
+ * Run evidence that a run writes BEFORE the first transport call, and therefore
+ * before any of {@link RUN_EVIDENCE_LEDGERS} can exist: the FR-E3 pin-invariance
+ * artifact. It is the marker for "a run reached the pre-contact boundary", which is
+ * strictly earlier than "contact has begun" — that is the whole point of persisting
+ * it there (it closes the C-3 window between the first transport call and the first
+ * durable append).
+ *
+ * Unlike the ledgers there is NO zero-byte exemption: `contamination-events.jsonl`
+ * is a tracked, deliberately-empty baseline, whereas this artifact is never tracked
+ * and never lawfully empty. Its presence is evidence at any size.
+ */
+const PRE_TRANSPORT_RUN_EVIDENCE = Object.freeze([PIN_INVARIANCE_G0_NAME]);
+
+/**
+ * The two one-shot boundaries, which deliberately scan DIFFERENT evidence sets.
+ *
+ * `ENTRY_POINT` is the operator CLI gate in {@link main}. It runs BEFORE pin-invariance
+ * preparation, so it includes the pre-transport artifact: a later invocation that finds
+ * one refuses with zero transport and routes the operator to adjudication.
+ *
+ * `POOL_ENTRY` is the direct-caller gate at the top of {@link acquirePool}, which runs
+ * AFTER this run's own pin preparation. It EXCLUDES the pre-transport artifact, because
+ * the artifact it would find is the one this same invocation just created — including it
+ * makes every run refuse itself and no run can ever reach transport (reproduced in
+ * 24-cycle-005-pre-g0-apparatus-audit.md §7). The asymmetry is load-bearing, not an
+ * oversight, and the pool gate keeps its full meaning for the ledgers it does scan.
+ *
+ * The broader `ENTRY_POINT` set is the DEFAULT: a caller that forgets the scope refuses
+ * more, never less.
+ */
+export const ONE_SHOT_SCOPE = Object.freeze({ ENTRY_POINT: 'entry-point', POOL_ENTRY: 'pool-entry' });
+
+/** The evidence names a given one-shot boundary scans. Fail-closed on an unknown scope. */
+function runEvidenceNamesFor(scope) {
+  if (scope === ONE_SHOT_SCOPE.POOL_ENTRY) return { ledgers: RUN_EVIDENCE_LEDGERS, preTransport: [] };
+  if (scope === ONE_SHOT_SCOPE.ENTRY_POINT) return { ledgers: RUN_EVIDENCE_LEDGERS, preTransport: PRE_TRANSPORT_RUN_EVIDENCE };
+  throw new AcquisitionRefusal(`acquire refuses: unknown one-shot boundary scope "${scope}"`);
+}
+
 /** The DR-4.4 census-input directory a candidate that resolved class 1/2 writes into. */
 const RUN_EVIDENCE_METADATA_DIR = 'metadata';
 
@@ -647,15 +787,23 @@ const RUN_EVIDENCE_METADATA_DIR = 'metadata';
  * was removed but whose acquired results were not.
  *
  * @param {string} evidenceDir
+ * @param {string} [scope] - one of {@link ONE_SHOT_SCOPE}; defaults to the broader entry-point set
  * @returns {Array<{name:string, detail:string}>}
  */
-export function findPriorAcquisitionEvidence(evidenceDir) {
+export function findPriorAcquisitionEvidence(evidenceDir, scope = ONE_SHOT_SCOPE.ENTRY_POINT) {
+  const { ledgers, preTransport } = runEvidenceNamesFor(scope);
   const found = [];
-  for (const name of RUN_EVIDENCE_LEDGERS) {
+  for (const name of ledgers) {
     let st;
     try { st = statSync(join(evidenceDir, name)); } catch { continue; } // absent — no evidence of a prior run here
     if (!st.isFile()) found.push({ name, detail: 'present but not a regular file — fails closed' });
     else if (st.size > 0) found.push({ name, detail: `${st.size} bytes` });
+  }
+  for (const name of preTransport) {
+    let st;
+    try { st = statSync(join(evidenceDir, name)); } catch { continue; } // absent — the boundary was never reached
+    // No zero-byte exemption: this artifact is never tracked and never lawfully empty.
+    found.push({ name, detail: st.isFile() ? `${st.size} bytes — a prior run reached the pre-contact boundary` : 'present but not a regular file — fails closed' });
   }
   let entries;
   try { entries = readdirSync(join(evidenceDir, RUN_EVIDENCE_METADATA_DIR)); } catch { entries = []; }
@@ -672,11 +820,15 @@ export function findPriorAcquisitionEvidence(evidenceDir) {
  * duplicate `contact_ref` identities to the evidence the first run earned, silently
  * de-referencing the provenance rows that point at them.
  *
- * Called at the top of {@link acquirePool} — after {@link assertNoGoverningHalt}, so a
- * contamination HALT remains governed by the HALT rule and keeps its own refusal —
- * and again in {@link main} before `io.preparePinInvariance`, so on the CLI path the
- * refusal precedes pin-invariance preparation as well as every transport. Nothing is
- * written and every existing record is left byte-for-byte intact.
+ * Called at the top of {@link acquirePool} under {@link ONE_SHOT_SCOPE}.POOL_ENTRY —
+ * after {@link assertNoGoverningHalt}, so a contamination HALT remains governed by the
+ * HALT rule and keeps its own refusal — and again in {@link main} under
+ * ONE_SHOT_SCOPE.ENTRY_POINT before `io.preparePinInvariance`, so on the CLI path the
+ * refusal precedes pin-invariance preparation as well as every transport. The two
+ * scopes scan different sets on purpose (see {@link ONE_SHOT_SCOPE}): the entry point
+ * includes the pre-transport pin artifact, the pool entry excludes the artifact this
+ * same invocation just created. Nothing is written and every existing record is left
+ * byte-for-byte intact.
  *
  * `--preflight` is deliberately NOT gated: it performs no transport under any
  * circumstances and appends nothing, and inspecting the authority chain is exactly
@@ -687,17 +839,28 @@ export function findPriorAcquisitionEvidence(evidenceDir) {
  * evidence already earned — is operator-reserved, and this apparatus has no path to it.
  *
  * @param {string} evidenceDir
+ * @param {string} [scope] - one of {@link ONE_SHOT_SCOPE}; defaults to the broader entry-point set
  * @returns {Array<Object>} the (empty) prior-evidence list when execution may proceed
  */
-export function assertNoPriorAcquisition(evidenceDir) {
-  const found = findPriorAcquisitionEvidence(evidenceDir);
+export function assertNoPriorAcquisition(evidenceDir, scope = ONE_SHOT_SCOPE.ENTRY_POINT) {
+  const found = findPriorAcquisitionEvidence(evidenceDir, scope);
   if (found.length === 0) return found;
   const described = found.map(f => `${f.name} [${f.detail}]`);
+  // Claim only what the evidence supports (the F3 discipline). A contact log proves
+  // contact began; the pre-transport pin artifact ALONE proves only that a run reached
+  // the boundary — which of the two happened is precisely the operator's question.
+  const preTransportOnly = found.every(f => PRE_TRANSPORT_RUN_EVIDENCE.includes(f.name));
+  const what = preTransportOnly
+    ? 'a prior run reached the pre-contact boundary and persisted its FR-E3 pin-invariance evidence. Whether it went on to contact a ' +
+      'provider is exactly what an operator must adjudicate, and this apparatus cannot determine it; re-running would risk a second ' +
+      'acquisition under the same authorization. '
+    : 'contact has already begun (a completed, class-3, halted or interrupted run). ' +
+      'Re-running would restart contact-log sequence numbering at 0, appending duplicate `seq` values and duplicate `contact_ref` ' +
+      'identities to the evidence already earned. ';
   throw new AcquisitionRefusal(
     `acquire refuses: Cycle-005 acquisition evidence already exists — ${described.join('; ')}. ` +
-    'Acquisition is ONE-SHOT per authorized run: contact has already begun (a completed, class-3, halted or interrupted run). ' +
-    'Re-running would restart contact-log sequence numbering at 0, appending duplicate `seq` values and duplicate `contact_ref` ' +
-    'identities to the evidence already earned. No provider is contacted, no contact-log line is appended, and every existing ' +
+    `Acquisition is ONE-SHOT per authorized run: ${what}` +
+    'No provider is contacted, no contact-log line is appended, and every existing ' +
     'record is left byte-for-byte intact. Resuming or restarting is an operator-governed decision (a fresh evidence directory, ' +
     'or adjudication of the existing evidence); this apparatus offers no path to either.',
   );
@@ -803,7 +966,12 @@ export async function acquirePool({ candidates, evidenceDir, io = {}, now = () =
   // `contactSeq` below restarts at 0 and would duplicate the `seq` / `contact_ref`
   // identities the earlier run earned. Ordered AFTER the HALT gate so a contamination
   // HALT keeps its own, stronger refusal.
-  assertNoPriorAcquisition(evidenceDir);
+  //
+  // POOL_ENTRY scope, not the entry-point scope: by the time control reaches here on
+  // the CLI path, `main` has already persisted THIS run's pin-invariance artifact, and
+  // scanning for it would make every run refuse the evidence it just created. The
+  // ledger set this gate scans is unchanged and keeps its full meaning.
+  assertNoPriorAcquisition(evidenceDir, ONE_SHOT_SCOPE.POOL_ENTRY);
   const contactLogPath = join(evidenceDir, 'contact-log.jsonl');
   const provenancePath = join(evidenceDir, 'acquisition-provenance.jsonl');
   const contaminationPath = join(evidenceDir, 'contamination-events.jsonl');
@@ -990,8 +1158,11 @@ export function parseArgs(argv = []) {
  * `--preflight` (default) validates the whole authority chain and reports the
  * candidate scope that WOULD be contacted. It performs no transport under any
  * circumstances. `--execute` additionally requires `io.preparePinInvariance` — the
- * FR-E3 pin-invariance evidence for the `g0` event, produced immediately before the
- * first contact — and then runs the complete-pool acquisition.
+ * FR-E3 pin-invariance evidence for the `g0` event, PERSISTED and verified immediately
+ * before the first contact — and then runs the complete-pool acquisition. The preparer
+ * receives `{ event, repoRoot, evidenceDir, apparatus_identity, freeze_companion_digest,
+ * g0_record_id }` and must leave a verifiable `pin-invariance-g0.json` on disk;
+ * `lab/resolution/pin-invariance.js` is the production implementation.
  *
  * Exit codes: 0 completed (preflight, or a pool run that ran to the end),
  * 1 refusal (no transport, no partial effect), 2 terminal contamination HALT.
@@ -1026,13 +1197,32 @@ export async function main(argv = [], { repoRoot, evidenceDir, io = {}, now = ()
 
   try {
     // One-shot: refuse a second execution over evidence a prior run already earned,
-    // BEFORE pin-invariance preparation and therefore before any transport.
-    assertNoPriorAcquisition(evidenceDir);
+    // BEFORE pin-invariance preparation and therefore before any transport. The
+    // entry-point scope includes the pre-transport pin artifact, so an interrupted run
+    // that reached the contact boundary blocks a restart here rather than contacting a
+    // provider a second time.
+    assertNoPriorAcquisition(evidenceDir, ONE_SHOT_SCOPE.ENTRY_POINT);
     if (typeof io.preparePinInvariance !== 'function') {
       throw new AcquisitionRefusal('acquire refuses: --execute requires io.preparePinInvariance (the FR-E3 pin-invariance evidence written immediately before first contact, Sprint Plan T2.1)');
     }
-    const pin = await io.preparePinInvariance({ event: 'g0', apparatus_identity: authority.companion_digest, g0_record_id: authority.g0_record_id });
+    const pin = await io.preparePinInvariance({
+      event: 'g0',
+      repoRoot,
+      evidenceDir,
+      apparatus_identity: authority.companion_digest,
+      freeze_companion_digest: authority.freeze_companion_digest,
+      g0_record_id: authority.g0_record_id,
+    });
+    // Two independent checks, both before transport: the returned record as a VALUE,
+    // then the artifact as it actually landed on DISK. The preparer is injected, so
+    // its return value is a claim; only the second check proves the evidence is durable.
     assertPinInvarianceRecord(pin);
+    assertPersistedPinInvariance(evidenceDir, {
+      returned: pin,
+      apparatus_identity: authority.companion_digest,
+      freeze_companion_digest: authority.freeze_companion_digest,
+      g0_record_id: authority.g0_record_id,
+    });
   } catch (e) {
     stderr(`${e.name || 'Error'}: ${e.message}\n`);
     return 1;
