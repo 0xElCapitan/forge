@@ -359,7 +359,8 @@ test('T2.2: main --execute with the PRODUCTION preparer persists the artifact be
 
 test('T2.2: the repository evidence directory holds no live pin-invariance artifact', () => {
   // This node builds the production boundary; it does not exercise it against the real
-  // evidence directory. A live artifact there would be un-adjudicated run evidence.
+  // evidence directory. A live artifact there would be un-adjudicated run evidence. G0
+  // authorization existing is not itself run evidence — it is the authority record — so
+  // its presence is not asserted here; only the absence of the one-shot run artifact is.
   assert.ok(!existsSync(join(REPO_ROOT, 'lab/evidence/cycle-005', PIN_INVARIANCE_G0_NAME)), 'no live g0 pin-invariance record exists');
-  assert.ok(!existsSync(join(REPO_ROOT, 'lab/evidence/cycle-005/g0-authorization.json')), 'no G0 authorization exists');
 });

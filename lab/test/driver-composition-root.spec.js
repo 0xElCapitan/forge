@@ -397,18 +397,23 @@ test('Design A: absent or stale Gate-A / G0 authority still blocks execution thr
   assert.deepStrictEqual(readdirSync(bare), [], 'a refusal writes nothing');
 });
 
-test('Design A: against the REAL repository the driver refuses with zero transport and writes nothing', async () => {
-  const before = readdirSync(LIVE_EVIDENCE_DIR).sort();
-  const { code, calls, err } = await driveWithStubbedTransport(['--execute'], {});
-  assert.equal(code, 1, 'no current-identity Gate-A acceptance and no G0 authorization exist');
-  assert.equal(calls.length, 0, 'ZERO transport against the real repository');
-  assert.match(err, /required gate record absent: g0-authorization\.json|STALE GATE-A AUTHORITY/);
-  assert.deepStrictEqual(readdirSync(LIVE_EVIDENCE_DIR).sort(), before, 'the real evidence directory is unchanged');
-  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, PIN_INVARIANCE_G0_NAME)), 'no live pin-invariance artifact');
-  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, 'contact-log.jsonl')), 'no live contact log');
-  // The driver's own default paths are the repository's.
+test('Design A: the driver defaults to the real repository paths, and an isolated run against them writes nothing live', async () => {
+  // The driver's own default paths are the repository's — checked as values, never by
+  // invoking runAcquisition with BOTH repoRoot and evidenceDir left to default. Once a
+  // lawful G0 exists (as it now does), that call would consume the live one-shot gate
+  // and persist real run evidence — exactly the hazard this spec must not reproduce.
   assert.equal(DRIVER_REPO_ROOT.replace(/\\/g, '/'), REPO_ROOT.replace(/\\/g, '/'));
   assert.equal(EVIDENCE_DIR_REL, 'lab/evidence/cycle-005');
+
+  const before = readdirSync(LIVE_EVIDENCE_DIR).sort();
+  const isolated = tmpEvidenceDir();
+  const { code, calls, err } = await driveWithStubbedTransport(['--execute'], { repoRoot: REPO_ROOT, evidenceDir: isolated });
+  assert.equal(code, 1, 'no gate records exist in the isolated evidence directory');
+  assert.match(err, /acquisition manifest not found/);
+  assert.equal(calls.length, 0, 'ZERO transport');
+  assert.deepStrictEqual(readdirSync(LIVE_EVIDENCE_DIR).sort(), before, 'the real evidence directory is unchanged');
+  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, PIN_INVARIANCE_G0_NAME)), 'no live pin-invariance artifact was written');
+  assert.ok(!existsSync(join(LIVE_EVIDENCE_DIR, 'contact-log.jsonl')), 'no live contact log was written');
 });
 
 // ─── Exclusivity: no other production execution path ───────────────────────────
