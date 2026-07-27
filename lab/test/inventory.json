@@ -1,5 +1,5 @@
 {
-  "description": "Cycle-004 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds the census + freeze specs by editing this array — never .github/workflows/. Cycle-005 S01 adds the 11 acquisition/resolution specs the same way; a review-remediation pass (F1) adds one more (acquisition-acquire.spec.js); a pre-Gate-A security correction adds one more (acquisition-contact.spec.js, contact.js credential-hardening); the pre-G0 apparatus remediation adds one more (acquisition-cli.spec.js, the acquire.js execution surface + G0 scope binding); its F1-F3 review correction adds one more (acquisition-routes.spec.js, path-parameter authority); the C-1/C-5/C-6 correction adds one more (acquisition-transport-authority.spec.js, final-status + redirect-scope authority); S02 Task 2.2 adds one more (resolution-pin-invariance.spec.js, the production pre-contact pin-invariance preparer); the S02 production composition root adds one more (driver-composition-root.spec.js, the lab/driver execution vehicle).",
+  "description": "Cycle-004 fail-closed lab-test required-file manifest (R-2/PR-1). run-all.js discovers lab/test/**/*.spec.js, normalizes to repo-relative POSIX, sorts lexicographically, and FAILS BEFORE IMPORT on any unregistered/missing/colliding spec. S03 adds the census + freeze specs by editing this array — never .github/workflows/. Cycle-005 S01 adds the 11 acquisition/resolution specs the same way; a review-remediation pass (F1) adds one more (acquisition-acquire.spec.js); a pre-Gate-A security correction adds one more (acquisition-contact.spec.js, contact.js credential-hardening); the pre-G0 apparatus remediation adds one more (acquisition-cli.spec.js, the acquire.js execution surface + G0 scope binding); its F1-F3 review correction adds one more (acquisition-routes.spec.js, path-parameter authority); the C-1/C-5/C-6 correction adds one more (acquisition-transport-authority.spec.js, final-status + redirect-scope authority); S02 Task 2.2 adds one more (resolution-pin-invariance.spec.js, the production pre-contact pin-invariance preparer); the S02 production composition root adds one more (driver-composition-root.spec.js, the lab/driver execution vehicle). Cycle-006 S01 LU-1 adds four (resolution-evidence-c006.spec.js, the branch-aware terminal-authority layer; survey-derivations.spec.js, the CI-line re-derivation harness; survey-boundaries.spec.js, the lab/survey lane fences; landing-guard.spec.js, the SP-F3 release-suppression canary).",
   "specs": [
     "lab/test/acquisition-acquire.spec.js",
     "lab/test/acquisition-assemble.spec.js",
@@ -20,8 +20,10 @@
     "lab/test/census-selection.spec.js",
     "lab/test/driver-composition-root.spec.js",
     "lab/test/freeze-builder.spec.js",
+    "lab/test/landing-guard.spec.js",
     "lab/test/ledgers.spec.js",
     "lab/test/manifests.spec.js",
+    "lab/test/resolution-evidence-c006.spec.js",
     "lab/test/resolution-evidence.spec.js",
     "lab/test/resolution-identity.spec.js",
     "lab/test/resolution-invariance.spec.js",
@@ -32,6 +34,8 @@
     "lab/test/run-all-guard.spec.js",
     "lab/test/scoring.spec.js",
     "lab/test/slice-fixtures.spec.js",
+    "lab/test/survey-boundaries.spec.js",
+    "lab/test/survey-derivations.spec.js",
     "lab/test/walk-forward.spec.js"
   ]
 }

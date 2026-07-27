@@ -8,7 +8,8 @@
 //   - the driver runs the REAL acquisition entry point with the REAL production
 //     pin-invariance preparer, and the artifact is durable before the first transport;
 //   - the driver is INSIDE the apparatus identity: the tracked acquisition manifest
-//     enumerates it, and `verifyAcquisitionIdentity` re-hashes it;
+//     enumerates it and pins its digest (asserted from the COMMITTED manifest bytes —
+//     see the FR-A4 stale-authority-by-design note at that test);
 //   - a driver whose bytes differ from the accepted manifest refuses BEFORE transport
 //     with an identity-drift refusal — the property that makes the injected preparer
 //     trustworthy at all (review 27 §4.3);
@@ -33,7 +34,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { runAcquisition, REPO_ROOT as DRIVER_REPO_ROOT, EVIDENCE_DIR_REL } from '../driver/acquire-run.js';
-import { APPARATUS_NAMESPACES, verifyAcquisitionIdentity, companionDigestPath } from '../resolution/identity.js';
+import { APPARATUS_NAMESPACES, companionDigestPath } from '../resolution/identity.js';
 import { prepareG0PinInvariance, PIN_INVARIANCE_G0_NAME } from '../resolution/pin-invariance.js';
 import { FROZEN_PIN_ASSET_COUNT } from '../acquisition/acquire.js';
 import { buildAssetInventory, contentAddress, sha256LFNormalized } from '../harness/manifests.js';
@@ -183,13 +184,22 @@ test('Design A: lab/driver is an apparatus namespace and the tracked manifest en
   for (const p of onDisk) assert.ok(paths.includes(p), `${p} is enumerated in the acquisition manifest`);
   assert.ok(paths.includes(DRIVER_REL), 'the composition root itself is enumerated');
 
+  // FR-A4 STALE-AUTHORITY-BY-DESIGN (Cycle-006 α supersession; Sprint Plan SP-F2, SDD
+  // DR-12.3 — this file-location added to the migration inventory by that finding). The
+  // two assertions below formerly compared the recorded driver digest with the LIVE
+  // driver bytes and ran the Lane B verifier over the LIVE tree. Cycle-006 edits the
+  // apparatus IN PLACE under shape α to a NEW identity, so both are FALSE BY DESIGN from
+  // the first α edit (C6-FR-A4/B5) — the Cycle-005 record is deliberately stale for the
+  // α tree. Authority over the historical record is asserted from COMMITTED BYTES: the
+  // composition root carries a pinned digest in the accepted manifest, and the committed
+  // companion digests exactly that manifest's bytes. No live-tree recompute remains.
   const entry = manifest.assets.find(a => a.path === DRIVER_REL);
-  assert.equal(entry.sha256, sha256LFNormalized(readFileSync(join(REPO_ROOT, DRIVER_REL), 'utf8')), 'the recorded digest is the live driver bytes');
+  assert.match(entry.sha256, /^sha256:[0-9a-f]{64}$/, 'the composition root carries a pinned digest in the accepted manifest');
 
-  // …and the Lane B verifier agrees over the whole tracked identity.
-  const v = verifyAcquisitionIdentity({ repoRoot: REPO_ROOT, manifestPath });
-  assert.equal(v.companion_digest, readFileSync(companionDigestPath(manifestPath), 'utf8').trim(), 'companion agrees');
-  assert.equal(v.asset_count, manifest.assets.length);
+  const manifestBytes = readFileSync(manifestPath, 'utf8');
+  assert.equal(readFileSync(companionDigestPath(manifestPath), 'utf8').trim(), sha256LFNormalized(manifestBytes), 'the committed companion digests the committed manifest bytes');
+  assert.equal(sha256LFNormalized(manifestBytes), 'sha256:073c7ff2d5acb6db548bddd34e34de4e65eaeaaff31a6051cdc05ccfddb8e4c6', 'the accepted Cycle-005 apparatus identity');
+  assert.equal(manifest.assets.length, 23);
 });
 
 test('Design A: a driver whose bytes differ from the accepted manifest refuses BEFORE transport', async () => {

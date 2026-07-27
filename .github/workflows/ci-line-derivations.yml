@@ -1,0 +1,100 @@
+name: CI-line derivations
+
+# Cycle-006 S01 LU-1 (PRD UD-C6-8 / NFR-C6-RUNTIME / AC-C8; SDD DR-3.1; Sprint Plan
+# T1.3). Runs `lab/survey/derive-constants.js` across the four supported CI legs and
+# uploads one measurement artifact per leg. T1.7 aggregates those four artifacts into
+# the criteria derivation worksheet under the DR-3.3 rule (MIN across legs for every
+# ceiling-type constant, MAX for every cost-type constant — always the conservative
+# direction), which is what lets a numeric constant be digest-fixed at Gate P.
+#
+# ── DISPATCH ONLY (DR-3.1, binding) ───────────────────────────────────────────
+#
+# `workflow_dispatch` is the ONLY trigger. There is no push, pull_request, schedule,
+# tag, or release trigger, and no release interaction of any kind: a measurement sweep
+# must never sit on the merge gate. (The REQUIRED fast merge-gate job is the separate
+# `frd2-conformance` job in pr-ci.yml, which Sprint 7 LU-3 adds — not this workflow.)
+#
+# GitHub registers the `workflow_dispatch` event from the copy of this file on the
+# DEFAULT BRANCH, so this workflow is only dispatchable once LU-1 has landed on
+# `master` — which is precisely why LU-1 is its own landing unit (SP-F1).
+#
+# ── What this workflow cannot do ──────────────────────────────────────────────
+#
+#   * It contacts no candidate provider. The measurement script has no networking or
+#     subprocess API reference anywhere in its namespace (`lab/survey/**`), enforced by
+#     `lab/test/survey-boundaries.spec.js`.
+#   * It writes no repository file. `derive-constants.js` imports no filesystem module
+#     at all; stdout is redirected into the runner's temp directory, outside the
+#     checkout. The final step FAILS the leg if the working tree changed at all.
+#   * It creates no criteria, survey record, pool, freeze, gate record, evidence
+#     record, or ledger artifact, and it fixes no binding value — binding values exist
+#     only after T1.7 aggregates all four landed legs.
+#   * It needs no secret and requests read-only contents permission.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # bash on every leg, including the windows runners, so the redirect and the
+    # working-tree assertion below are byte-identical across the matrix.
+    shell: bash
+
+jobs:
+  derive:
+    name: Derive (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # The four legs DR-3.3 aggregates over. All four are required before any
+        # constant may be digest-fixed (AC-C8).
+        os: [ubuntu-latest, windows-latest]
+        node: ['20', '24']
+
+    steps:
+      - name: Checkout
+        # Pinned to the same SHA pr-ci.yml and post-merge.yml use (v4.3.1).
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          submodules: false
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund --ignore-scripts
+
+      - name: Measure the CI-line constants (stdout → job workspace, never the repo)
+        env:
+          LEG_FILE: ${{ runner.temp }}/ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}.json
+        run: |
+          set -euo pipefail
+          node lab/survey/derive-constants.js > "$LEG_FILE"
+          node -e "const d=require(process.argv[1]); if(d.record_kind!=='ci-line-derivation-leg') throw new Error('unexpected record_kind '+d.record_kind); if(d.binding!==false) throw new Error('a leg record must never claim binding'); const m=Object.keys(d.measurements); if(m.length===0) throw new Error('no measurements'); console.log('leg ok:', d.leg.os, d.leg.node_version, m.length, 'constants');" "$LEG_FILE"
+
+      - name: Assert the run mutated no repository file (read-only measurement)
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::derive-constants mutated the working tree — the harness must be read-only" >&2
+            git status --porcelain >&2
+            exit 1
+          fi
+          echo "working tree clean — no repository file was written"
+
+      - name: Upload the leg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}
+          path: ${{ runner.temp }}/ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}.json
+          if-no-files-found: error
+          retention-days: 90
