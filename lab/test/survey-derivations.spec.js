@@ -205,3 +205,94 @@ test('DR-3.1: the workflow runs all four legs and asserts the working tree staye
     assert.doesNotMatch(yaml.split(/\r?\n/).filter(l => !/^\s*#/.test(l)).join('\n'), re, `no ${re} write target`);
   }
 });
+
+// ── The landed T1.7 worksheet (Cycle-006 S01 LU-2A addition) ──────────────────
+//
+// T1.7 dispatched `ci-line-derivations.yml` at run 30282182103 on commit d825c9f7
+// and materialized `criteria-derivations.json`. These assertions bind the landed
+// worksheet to that run and close the T1.7 leg-label discrepancy: the GitHub matrix
+// OS label (`ubuntu-latest` / `windows-latest`) and the raw harness platform
+// (`process.platform`, i.e. `linux` / `win32`) are BOTH preserved per leg. The
+// landed `deriveLeg()` still reports `process.platform` verbatim — the harness was
+// not changed to normalize this run.
+
+const WORKSHEET_PATH = join(REPO_ROOT, 'lab/preregistration/cycle-006/criteria-derivations.json');
+const T1_7_RUN_ID = '30282182103';
+const T1_7_COMMIT = 'd825c9f7398add07e6471fe07581de711b2363ba';
+const MATRIX_TO_PLATFORM = Object.freeze({ 'ubuntu-latest': 'linux', 'windows-latest': 'win32' });
+
+test('T1.7 / AC-C8: the landed worksheet aggregates exactly the four required CI legs', () => {
+  const doc = JSON.parse(readFileSync(WORKSHEET_PATH, 'utf8'));
+  assert.equal(doc.record_kind, 'criteria-derivations');
+  assert.equal(doc.cycle, 'cycle-006');
+  assert.equal(doc.constants.length, CONSTANT_SPECS.length, 'every registered constant is present');
+  assert.deepEqual(validateDerivationProvenance(doc), { valid: true, problems: [] });
+
+  for (const c of doc.constants) {
+    const legKeys = c.legs.map(l => `${l.os}/${l.node_version.replace(/^v/, '').split('.')[0]}`).sort();
+    assert.deepEqual(legKeys, REQUIRED_LEGS.map(r => `${r.os}/${r.node_major}`).sort(),
+      `${c.constant_id} must carry exactly the four required legs`);
+  }
+});
+
+test('T1.7: every leg preserves BOTH the matrix OS label and the raw harness platform', () => {
+  const doc = JSON.parse(readFileSync(WORKSHEET_PATH, 'utf8'));
+  for (const c of doc.constants) {
+    for (const l of c.legs) {
+      assert.ok(l.os in MATRIX_TO_PLATFORM, `${c.constant_id}: "${l.os}" is not a GitHub matrix label`);
+      assert.equal(l.raw_platform, MATRIX_TO_PLATFORM[l.os],
+        `${c.constant_id}: raw_platform must be the value deriveLeg() self-reported for this leg`);
+      assert.equal(l.run_id, T1_7_RUN_ID);
+      assert.equal(l.commit_sha, T1_7_COMMIT);
+      assert.match(l.workflow_run_url, new RegExp(`/actions/runs/${T1_7_RUN_ID}/job/[0-9]+$`));
+    }
+  }
+  for (const j of doc.dispatch_provenance.jobs) assert.equal(j.raw_platform, MATRIX_TO_PLATFORM[j.matrix_os]);
+  for (const a of doc.artifact_validation) assert.equal(a.raw_platform, MATRIX_TO_PLATFORM[a.matrix_os]);
+
+  // The landed harness is unchanged: it still labels a leg by process.platform.
+  const local = deriveLeg();
+  assert.equal(local.leg.os, process.platform, 'deriveLeg() reports the raw platform, not a matrix label');
+  assert.equal(local.binding, false);
+});
+
+test('T1.7: the binding value of every constant is the conservative aggregation of its own legs', () => {
+  const doc = JSON.parse(readFileSync(WORKSHEET_PATH, 'utf8'));
+  for (const c of doc.constants) {
+    const spec = CONSTANT_SPECS.find(s => s.constant_id === c.constant_id);
+    const values = c.legs.map(l => l.raw_value);
+    const expected = spec.direction === 'min' ? Math.min(...values) : Math.max(...values);
+    assert.ok(Object.is(c.binding_value, expected), `${c.constant_id}: binding_value is not the ${spec.direction} of its legs`);
+    for (const adv of c.advisory_local_values ?? []) {
+      assert.equal(adv.label, 'advisory-only', `${c.constant_id}: a local value must be labelled advisory-only`);
+      assert.equal(adv.node.startsWith('v25'), true, `${c.constant_id}: the advisory value is the above-ceiling local run (DR-3.6)`);
+    }
+  }
+});
+
+test('T1.7 / DR-3.5: the cadence envelope is derived, and an empty band is recorded as inadmissible', () => {
+  const doc = JSON.parse(readFileSync(WORKSHEET_PATH, 'utf8'));
+  const classes = doc.cadence_history_envelope.classes;
+  assert.deepEqual(classes.map(c => c.cadence_seconds), [...CADENCE_SWEEP_SECONDS]);
+  for (const c of classes) {
+    const lower = Math.max(FROZEN_INPUTS.gate3_min_years, FROZEN_INPUTS.gate3_min_n / c.obs_per_day / 365.25);
+    assert.ok(Math.abs(c.lower_bound_years - lower) < 1e-9, `c${c.cadence_seconds}: lower bound is not the gate-3 floor`);
+    assert.equal(c.band_non_empty, c.reserve_runnability_margin_days > 0);
+  }
+  assert.equal(classes.find(c => c.cadence_seconds === 60).band_non_empty, false);
+  assert.equal(classes.find(c => c.cadence_seconds === 86400).band_non_empty, true);
+});
+
+test('T1.7: every operator-reserved value is left explicitly pending, never fixed by the worksheet', () => {
+  const doc = JSON.parse(readFileSync(WORKSHEET_PATH, 'utf8'));
+  const reserved = doc.operator_reserved_values;
+  for (const key of ['min_pool_size', 'max_pool_size_and_k_max', 'probe_budget', 'corroboration_budget',
+    'n_ceiling', 'credential_posture', 'rank_function', 'source_universe_and_survey_procedure']) {
+    assert.equal(reserved[key]?.operator_decision_required, true, `${key} must remain operator-reserved`);
+  }
+  assert.ok(Array.isArray(doc.known_discrepancies) && doc.known_discrepancies.length >= 1);
+  const legLabel = doc.known_discrepancies.find(d => d.id === 'leg-os-label-granularity');
+  assert.ok(legLabel, 'the T1.7 leg-label discrepancy stays disclosed');
+  assert.match(legLabel.raw_platform_value_preserved_in, /raw_platform/, 'and now names where the raw platform is preserved');
+  assert.match(legLabel.correction, /BOTH labels are now preserved/);
+});

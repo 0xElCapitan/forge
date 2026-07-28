@@ -93,6 +93,7 @@ const ALLOWED_IMPORTS = new Set([
   'lab/harness/walk-forward.js',      // DR-3.2b max-slice measurement
   'src/classifier/feed-grammar.js',   // DR-3.2a classifier-ceiling measurement
   'src/derive/quantile.js',           // DR-3.2d existence-bound cost measurement
+  'src/receipt/canonicalize.js',      // LU-2A: canonical-block assertion + deterministic serialization
 ]);
 
 // (4) No direct filesystem mutation: a survey write must go through the frozen atomic
@@ -103,9 +104,31 @@ const FS_WRITE_CALLS = [
   /\bunlinkSync\s*\(/, /\brenameSync\s*\(/, /\bcpSync\s*\(/, /\bcopyFileSync\s*\(/, /\btruncateSync\s*\(/,
 ];
 
-// (5) The only repository path the survey lane may name is its own write root.
+// (5) Repository paths the survey lane may NAME.
+//
+// The lane's WRITE root is unchanged and remains the only place it may write
+// (rule 4 already forbids every direct filesystem mutation, so a write can only go
+// through the frozen atomic writers, and `validate.js::writeSurveyArtifact` refuses a
+// destination outside this root at run time as well — via resolved-path containment,
+// not a substring test; see lab/test/survey-tooling.spec.js's DR-4.7 correction case).
+//
+// LU-2A adds a short, EXACT READ allowlist. The Gate-P authority check must be able
+// to find the Gate-P acceptance record, and the N8 probe must be able to load the
+// frozen burned-list authority; neither is reachable from inside the write root, and
+// neither is an acquisition capability. Both are read-only inputs and both are named
+// as exact files — adding one is a deliberate one-line edit with reviewer visibility,
+// exactly like the import allowlist above.
 const PERMITTED_WRITE_ROOT = 'lab/preregistration/cycle-006/';
+const READ_ALLOWED_PATHS = new Set([
+  'lab/evidence/cycle-006/gate-p-acceptance.json', // the Gate-P authority record (DR-2.4, I-3)
+  'lab/census/burned-list.json',                   // the frozen burned-list authority (DR-4.5 §h)
+]);
 const REPO_PATH_LITERAL = /(['"])((?:lab|src|spec|scripts|grimoires|\.beads|\.github)\/[^'"]*)\1/g;
+
+/** A path literal is lawful iff it is inside the write root or on the exact read allowlist. */
+function pathLiteralAllowed(literal) {
+  return literal.startsWith(PERMITTED_WRITE_ROOT) || READ_ALLOWED_PATHS.has(literal);
+}
 
 // (6) Zero scientific-ledger writes anywhere in the namespace (I-12, NFR-C6-LEDGER).
 const FORBIDDEN_LEDGER_TOKENS = [
@@ -113,10 +136,21 @@ const FORBIDDEN_LEDGER_TOKENS = [
   /trials-ledger\.jsonl/, /burn-ledger\.jsonl/,
 ];
 
-test('DR-4.7: the survey namespace is discovered fail-closed and covers derive-constants.js', () => {
+test('DR-4.7: the survey namespace is discovered fail-closed and covers every landed module', () => {
   const mods = surveyModules();
   assert.ok(mods.length >= 1, 'lab/survey/** is non-empty — an empty scan must never pass silently');
-  assert.ok(mods.some(m => m.rel === 'lab/survey/derive-constants.js'), 'the first executable file in the lane is covered from its first commit');
+  const rels = new Set(mods.map(m => m.rel));
+  for (const expected of [
+    'lab/survey/derive-constants.js',   // LU-1 (T1.3)
+    'lab/survey/refusal.js',            // LU-2A (T2.3)
+    'lab/survey/criteria.js',
+    'lab/survey/gate-p.js',
+    'lab/survey/admit.js',
+    'lab/survey/rank.js',
+    'lab/survey/validate.js',
+  ]) {
+    assert.ok(rels.has(expected), `${expected} is covered by these fences from its first commit`);
+  }
 });
 
 test('C6-FR-N1: no executable network or subprocess reference anywhere in lab/survey/**', () => {
@@ -165,11 +199,22 @@ test('DR-3.1: the derivation harness imports no filesystem module at all (writes
   assert.match(harness.src, /process\.stdout\.write/, 'it reports on stdout; the workflow redirects into the job workspace');
 });
 
-test('DR-4.7: the only repository path the survey lane may name is its own write root', () => {
+test('DR-4.7: the survey lane names only its write root and the exact read allowlist', () => {
   for (const { rel, src } of surveyModules()) {
     const code = stripComments(src);
     for (const [, , literal] of code.matchAll(REPO_PATH_LITERAL)) {
-      assert.ok(literal.startsWith(PERMITTED_WRITE_ROOT), `${rel} names repository path "${literal}" outside ${PERMITTED_WRITE_ROOT}`);
+      assert.ok(pathLiteralAllowed(literal),
+        `${rel} names repository path "${literal}", which is neither inside ${PERMITTED_WRITE_ROOT} nor on the read allowlist`);
+    }
+  }
+});
+
+test('DR-4.7: every read-allowlisted path is used read-only — no write helper is ever handed one', () => {
+  const WRITE_CALL = /\b(writeCanonicalJsonAtomic|writeTextAtomic|appendLedgerLine|writeSurveyArtifact)\s*\(\s*(['"])([^'"]*)\2/g;
+  for (const { rel, src } of surveyModules()) {
+    for (const [, fn, , literal] of stripComments(src).matchAll(WRITE_CALL)) {
+      assert.ok(!READ_ALLOWED_PATHS.has(literal), `${rel} passes read-only path "${literal}" to ${fn}`);
+      assert.ok(literal.startsWith(PERMITTED_WRITE_ROOT), `${rel} passes "${literal}" to ${fn} outside ${PERMITTED_WRITE_ROOT}`);
     }
   }
 });
@@ -206,12 +251,15 @@ test('DR-4.7 self-check: every fence FIRES on a planted violation and stays quie
   assert.ok(FS_WRITE_CALLS.every(re => !re.test('writeCanonicalJsonAtomic(p, obj)')), 'the frozen atomic writer is not flagged');
 
   // (5) path literals
-  const plantedPath = "const out = 'lab/evidence/cycle-006/gate-p-acceptance.json';";
+  const plantedPath = "const out = 'lab/evidence/cycle-005/terminal-disposition.json';";
   const hits = [...stripComments(plantedPath).matchAll(REPO_PATH_LITERAL)].map(m => m[2]);
-  assert.deepEqual(hits, ['lab/evidence/cycle-006/gate-p-acceptance.json']);
-  assert.equal(hits[0].startsWith(PERMITTED_WRITE_ROOT), false, 'a write outside the permitted root is caught');
+  assert.deepEqual(hits, ['lab/evidence/cycle-005/terminal-disposition.json']);
+  assert.equal(pathLiteralAllowed(hits[0]), false, 'a path outside the write root and off the read allowlist is caught');
   const permitted = [...stripComments("const out = 'lab/preregistration/cycle-006/survey-record.json';").matchAll(REPO_PATH_LITERAL)].map(m => m[2]);
-  assert.equal(permitted[0].startsWith(PERMITTED_WRITE_ROOT), true, 'the lane may name its own write root');
+  assert.equal(pathLiteralAllowed(permitted[0]), true, 'the lane may name its own write root');
+  assert.equal(pathLiteralAllowed('lab/census/burned-list.json'), true, 'the frozen burned-list authority is read-allowlisted');
+  assert.equal(pathLiteralAllowed('lab/census/candidate-pool.json'), false, 'the read allowlist is exact files, never a directory prefix');
+  assert.equal(pathLiteralAllowed('lab/evidence/cycle-006/gate-f-acceptance.json'), false, 'only the Gate-P record is read-allowlisted under lab/evidence/cycle-006/');
 
   // (6) ledger tokens
   assert.ok(FORBIDDEN_LEDGER_TOKENS.some(re => re.test("appendTrial(TRIALS_LEDGER_PATH, e)")), 'the ledger fence catches a planted trials write');

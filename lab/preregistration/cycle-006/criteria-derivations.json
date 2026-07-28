@@ -1,0 +1,994 @@
+{
+  "record_kind": "criteria-derivations",
+  "schema_version": "1.0.0",
+  "cycle": "cycle-006",
+  "constants": [
+    {
+      "constant_id": "classifier_input_ceiling_n_ci",
+      "binding_value": 123076,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 123076,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 125127,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 124975,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 124687,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "max input length for which classify() completes at the default stack (binary search)",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 125092,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "max_slice_fraction",
+      "binding_value": 0.7832991101984942,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.7832991101984942,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.7832991101984942,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.7832991101984942,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.7832991101984942,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "(0.8·span − H − P)/span, verified empirically against computeSchedule() training cutoffs",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 0.7832991101984942,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c60",
+      "binding_value": 109.11469620179425,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 109.11469620179425,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 110.93303805487592,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 110.79828039438425,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 110.54295009029477,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/60",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 110.9020083304206,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c300",
+      "binding_value": 545.5734810089712,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 545.5734810089712,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 554.6651902743796,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 553.9914019719213,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 552.7147504514738,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/300",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 554.5100416521029,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c900",
+      "binding_value": 1636.7204430269137,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 1636.7204430269137,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 1663.995570823139,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 1661.9742059157638,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 1658.1442513544216,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/900",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 1663.530124956309,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c3600",
+      "binding_value": 6546.881772107655,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 6546.881772107655,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 6655.982283292556,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 6647.896823663055,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 6632.577005417686,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/3600",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 6654.120499825236,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c21600",
+      "binding_value": 39281.29063264593,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 39281.29063264593,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 39935.89369975533,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 39887.38094197833,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 39795.46203250612,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/21600",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 39924.722998951416,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "cadence_break_even_days_c86400",
+      "binding_value": 157125.1625305837,
+      "direction": "min",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 157125.1625305837,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 159743.57479902133,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 159549.5237679133,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 159181.84813002447,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "T_max(c) = N_ci / (obs_per_day(c) · max_slice_fraction), obs_per_day = 86400/86400",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 159698.89199580566,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "existence_bound_ms_per_1e6_n",
+      "binding_value": 2.4875000000002956,
+      "direction": "max",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 2.430498750000254,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 2.4308824999999956,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 2.2637499999999022,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 2.4875000000002956,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "wall-clock slope of existenceBound(n, \"0.90\") in ms per 10^6 n (two-point, median of repeats)",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 51.970625000000155,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "single_candidate_probe_ms",
+      "binding_value": 0.088799999999992,
+      "direction": "max",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.04810999999995147,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.05894000000012056,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.088799999999992,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.08010000000012951,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "wall clock of applySelectionRule([candidate], burnedList), median of repeats",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 0.2218000000000302,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    },
+    {
+      "constant_id": "definitional_enumeration_branch_ms",
+      "binding_value": 0.30310000000008586,
+      "direction": "max",
+      "legs": [
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.16627999999991516,
+          "measured_at": "2026-07-27T15:54:22.159Z"
+        },
+        {
+          "os": "ubuntu-latest",
+          "raw_platform": "linux",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.13196700000003148,
+          "measured_at": "2026-07-27T15:54:22.290Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v20.20.2",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.30310000000008586,
+          "measured_at": "2026-07-27T15:55:20.616Z"
+        },
+        {
+          "os": "windows-latest",
+          "raw_platform": "win32",
+          "node_version": "v24.18.0",
+          "workflow_run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+          "run_id": "30282182103",
+          "commit_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+          "raw_value": 0.14520000000015898,
+          "measured_at": "2026-07-27T15:55:11.408Z"
+        }
+      ],
+      "formula": "wall clock of one 2^k enumeration branch = applySelectionRule(k candidates, burnedList), median of repeats",
+      "frozen_inputs": {
+        "W_days": 90,
+        "n_min": 59,
+        "H_days": 30,
+        "P": "H",
+        "gate3_min_years": 3,
+        "gate3_min_n": 10000,
+        "alpha": "0.05",
+        "existence_margin": "alpha/3"
+      },
+      "advisory_local_values": [
+        {
+          "value": 0.7803000000001248,
+          "node": "v25.2.1",
+          "os": "win32",
+          "label": "advisory-only",
+          "note": "local dry run, NOT a CI leg, NOT used in aggregation (DR-3.6)",
+          "measured_at": "2026-07-27T16:00:13.661Z"
+        }
+      ]
+    }
+  ],
+  "dispatch_provenance": {
+    "workflow_path": ".github/workflows/ci-line-derivations.yml",
+    "workflow_name": "CI-line derivations",
+    "dispatch_command": "gh workflow run ci-line-derivations.yml --ref master",
+    "dispatched_at_utc": "2026-07-27T15:54:03Z",
+    "event": "workflow_dispatch",
+    "head_branch": "master",
+    "head_sha": "d825c9f7398add07e6471fe07581de711b2363ba",
+    "run_id": "30282182103",
+    "run_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103",
+    "run_conclusion": "success",
+    "jobs": [
+      {
+        "matrix_os": "ubuntu-latest",
+        "raw_platform": "linux",
+        "node_major": 20,
+        "job_id": "90031066334",
+        "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+        "job_name": "Derive (ubuntu-latest, node 20)",
+        "conclusion": "success"
+      },
+      {
+        "matrix_os": "ubuntu-latest",
+        "raw_platform": "linux",
+        "node_major": 24,
+        "job_id": "90031066290",
+        "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+        "job_name": "Derive (ubuntu-latest, node 24)",
+        "conclusion": "success"
+      },
+      {
+        "matrix_os": "windows-latest",
+        "raw_platform": "win32",
+        "node_major": 20,
+        "job_id": "90031066160",
+        "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+        "job_name": "Derive (windows-latest, node 20)",
+        "conclusion": "success"
+      },
+      {
+        "matrix_os": "windows-latest",
+        "raw_platform": "win32",
+        "node_major": 24,
+        "job_id": "90031066300",
+        "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+        "job_name": "Derive (windows-latest, node 24)",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "cadence_history_envelope": {
+    "note": "Mechanical per-class band derived from frozen gate-3 floors + CI-line binding constants (DR-9.1). This is NOT a cadence-class admission decision — which classes are actually admitted is Gate P policy (SDD DR-3.5).",
+    "formula_lower_bound": "max(gate3_min_years, gate3_min_n / obs_per_day(c) / 365.25)",
+    "formula_upper_bound": "T_max(c) — the binding (min-aggregated) cadence_break_even_days_c<seconds> constant",
+    "frozen_inputs": {
+      "gate3_min_years": 3,
+      "gate3_min_n": 10000,
+      "year_days": 365.25
+    },
+    "binding_classifier_input_ceiling_n_ci": 123076,
+    "binding_max_slice_fraction": 0.7832991101984942,
+    "classes": [
+      {
+        "cadence_seconds": 60,
+        "obs_per_day": 1440,
+        "years_to_reach_10000_obs": 0.019012852688417372,
+        "lower_bound_years": 3,
+        "lower_bound_days": 1095.75,
+        "upper_bound_days": 109.11469620179425,
+        "upper_bound_years": 0.2987397568837625,
+        "reserve_runnability_margin_days": -986.6353037982058,
+        "band_non_empty": false
+      },
+      {
+        "cadence_seconds": 300,
+        "obs_per_day": 288,
+        "years_to_reach_10000_obs": 0.09506426344208685,
+        "lower_bound_years": 3,
+        "lower_bound_days": 1095.75,
+        "upper_bound_days": 545.5734810089712,
+        "upper_bound_years": 1.493698784418812,
+        "reserve_runnability_margin_days": -550.1765189910288,
+        "band_non_empty": false
+      },
+      {
+        "cadence_seconds": 900,
+        "obs_per_day": 96,
+        "years_to_reach_10000_obs": 0.28519279032626055,
+        "lower_bound_years": 3,
+        "lower_bound_days": 1095.75,
+        "upper_bound_days": 1636.7204430269137,
+        "upper_bound_years": 4.481096353256437,
+        "reserve_runnability_margin_days": 540.9704430269137,
+        "band_non_empty": true
+      },
+      {
+        "cadence_seconds": 3600,
+        "obs_per_day": 24,
+        "years_to_reach_10000_obs": 1.1407711613050422,
+        "lower_bound_years": 3,
+        "lower_bound_days": 1095.75,
+        "upper_bound_days": 6546.881772107655,
+        "upper_bound_years": 17.92438541302575,
+        "reserve_runnability_margin_days": 5451.131772107655,
+        "band_non_empty": true
+      },
+      {
+        "cadence_seconds": 21600,
+        "obs_per_day": 4,
+        "years_to_reach_10000_obs": 6.844626967830253,
+        "lower_bound_years": 6.844626967830253,
+        "lower_bound_days": 2500,
+        "upper_bound_days": 39281.29063264593,
+        "upper_bound_years": 107.54631247815449,
+        "reserve_runnability_margin_days": 36781.29063264593,
+        "band_non_empty": true
+      },
+      {
+        "cadence_seconds": 86400,
+        "obs_per_day": 1,
+        "years_to_reach_10000_obs": 27.378507871321013,
+        "lower_bound_years": 27.378507871321013,
+        "lower_bound_days": 10000,
+        "upper_bound_days": 157125.1625305837,
+        "upper_bound_years": 430.18524991261796,
+        "reserve_runnability_margin_days": 147125.1625305837,
+        "band_non_empty": true
+      }
+    ]
+  },
+  "operator_reserved_values": {
+    "note": "This node (T1.7) supplies measured evidence only. No value below is fixed by this worksheet; every entry requires an explicit Gate-P operator decision (PRD O-1; SDD §13 P-2; DR-8.6).",
+    "min_pool_size": {
+      "operator_decision_required": true,
+      "mechanically_supported_range": "any integer >= 2 (frozen-rule structural minimum)",
+      "evidence": "DR-8 closed form makes any pool-sized k cheap (no cost-driven ceiling on the minimum)",
+      "sdd_non_binding_recommendation": "SDD §13 P-2 recommends min = 3 (PRD-recommended floor) — recorded as a citation only, not adopted here"
+    },
+    "max_pool_size_and_k_max": {
+      "operator_decision_required": true,
+      "mechanically_supported_range": "no cost-driven ceiling found: FR-D2 probe cost is linear in k under the closed form (DR-8.1-8.2), so no k value is mechanically excluded by these measurements",
+      "evidence": {
+        "single_candidate_probe_ms_binding_max": 0.088799999999992,
+        "definitional_enumeration_branch_ms_binding_max_at_k4": 0.30310000000008586,
+        "probe_points_k": 4,
+        "note": "k_max bounds pool size as a survey-effort / provider-outreach policy, not a computational necessity (DR-8.3)"
+      },
+      "sdd_non_binding_recommendation": "SDD §13 P-2 recommends max = k_max = 8 — recorded as a citation only, not adopted here"
+    },
+    "probe_budget": {
+      "operator_decision_required": true,
+      "formula": "2 full runs + 3k single runs <= probe_budget (DR-8.4a)",
+      "evidence": "depends on the not-yet-decided k_max; no numeric probe_budget can be mechanically derived without it"
+    },
+    "corroboration_budget": {
+      "operator_decision_required": true,
+      "formula": "projected definitional cost = 2^k * (r+k) * cost_per_eval(max n); corroboration runs when projected cost <= corroboration_budget (DR-8.5)",
+      "evidence": {
+        "definitional_enumeration_branch_ms_binding_max_at_k4": 0.30310000000008586
+      }
+    },
+    "n_ceiling": {
+      "operator_decision_required": true,
+      "formula": "sized so worst-case FR-D2 wall-clock stays bounded on the slowest CI leg (DR-8.4b, DR-8.6)",
+      "evidence": {
+        "existence_bound_ms_per_1e6_n_binding_max": 2.4875000000002956
+      },
+      "illustrative_only_non_binding": {
+        "basis": "SDD DR-8.6 recommends targeting ~60s worst-case wall-clock — the \"~60s\" target is itself an operator-reserved recommendation, not a frozen constant",
+        "n_ceiling_if_60s_target": 24120603015.07251,
+        "warning": "NOT a binding value. Illustrative arithmetic only, shown so Gate P has the CI-line-derived slope in hand; the target wall-clock (60s or otherwise) is the operator's to set."
+      }
+    },
+    "credential_posture": {
+      "operator_decision_required": true,
+      "evidence": "not addressed by CI-line measurement; UD-C6-4 / Gate P input"
+    },
+    "rank_function": {
+      "operator_decision_required": true,
+      "evidence": "not addressed by CI-line measurement; DR-4.4 / Gate P input"
+    },
+    "source_universe_and_survey_procedure": {
+      "operator_decision_required": true,
+      "evidence": "not addressed by CI-line measurement; DR-2.1 / Gate P input"
+    }
+  },
+  "known_discrepancies": [
+    {
+      "id": "leg-os-label-granularity",
+      "severity": "non-blocking",
+      "description": "lab/survey/derive-constants.js's deriveLeg() defaults leg.os to process.platform (\"linux\"/\"win32\"), not the GH Actions matrix label (\"ubuntu-latest\"/\"windows-latest\") that aggregateLegs()'s REQUIRED_LEGS matching and the DR-3.4 worksheet schema expect. Confirmed consistent (ubuntu-latest legs all report \"linux\"; windows-latest legs all report \"win32\") across all four real artifacts — this is a labeling-granularity gap, not a wrong or missing measurement.",
+      "resolution": "This T1.7 aggregation script (external, not a repo file) supplies the matrix-sourced os label for REQUIRED_LEGS matching and worksheet legs[].os, sourced mechanically from the landed workflow's own artifact-naming convention (`ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}`, ci-line-derivations.yml:97) and cross-checked against `gh run view --json jobs` job names. No repository file was edited; no value was invented.",
+      "affected_field": "constants[].legs[].os, dispatch_provenance.jobs[].matrix_os, artifact_validation[].matrix_os (all carry the GitHub matrix label)",
+      "raw_platform_value_preserved_in": "constants[].legs[].raw_platform, dispatch_provenance.jobs[].raw_platform, artifact_validation[].raw_platform — the verbatim process.platform value each leg artifact self-reported (\"linux\" / \"win32\")",
+      "correction": "Cycle-006 S01 LU-2A: BOTH labels are now preserved structurally per leg. The matrix label (REQUIRED_LEGS / DR-3.4 schema key) and the raw harness platform (process.platform, as emitted by the landed deriveLeg()) are recorded side by side, re-sourced from the four run-30282182103 artifacts. No measured value, binding value, aggregation, or landed harness/workflow file was changed."
+    }
+  ],
+  "artifact_validation": [
+    {
+      "artifact": "ci-line-derivation-ubuntu-latest-node20/ci-line-derivation-ubuntu-latest-node20.json",
+      "matrix_os": "ubuntu-latest",
+      "raw_platform": "linux",
+      "node_major": 20,
+      "job_id": "90031066334",
+      "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066334",
+      "valid": true,
+      "problems": []
+    },
+    {
+      "artifact": "ci-line-derivation-ubuntu-latest-node24/ci-line-derivation-ubuntu-latest-node24.json",
+      "matrix_os": "ubuntu-latest",
+      "raw_platform": "linux",
+      "node_major": 24,
+      "job_id": "90031066290",
+      "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066290",
+      "valid": true,
+      "problems": []
+    },
+    {
+      "artifact": "ci-line-derivation-windows-latest-node20/ci-line-derivation-windows-latest-node20.json",
+      "matrix_os": "windows-latest",
+      "raw_platform": "win32",
+      "node_major": 20,
+      "job_id": "90031066160",
+      "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066160",
+      "valid": true,
+      "problems": []
+    },
+    {
+      "artifact": "ci-line-derivation-windows-latest-node24/ci-line-derivation-windows-latest-node24.json",
+      "matrix_os": "windows-latest",
+      "raw_platform": "win32",
+      "node_major": 24,
+      "job_id": "90031066300",
+      "job_url": "https://github.com/0xElCapitan/forge/actions/runs/30282182103/job/90031066300",
+      "valid": true,
+      "problems": []
+    }
+  ]
+}
