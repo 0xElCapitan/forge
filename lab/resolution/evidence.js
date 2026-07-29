@@ -205,6 +205,42 @@ export const C006_HALT_CLASSES = Object.freeze([
 /** The three lawful M5 seal shapes (DR-10.5). */
 export const C006_SEAL_SHAPES = Object.freeze(['primary+reserve', 'primary-only', 'none-eligible']);
 
+/**
+ * The closed survey-phase discriminator carried by a structured `contamination_status`
+ * (DR-10.2, T2.11 evidence-layer correction).
+ *
+ * A pre-freeze ending can be reached with the survey NOT STARTED, STARTED BUT
+ * INCOMPLETE, or COMPLETE. Those three states carry different artifact obligations, and
+ * the landed shape could not tell the middle one from the last: reaching `survey`
+ * unconditionally demanded a `survey_record_digest`, so a lawful halt mid-sweep had no
+ * truthful form. The phase is the discriminator; it is NEVER inferred from a filename,
+ * a terminal reason, or free-form prose.
+ *
+ * These are the SAME three token values the survey lane already uses for exactly these
+ * three states (`lab/survey/validate.js::SURVEY_PHASES`), reused verbatim rather than
+ * re-coined so the repository carries ONE survey-phase vocabulary and not two
+ * synonymous ones. They are re-DECLARED rather than imported because `lab/resolution/**`
+ * is an apparatus namespace and `lab/survey/**` deliberately is not (DR-1 rule (c)):
+ * a production import would invert the freeze-authority direction. The c006 evidence
+ * spec imports both and asserts they are identical, so the declarations cannot drift.
+ */
+export const C006_SURVEY_PHASES = Object.freeze({
+  NOT_STARTED: 'pre-authorization',
+  STARTED_INCOMPLETE: 'survey-started',
+  COMPLETE: 'survey-complete',
+});
+
+const C006_SURVEY_PHASE_VALUES = Object.freeze(Object.values(C006_SURVEY_PHASES));
+
+/** The canonical ledger-observation keys — the exact shape `readContaminationLedgerState` returns, plus its digest. */
+const LEDGER_EVIDENCE_KEYS = Object.freeze(['rel', 'exists', 'size', 'typed_event_count', 'untyped_lines', 'sha256']);
+
+/** The `contamination_status` booleans every structured block must state outright. */
+const CONTAMINATION_STATUS_FLAGS = Object.freeze([
+  'contamination_detected', 'adjudication_pending', 'measured_value_or_provider_api_accessed',
+  'survey_record_written', 'sweep_completed',
+]);
+
 /** Stage → the ref key that must be structurally present exactly when the stage is reached. */
 const STAGE_REF_KEY = Object.freeze({
   'gate-p': 'gate_p_ref',
@@ -222,12 +258,21 @@ const STAGE_REF_KEY = Object.freeze({
   'seal': 'seal_ref',
 });
 
-/** Pre-freeze `reached_artifacts` fields, keyed by the stage that makes each mandatory (DR-10.2). */
+/** Pre-freeze `reached_artifacts` fields, keyed by the stage that makes each PERMISSIBLE (DR-10.2). */
 const PRE_FREEZE_ARTIFACT_FIELDS = Object.freeze({
   'gate-p': ['criteria_digest', 'preregistration_digest', 'derivations_digest', 'gate_p_record_id'],
   'survey': ['survey_record_digest'],
   'pool': ['pool_digest'],
 });
+
+/**
+ * Fields a reached stage PERMITS but does not by itself REQUIRE — their obligation is
+ * phase-governed instead (T2.11). `survey_record_digest` is mandatory only when the
+ * survey COMPLETED; a survey that started and halted mid-sweep must not carry it, and a
+ * survey that never started may not carry it at all. Reaching `survey` therefore admits
+ * the field into the allowed set without demanding it; the phase decides.
+ */
+const PHASE_GOVERNED_ARTIFACT_FIELDS = Object.freeze(['survey_record_digest']);
 
 /** Stages that can be reached before the successor freeze exists. */
 const PRE_FREEZE_REACHABLE_STAGES = Object.freeze(['gate-p', 'survey', 'pool']);
@@ -467,6 +512,200 @@ export function validateM5Handoff(block, { disposition } = {}) {
   return { valid: problems.length === 0, problems };
 }
 
+/**
+ * Validate a structured `contamination_status` block against the survey phase it
+ * declares (T2.11). PURE — appends to `problems` rather than throwing.
+ *
+ * The phase is the ONLY discriminator. Every obligation below is phase-conditioned, so
+ * the three lawful states are mutually exclusive and jointly exhaustive:
+ *
+ * | phase              | `survey` in stages_reached | ledger evidence | `survey_record_digest` |
+ * |--------------------|----------------------------|-----------------|------------------------|
+ * | pre-authorization  | forbidden (→ absent_stages)| forbidden       | forbidden              |
+ * | survey-started     | required                   | required        | forbidden              |
+ * | survey-complete    | required                   | required        | required               |
+ */
+function validateContaminationStatusBlock(cs, { surveyReached, reachedArtifacts }, problems) {
+  const bad = (m) => problems.push(`contamination_status: ${m}`);
+
+  const phase = cs.survey_phase;
+  if (!C006_SURVEY_PHASE_VALUES.includes(phase)) {
+    bad(`survey_phase must be one of ${C006_SURVEY_PHASE_VALUES.join(' | ')}, got ${JSON.stringify(phase)}`);
+    return; // every remaining obligation is phase-conditioned — do not guess a phase
+  }
+  if (!isNonEmptyString(cs.summary)) bad('summary (the prose status the string form used to carry) required');
+  for (const k of CONTAMINATION_STATUS_FLAGS) if (typeof cs[k] !== 'boolean') bad(`${k} must be a boolean`);
+
+  const hasLedger = has(cs, 'contamination_ledger');
+  const hasRecordDigest = isPlainObject(reachedArtifacts) && has(reachedArtifacts, 'survey_record_digest');
+
+  if (phase === C006_SURVEY_PHASES.NOT_STARTED) {
+    if (surveyReached) bad(`survey_phase "${phase}" contradicts a reached "survey" stage`);
+    if (hasLedger) bad('a survey that never started has no contamination ledger to reference');
+    if (hasRecordDigest) bad('a survey that never started cannot have produced a survey record');
+    if (cs.sweep_completed !== false) bad('sweep_completed must be false when the survey never started');
+    if (cs.survey_record_written !== false) bad('survey_record_written must be false when the survey never started');
+    return;
+  }
+
+  // Both started phases. The ledger's existence is the mechanical proof the survey began
+  // (C6-FR-N4 / I-1), so it may never be reported as an absent stage.
+  if (!surveyReached) {
+    bad(`survey_phase "${phase}" proves the survey began — "survey" must be in stages_reached, never absent_stages`);
+  }
+  if (!hasLedger) {
+    bad('a started survey requires the contamination-ledger evidence block');
+  } else {
+    const L = cs.contamination_ledger;
+    if (!isPlainObject(L)) bad('contamination_ledger must be an object');
+    else {
+      for (const k of LEDGER_EVIDENCE_KEYS) if (!has(L, k)) bad(`contamination_ledger missing "${k}"`);
+      if (L.exists !== true) bad('a started survey requires contamination_ledger.exists === true — the ledger is created at 0 bytes before the first documentation read, and lazy first-exposure creation is not adopted');
+      if (!isNonEmptyString(L.rel)) bad('contamination_ledger.rel must be the exact repo-relative ledger path');
+      if (!isNonEmptyString(L.sha256)) bad('contamination_ledger.sha256 must be a non-empty digest');
+      for (const k of ['size', 'typed_event_count', 'untyped_lines']) {
+        if (!Number.isInteger(L[k]) || L[k] < 0) bad(`contamination_ledger.${k} must be a non-negative integer`);
+      }
+      // The same 0-byte / typed-event invariants the survey lane's phase guard enforces.
+      if (L.size === 0 && L.typed_event_count !== 0) bad('a 0-byte ledger cannot carry a typed contamination event');
+      if (L.size > 0 && L.typed_event_count < 1) bad('a non-empty ledger carries no typed contamination event — appends go only through the typed step-14 path (DR-4.8)');
+      if (L.untyped_lines > 0) bad('every ledger append must be a typed event object (DR-4.8)');
+    }
+  }
+
+  if (phase === C006_SURVEY_PHASES.STARTED_INCOMPLETE) {
+    if (hasRecordDigest) bad('a started-but-incomplete survey produced no survey record — "survey_record_digest" must be structurally absent, never null-filled or stubbed');
+    if (cs.sweep_completed !== false) bad('sweep_completed must be false for a started-but-incomplete survey — no completed-sweep claim is available');
+    if (cs.survey_record_written !== false) bad('survey_record_written must be false for a started-but-incomplete survey');
+  } else {
+    if (!hasRecordDigest) bad('a complete survey requires reached_artifacts.survey_record_digest');
+    if (cs.sweep_completed !== true) bad('sweep_completed must be true for a complete survey');
+    if (cs.survey_record_written !== true) bad('survey_record_written must be true for a complete survey');
+  }
+}
+
+/**
+ * The canonical Revision-2 contamination-ledger path (T2.11 TC-2). Hardcoded — NEVER a
+ * record-supplied path — matching the `join(repoRoot, <constant>)` pattern this module
+ * already uses for {@link verifyHistoricalPreservation} and {@link verifyC006LedgerProofs}.
+ * Re-declared (not imported) from `lab/survey/validate.js::SURVEY_CONTAMINATION_REL_R2`
+ * for the same DR-1 rule (c) apparatus-namespace reason {@link C006_SURVEY_PHASES}
+ * documents above; the c006 evidence spec imports both and asserts they are identical.
+ */
+const C006_CONTAMINATION_LEDGER_REL = 'lab/preregistration/cycle-006/survey-contamination-r2.jsonl';
+
+/**
+ * The canonical typed-event predicate (T2.11 AC-1 remediation), mirroring
+ * `readContaminationLedgerState` in `lab/survey/validate.js` exactly: split on `\n`,
+ * skip lines that are empty once trimmed, and count a non-blank line as typed only
+ * when it parses as JSON AND the parsed value is a plain object — anything else
+ * (parse failure, array, string, number, boolean, null) is untyped. Operates on text
+ * ALREADY read from disk by the caller; it never opens the file itself.
+ *
+ * @param {string} text
+ * @returns {{typed_event_count:number, untyped_lines:number}}
+ */
+function deriveContaminationLedgerCounts(text) {
+  let typed_event_count = 0;
+  let untyped_lines = 0;
+  for (const line of text.split('\n')) {
+    if (line.trim().length === 0) continue;
+    let parsed;
+    try { parsed = JSON.parse(line); } catch { untyped_lines++; continue; }
+    if (isPlainObject(parsed)) typed_event_count++;
+    else untyped_lines++;
+  }
+  return { typed_event_count, untyped_lines };
+}
+
+function isNonNegativeSafeInteger(v) {
+  return typeof v === 'number' && Number.isSafeInteger(v) && v >= 0;
+}
+
+/**
+ * Compare a record's DECLARED contamination-ledger evidence against the bytes on disk
+ * (T2.11). PURE result (no throw); the caller decides HALT. STRICTLY read-only — it
+ * never creates, truncates, renames, or touches the ledger.
+ *
+ * Disk truth is established at the canonical ledger path for EVERY survey phase BEFORE
+ * any record claim is trusted (TC-2): a `pre-authorization` claim is refused when the
+ * ledger already exists on disk — even at 0 bytes — because the ledger's existence is
+ * itself the survey lane's mechanical proof a survey began. The path probed is ALWAYS
+ * {@link C006_CONTAMINATION_LEDGER_REL}, never a record-supplied `contamination_ledger.rel`
+ * (a record cannot point the disk check at an alternate path).
+ *
+ * `typed_event_count` and `untyped_lines` are re-derived from the same canonical bytes
+ * read for the digest check (audit finding AC-1, cycle-006 T2.11 exact-tree audit) —
+ * the declared counts are never trusted outright. A 0-byte ledger derives 0/0
+ * unconditionally; a non-empty ledger is re-scanned line by line and any declared
+ * count the derivation cannot reproduce is refused, along with the arithmetic
+ * consistency of `typed_event_count + untyped_lines` against the derived line total.
+ *
+ * @param {{repoRoot:string, contamination_status:Object}} p
+ * @returns {{valid:boolean, problems:string[]}}
+ */
+export function verifyC006ContaminationStatus({ repoRoot, contamination_status: cs }) {
+  if (!isPlainObject(cs)) return { valid: false, problems: ['contamination_status must be the structured block'] };
+  const problems = [];
+  const L = cs.contamination_ledger;
+
+  const abs = join(repoRoot, C006_CONTAMINATION_LEDGER_REL);
+  let st = null;
+  try { st = statSync(abs); } catch { st = null; }
+  const notRegularFile = st !== null && !st.isFile();
+  const diskExists = st !== null && !notRegularFile;
+
+  if (cs.survey_phase === C006_SURVEY_PHASES.NOT_STARTED) {
+    if (L !== undefined) problems.push('a not-started survey declares no ledger evidence');
+    if (notRegularFile) {
+      problems.push(`${C006_CONTAMINATION_LEDGER_REL} is present but not a regular file — fails closed`);
+    } else if (diskExists) {
+      problems.push(`contamination_status declares survey_phase "pre-authorization" but ${C006_CONTAMINATION_LEDGER_REL} already exists on disk (${st.size} bytes) — the ledger's existence is mechanical proof the survey began`);
+    }
+    return { valid: problems.length === 0, problems };
+  }
+  if (!isPlainObject(L)) return { valid: false, problems: ['a started survey requires contamination_ledger evidence'] };
+
+  if (notRegularFile) {
+    problems.push(`${C006_CONTAMINATION_LEDGER_REL} is present but not a regular file — fails closed`);
+    return { valid: false, problems };
+  }
+  if (diskExists !== (L.exists === true)) {
+    problems.push(`contamination_ledger.exists=${L.exists} but ${C006_CONTAMINATION_LEDGER_REL} ${diskExists ? 'exists' : 'does not exist'} on disk`);
+  }
+  if (diskExists) {
+    const size = st.size;
+    if (size !== L.size) problems.push(`contamination_ledger.size=${L.size} but ${C006_CONTAMINATION_LEDGER_REL} is ${size} bytes on disk`);
+    const text = readFileSync(abs, 'utf8');
+    const digest = sha256LFNormalized(text);
+    if (digest !== L.sha256) problems.push(`contamination_ledger.sha256=${L.sha256} but ${C006_CONTAMINATION_LEDGER_REL} digests to ${digest}`);
+
+    // AC-1 remediation: re-derive typed_event_count/untyped_lines from these exact
+    // canonical bytes and refuse any declared value the derivation cannot reproduce.
+    const derived = deriveContaminationLedgerCounts(text);
+    const typedOk = isNonNegativeSafeInteger(L.typed_event_count);
+    const untypedOk = isNonNegativeSafeInteger(L.untyped_lines);
+    if (!typedOk) {
+      problems.push(`contamination_ledger.typed_event_count must be a non-negative safe integer, got ${JSON.stringify(L.typed_event_count)}`);
+    } else if (L.typed_event_count !== derived.typed_event_count) {
+      problems.push(`contamination_ledger.typed_event_count=${L.typed_event_count} but ${C006_CONTAMINATION_LEDGER_REL} derives ${derived.typed_event_count} typed event(s) from the canonical bytes on disk`);
+    }
+    if (!untypedOk) {
+      problems.push(`contamination_ledger.untyped_lines must be a non-negative safe integer, got ${JSON.stringify(L.untyped_lines)}`);
+    } else if (L.untyped_lines !== derived.untyped_lines) {
+      problems.push(`contamination_ledger.untyped_lines=${L.untyped_lines} but ${C006_CONTAMINATION_LEDGER_REL} derives ${derived.untyped_lines} untyped line(s) from the canonical bytes on disk`);
+    }
+    if (typedOk && untypedOk) {
+      const declaredTotal = L.typed_event_count + L.untyped_lines;
+      const derivedTotal = derived.typed_event_count + derived.untyped_lines;
+      if (declaredTotal !== derivedTotal) {
+        problems.push(`contamination_ledger.typed_event_count + untyped_lines = ${declaredTotal} but ${C006_CONTAMINATION_LEDGER_REL} carries ${derivedTotal} relevant line(s) on disk`);
+      }
+    }
+  }
+  return { valid: problems.length === 0, problems };
+}
+
 function validateStagePartition(record, problems) {
   const { stages_reached: reached, absent_stages: absent } = record;
   if (!Array.isArray(reached) || !Array.isArray(absent)) { problems.push('stages_reached and absent_stages must both be arrays'); return; }
@@ -517,7 +756,11 @@ export function validateTerminalRecord(record) {
   }
 
   if (!isNonEmptyString(record.reason)) problems.push('reason (C6-FR-T1) required');
-  if (!isNonEmptyString(record.contamination_status)) problems.push('contamination_status required');
+  // `contamination_status` has TWO lawful shapes, but which one is form-specific (T2.11
+  // TC-1): the shared core must not accept a string-or-object union, or the chain form
+  // inherits the pre-freeze form's representation. The per-form branches below apply the
+  // exact contract — pre-freeze requires the structured block, post-freeze-chain requires
+  // the pristine non-empty-string form it always required.
   if (record.claim_ceiling_ack !== true) problems.push('claim_ceiling_ack must be true');
   if (!isNonEmptyString(record.operator_statement)) problems.push('operator_statement required');
   if (!isNonEmptyString(record.at)) problems.push('at (wall-clock governance record) required');
@@ -556,15 +799,43 @@ export function validateTerminalRecord(record) {
     else {
       const allowed = new Set();
       for (const [stage, fields] of Object.entries(PRE_FREEZE_ARTIFACT_FIELDS)) {
+        if (!reached.includes(stage)) continue;
         for (const f of fields) {
-          if (reached.includes(stage)) { allowed.add(f); if (!has(ra, f)) problems.push(`reached_artifacts missing "${f}" for reached stage "${stage}"`); }
+          allowed.add(f);
+          if (PHASE_GOVERNED_ARTIFACT_FIELDS.includes(f)) continue; // required by phase, not by stage
+          if (!has(ra, f)) problems.push(`reached_artifacts missing "${f}" for reached stage "${stage}"`);
         }
       }
-      for (const f of Object.keys(ra)) if (!allowed.has(f)) problems.push(`reached_artifacts carries "${f}" for an unreached stage (strictly as-reached)`);
+      for (const f of Object.keys(ra)) {
+        if (!allowed.has(f)) problems.push(`reached_artifacts carries "${f}" for an unreached stage (strictly as-reached)`);
+        // Every reached artifact is a real reference. null, undefined, "", and stub
+        // objects are refusals — an unreached artifact is ABSENT, never placeheld.
+        else if (!isNonEmptyString(ra[f])) problems.push(`reached_artifacts["${f}"] must be a non-empty string — null, undefined, empty-string, placeholder, and stub values are refusals`);
+      }
+    }
+
+    // The phase-aware survey obligation (T2.11). The structured block is mandatory in
+    // this form: without a phase there is no truthful way to read a reached `survey`.
+    if (!isPlainObject(record.contamination_status)) {
+      problems.push('pre-freeze-standalone: contamination_status must be the structured block carrying a survey_phase — the prose string cannot distinguish a started-but-incomplete survey from a completed one');
+    } else {
+      validateContaminationStatusBlock(
+        record.contamination_status,
+        { surveyReached: reached.includes('survey'), reachedArtifacts: record.reached_artifacts },
+        problems,
+      );
     }
   }
 
   if (form === 'post-freeze-chain') {
+    // Pristine-HEAD contract restored (T2.11 TC-1): the chain form carries ONLY the
+    // legacy prose string. The structured survey-phase block is a
+    // pre-freeze-standalone-only representation; accepting any plain object here would
+    // let a chain-form record carry an unvalidated `contamination_status` shape (e.g.
+    // `{}`) that pristine HEAD always refused.
+    if (!isNonEmptyString(record.contamination_status)) {
+      problems.push('post-freeze-chain: contamination_status must be a non-empty string');
+    }
     if (!reached.includes('gate-f')) problems.push('post-freeze-chain requires the gate-f stage to have been reached');
     if (!Array.isArray(record.chain)) problems.push('chain[] must be an array');
     else {

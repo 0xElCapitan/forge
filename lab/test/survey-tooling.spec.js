@@ -1002,31 +1002,39 @@ test('C6-FR-N4 / I-1: no provider-product has been nominated, enumerated, evalua
   const blockText = canonicalize(block);
 
   // (a) No candidate-bearing, survey, pool, or freeze artifact exists at all — at either
-  //     revision. The revision-2 contamination ledger is governed by the PHASE guard:
-  //     absent before authorization is the only lawful state, and the guard says so.
+  //     revision. The revision-2 contamination ledger is the ONE exception, and it is
+  //     governed by the PHASE guard rather than by absence: the revision-2 survey started
+  //     and halted mid-sweep, so the ledger exists at exactly 0 bytes. It carries no
+  //     candidate — an empty ledger is the absence of a contamination EVENT, not evidence
+  //     of any provider-product having been nominated, evaluated, scored, or ranked.
   for (const rel of ['survey-record.json', 'successor-pool.json', 'survey-contamination.jsonl',
-    'survey-record-r2.json', 'successor-pool-r2.json', 'survey-contamination-r2.jsonl']) {
-    assert.equal(existsSync(join(PREREG_DIR, rel)), false, `${rel} must not exist — no survey has run`);
+    'survey-record-r2.json', 'successor-pool-r2.json']) {
+    assert.equal(existsSync(join(PREREG_DIR, rel)), false, `${rel} must not exist — no survey has completed`);
   }
+  const liveLedger = readContaminationLedgerState({ repoRoot: REPO_ROOT });
+  assert.deepEqual([liveLedger.exists, liveLedger.size, liveLedger.typed_event_count, liveLedger.untyped_lines],
+    [true, 0, 0, 0], 'the revision-2 ledger exists at exactly 0 bytes and carries no event of any kind');
   assert.deepEqual(
-    validateContaminationLedgerPhase({
-      phase: SURVEY_PHASES.PRE_AUTHORIZATION,
-      ledger: readContaminationLedgerState({ repoRoot: REPO_ROOT }),
-    }),
+    validateContaminationLedgerPhase({ phase: SURVEY_PHASES.SURVEY_STARTED, ledger: liveLedger }),
     { valid: true, problems: [] },
-    'the repository is in the pre-authorization phase and the ledger is correspondingly absent',
+    'the repository is in the survey-started phase and the 0-byte ledger is the lawful state for it',
   );
   assert.equal(existsSync(join(REPO_ROOT, 'lab/freeze/cycle-006')), false, 'no successor freeze exists');
 
-  // (b) The ONLY Cycle-006 evidence artifacts are the two Gate-P acceptance records, and
-  //     neither carries a candidate, a product family, or a ranking.
+  // (b) The ONLY Cycle-006 evidence artifacts are the two Gate-P acceptance records and
+  //     the pre-freeze terminal record, and NONE of them carries a candidate, a product
+  //     family, or a ranking. The terminal record is held to the same standard as the
+  //     authority records — halting mid-sweep must not become a way to smuggle a
+  //     candidate into evidence.
   assert.deepEqual(readdirSync(join(REPO_ROOT, 'lab/evidence/cycle-006')).sort(),
-    ['gate-p-acceptance-2.json', 'gate-p-acceptance.json']);
+    ['gate-p-acceptance-2.json', 'gate-p-acceptance.json', 'terminal-disposition.json']);
   const recordText = readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL), 'utf8');
   const recordText2 = readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL_R2), 'utf8');
+  const terminalText = readFileSync(join(REPO_ROOT, 'lab/evidence/cycle-006/terminal-disposition.json'), 'utf8');
   for (const key of ['candidates', 'candidate_key', 'nominated', 'shortlist', 'surveyed', 'admitted', 'rejected', 'rank', 'score']) {
     assert.ok(!recordText.includes(`"${key}"`), `the Gate-P record carries a "${key}" key`);
     assert.ok(!recordText2.includes(`"${key}"`), `the re-issue record carries a "${key}" key`);
+    assert.ok(!terminalText.includes(`"${key}"`), `the terminal record carries a "${key}" key`);
     assert.ok(!blockText.includes(`"${key}"`), `the criteria machine block carries a "${key}" key`);
   }
 

@@ -21,7 +21,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, statSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -387,16 +387,26 @@ test('DR-4.8: the revision-2 outputs are declared, and NONE exists at this node'
   assert.equal(RECORD_2.required_outputs.contamination_ledger, SURVEY_CONTAMINATION_REL_R2);
   assert.equal(RECORD_2.required_outputs.successor_pool, SUCCESSOR_POOL_REL_R2);
 
-  for (const rel of [SURVEY_RECORD_REL_R2, SURVEY_CONTAMINATION_REL_R2, SUCCESSOR_POOL_REL_R2]) {
-    assert.equal(existsSync(join(REPO_ROOT, rel)), false, `${rel} must not exist — the revision-2 survey has not run`);
+  // The revision-2 survey STARTED and halted mid-sweep, so the three declared outputs are
+  // no longer in the same state. The contamination ledger exists — created at exactly
+  // 0 bytes at the authorized start, before the first documentation read — while the two
+  // completion artifacts were never produced and must stay strictly absent.
+  const ledger = join(REPO_ROOT, SURVEY_CONTAMINATION_REL_R2);
+  assert.equal(existsSync(ledger), true, `${SURVEY_CONTAMINATION_REL_R2} exists — the revision-2 survey began`);
+  assert.equal(statSync(ledger).size, 0, 'and is retained at exactly 0 bytes — no contamination event was recorded');
+  for (const rel of [SURVEY_RECORD_REL_R2, SUCCESSOR_POOL_REL_R2]) {
+    assert.equal(existsSync(join(REPO_ROOT, rel)), false, `${rel} must not exist — the revision-2 survey did not complete`);
   }
 });
 
 test('DR-4.8: the contamination ledger is PHASE-governed — absent now, 0 bytes at start, retained when clean', () => {
   const live = readContaminationLedgerState({ repoRoot: REPO_ROOT });
-  assert.equal(live.exists, false, 'this node did not create the revision-2 ledger');
-  assert.deepEqual(validateContaminationLedgerPhase({ phase: SURVEY_PHASES.PRE_AUTHORIZATION, ledger: live }),
-    { valid: true, problems: [] }, 'absent is the ONLY lawful pre-authorization state');
+  assert.deepEqual([live.exists, live.size, live.typed_event_count, live.untyped_lines], [true, 0, 0, 0],
+    'the revision-2 ledger exists at exactly 0 bytes with no event of any kind');
+  assert.deepEqual(validateContaminationLedgerPhase({ phase: SURVEY_PHASES.SURVEY_STARTED, ledger: live }),
+    { valid: true, problems: [] }, 'a 0-byte ledger is the lawful survey-started state');
+  assert.equal(validateContaminationLedgerPhase({ phase: SURVEY_PHASES.PRE_AUTHORIZATION, ledger: live }).valid, false,
+    'and it is no longer pre-authorization — the ledger existing is mechanical proof the survey began');
 
   const absent = { exists: false, size: 0, typed_event_count: 0, untyped_lines: 0 };
   const empty = { exists: true, size: 0, typed_event_count: 0, untyped_lines: 0 };

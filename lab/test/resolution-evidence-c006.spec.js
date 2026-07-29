@@ -18,11 +18,13 @@ import { fileURLToPath } from 'node:url';
 
 import {
   C006_TERMINAL_TYPES, C006_AUTHORITY_FORMS, C006_STAGES, C006_HALT_CLASSES, C006_SEAL_SHAPES,
+  C006_SURVEY_PHASES,
   buildPreFreezeTerminalRecord, buildSuccessorChainHead, buildCycle006HaltRecord,
   validateTerminalRecord, assertTerminalRecord, validateM5Handoff,
-  verifyHistoricalPreservation, verifyC006LedgerProofs,
+  verifyHistoricalPreservation, verifyC006LedgerProofs, verifyC006ContaminationStatus,
   writeOneShotRecord, verifyRecordId, buildHaltRecord,
 } from '../resolution/evidence.js';
+import { SURVEY_PHASES } from '../survey/validate.js';
 import { verifyAcquisitionIdentity, AcquisitionRefusal as IdentityRefusal } from '../resolution/identity.js';
 import { selfVerifyAcquisitionManifest, AcquisitionRefusal } from '../acquisition/acquire.js';
 import { sha256LFNormalized } from '../harness/manifests.js';
@@ -43,7 +45,35 @@ const LEDGERS = {
   no_successor_ledger: true,
 };
 
-/** Arguments for a minimally-complete pre-freeze record (Gate P + survey reached, nothing later). */
+/** A 0-byte, clean contamination-ledger observation — the shape `readContaminationLedgerState` returns, plus its digest. */
+const EMPTY_LEDGER = {
+  rel: 'lab/preregistration/cycle-006/survey-contamination-r2.jsonl',
+  exists: true, size: 0, typed_event_count: 0, untyped_lines: 0,
+  sha256: 'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+};
+
+/**
+ * A structured `contamination_status` for a given survey phase (T2.11). The flags are
+ * phase-consistent by construction; individual tests override one at a time to prove the
+ * validator refuses each inconsistency.
+ */
+function contaminationStatus(phase, overrides = {}) {
+  const started = phase !== C006_SURVEY_PHASES.NOT_STARTED;
+  const complete = phase === C006_SURVEY_PHASES.COMPLETE;
+  const block = {
+    survey_phase: phase,
+    summary: 'no contamination event recorded',
+    contamination_detected: false,
+    adjudication_pending: false,
+    measured_value_or_provider_api_accessed: false,
+    survey_record_written: complete,
+    sweep_completed: complete,
+  };
+  if (started) block.contamination_ledger = { ...EMPTY_LEDGER };
+  return { ...block, ...overrides };
+}
+
+/** Arguments for a minimally-complete pre-freeze record (Gate P + a COMPLETE survey, nothing later). */
 function preFreezeArgs() {
   return {
     b_type: 'no-lawfully-constitutable-pool',
@@ -56,10 +86,25 @@ function preFreezeArgs() {
     },
     historical_preservation: HISTORICAL,
     ledger_proofs: LEDGERS,
-    contamination_status: 'none detected',
+    contamination_status: contaminationStatus(C006_SURVEY_PHASES.COMPLETE),
     claim_ceiling_ack: true,
     operator_statement: 'EC accepts the pre-freeze ending.',
     at: AT,
+  };
+}
+
+/** Arguments for the started-but-incomplete shape — the T2.11 terminal's own form. */
+function startedIncompleteArgs(overrides = {}) {
+  return {
+    ...preFreezeArgs(),
+    b_type: 'pre-freeze-halt',
+    reason: 'the fixed enumeration index cannot produce one unique family set',
+    reached_artifacts: {
+      criteria_digest: 'sha256:aa', preregistration_digest: 'sha256:bb',
+      derivations_digest: 'sha256:cc', gate_p_record_id: 'sha256:dd',
+    },
+    contamination_status: contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE),
+    ...overrides,
   };
 }
 
@@ -250,10 +295,470 @@ test('DR-10.2: the pre-freeze form cannot reach a post-freeze stage, and reached
   assert.throws(() => preFreeze({
     reached_artifacts: { criteria_digest: 'sha256:aa', preregistration_digest: 'sha256:bb', derivations_digest: 'sha256:cc', gate_p_record_id: 'sha256:dd', survey_record_digest: 'sha256:ee', pool_digest: 'sha256:ff' },
   }), /unreached stage \(strictly as-reached\)/);
-  // survey reached ⇒ its digest is mandatory
+  // survey reached AND COMPLETE ⇒ its digest is mandatory. (Reaching `survey` alone no
+  // longer implies it — that obligation is phase-governed as of T2.11.)
   assert.throws(() => preFreeze({
     reached_artifacts: { criteria_digest: 'sha256:aa', preregistration_digest: 'sha256:bb', derivations_digest: 'sha256:cc', gate_p_record_id: 'sha256:dd' },
-  }), /missing "survey_record_digest"/);
+  }), /a complete survey requires reached_artifacts\.survey_record_digest/);
+});
+
+// ── T2.11: the phase-governed survey obligation ───────────────────────────────
+//
+// The landed shape coupled `survey` ∈ stages_reached → `survey_record_digest`
+// unconditionally, so a survey that lawfully STARTED and halted mid-sweep had no
+// truthful form. Two shapes were probed and both are refusals, permanently: a null
+// `survey_record_digest` (a placeholder is not evidence) and moving `survey` into
+// `absent_stages` (the 0-byte ledger mechanically proves the survey began). The phase
+// discriminator is the fix.
+
+test('T2.11: the terminal layer and the survey lane share ONE survey-phase vocabulary', () => {
+  assert.deepEqual(
+    Object.values(C006_SURVEY_PHASES).sort(),
+    Object.values(SURVEY_PHASES).sort(),
+    'the re-declared tokens must stay identical to lab/survey/validate.js::SURVEY_PHASES',
+  );
+  assert.deepEqual(
+    [C006_SURVEY_PHASES.NOT_STARTED, C006_SURVEY_PHASES.STARTED_INCOMPLETE, C006_SURVEY_PHASES.COMPLETE],
+    [SURVEY_PHASES.PRE_AUTHORIZATION, SURVEY_PHASES.SURVEY_STARTED, SURVEY_PHASES.SURVEY_COMPLETE],
+    'and must map state-for-state, not merely as a set',
+  );
+});
+
+test('T2.11 (1): a STARTED-INCOMPLETE survey with exact ledger evidence and NO survey record is lawful', () => {
+  const rec = buildPreFreezeTerminalRecord(startedIncompleteArgs());
+  assert.equal(validateTerminalRecord(rec).valid, true);
+  assert.ok(rec.stages_reached.includes('survey'), 'the survey began, so it is reached');
+  assert.ok(!rec.absent_stages.includes('survey'), 'and is never reported absent');
+  assert.equal(rec.contamination_status.survey_phase, C006_SURVEY_PHASES.STARTED_INCOMPLETE);
+  assert.ok(!('survey_record_digest' in rec.reached_artifacts), 'structurally absent — not null, not stubbed');
+  assert.equal(rec.contamination_status.sweep_completed, false, 'no completed-sweep claim');
+});
+
+test('T2.11 (2): P1 — a started survey WITHOUT ledger evidence is refused', () => {
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE);
+  delete cs.contamination_ledger;
+  assert.throws(() => buildPreFreezeTerminalRecord(startedIncompleteArgs({ contamination_status: cs })),
+    /a started survey requires the contamination-ledger evidence block/);
+});
+
+test('T2.11 (3): P3 — a null (or empty, or stub) survey_record_digest is refused, never accepted as a placeholder', () => {
+  for (const [label, value] of [['null', null], ['empty string', ''], ['stub object', {}], ['undefined', undefined]]) {
+    const args = startedIncompleteArgs();
+    args.reached_artifacts = { ...args.reached_artifacts, survey_record_digest: value };
+    assert.throws(() => buildPreFreezeTerminalRecord(args), /survey_record_digest/,
+      `a ${label} survey_record_digest must be refused`);
+  }
+  // The same universal refusal applies to every reached artifact, not just this one.
+  const nulled = preFreezeArgs();
+  nulled.reached_artifacts = { ...nulled.reached_artifacts, criteria_digest: null };
+  assert.throws(() => buildPreFreezeTerminalRecord(nulled),
+    /reached_artifacts\["criteria_digest"\] must be a non-empty string/);
+});
+
+test('T2.11 (4): P4 — declaring `survey` ABSENT is refused when the phase proves it started', () => {
+  const args = startedIncompleteArgs({ stages_reached: ['gate-p'] });
+  assert.throws(() => buildPreFreezeTerminalRecord(args),
+    /must be in stages_reached, never absent_stages/);
+});
+
+test('T2.11 (5): a COMPLETE survey without a survey record is refused', () => {
+  const args = preFreezeArgs();
+  delete args.reached_artifacts.survey_record_digest;
+  assert.throws(() => buildPreFreezeTerminalRecord(args),
+    /a complete survey requires reached_artifacts\.survey_record_digest/);
+});
+
+test('T2.11 (6): a COMPLETE survey with both a survey record and ledger evidence is lawful', () => {
+  const rec = buildPreFreezeTerminalRecord(preFreezeArgs());
+  assert.equal(validateTerminalRecord(rec).valid, true);
+  assert.equal(rec.contamination_status.survey_phase, C006_SURVEY_PHASES.COMPLETE);
+  assert.equal(rec.contamination_status.sweep_completed, true);
+  assert.equal(rec.reached_artifacts.survey_record_digest, 'sha256:ee');
+});
+
+test('T2.11 (7): a NOT-STARTED survey may carry neither survey artifact', () => {
+  const base = {
+    ...startedIncompleteArgs(),
+    stages_reached: ['gate-p'],
+    contamination_status: contaminationStatus(C006_SURVEY_PHASES.NOT_STARTED),
+  };
+  assert.equal(validateTerminalRecord(buildPreFreezeTerminalRecord(base)).valid, true);
+
+  assert.throws(() => buildPreFreezeTerminalRecord({
+    ...base,
+    contamination_status: contaminationStatus(C006_SURVEY_PHASES.NOT_STARTED, { contamination_ledger: { ...EMPTY_LEDGER } }),
+  }), /a survey that never started has no contamination ledger to reference/);
+
+  assert.throws(() => buildPreFreezeTerminalRecord({
+    ...base,
+    reached_artifacts: { ...base.reached_artifacts, survey_record_digest: 'sha256:ee' },
+  }), /carries "survey_record_digest" for an unreached stage/);
+});
+
+test('T2.11 (8): a STARTED-INCOMPLETE survey carrying a survey-record digest is refused', () => {
+  const args = startedIncompleteArgs();
+  args.stages_reached = ['gate-p', 'survey'];
+  args.reached_artifacts = { ...args.reached_artifacts, survey_record_digest: 'sha256:ee' };
+  assert.throws(() => buildPreFreezeTerminalRecord(args),
+    /"survey_record_digest" must be structurally absent/);
+
+  // …and a completed-sweep claim is equally unavailable to it.
+  assert.throws(() => buildPreFreezeTerminalRecord(startedIncompleteArgs({
+    contamination_status: contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, { sweep_completed: true }),
+  })), /sweep_completed must be false for a started-but-incomplete survey/);
+});
+
+test('T2.11 (9): declared ledger evidence is checked against the bytes on disk', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-contam-'));
+  mkdirSync(join(dir, 'lab/preregistration/cycle-006'), { recursive: true });
+  writeFileSync(join(dir, EMPTY_LEDGER.rel), '');
+
+  const truthful = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE);
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: truthful }),
+    { valid: true, problems: [] });
+
+  const wrongDigest = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: { ...EMPTY_LEDGER, sha256: 'sha256:deadbeef' },
+  });
+  const d = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: wrongDigest });
+  assert.equal(d.valid, false);
+  assert.ok(d.problems.some(p => /digests to/.test(p)));
+
+  const wrongBytes = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: { ...EMPTY_LEDGER, size: 84 },
+  });
+  const b = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: wrongBytes });
+  assert.equal(b.valid, false);
+  assert.ok(b.problems.some(p => /is 0 bytes on disk/.test(p)));
+
+  // A ledger claimed present but absent on disk is equally a refusal.
+  const missing = verifyC006ContaminationStatus({
+    repoRoot: join(dir, 'nowhere'), contamination_status: truthful,
+  });
+  assert.equal(missing.valid, false);
+  assert.ok(missing.problems.some(p => /does not exist on disk/.test(p)));
+});
+
+test('T2.11 (13): TC-2 — pre-authorization is checked against the canonical ledger path, not just the record', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-contam-preauth-'));
+  mkdirSync(join(dir, 'lab/preregistration/cycle-006'), { recursive: true });
+  const ledgerAbs = join(dir, EMPTY_LEDGER.rel);
+  const notStarted = contaminationStatus(C006_SURVEY_PHASES.NOT_STARTED);
+
+  // No ledger on disk: the pre-authorization claim is truthful and passes.
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: notStarted }),
+    { valid: true, problems: [] });
+
+  // An existing 0-byte ledger refuses the claim outright — existence alone is the proof.
+  writeFileSync(ledgerAbs, '');
+  const zeroByte = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: notStarted });
+  assert.equal(zeroByte.valid, false);
+  assert.ok(zeroByte.problems.some(p => /already exists on disk/.test(p)));
+
+  // A non-empty ledger refuses it too — the byte count does not matter to this claim.
+  writeFileSync(ledgerAbs, '{"typed":true}\n');
+  const nonEmpty = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: notStarted });
+  assert.equal(nonEmpty.valid, false);
+  assert.ok(nonEmpty.problems.some(p => /already exists on disk/.test(p)));
+});
+
+test('T2.11 (14): TC-2 — survey-complete disk truth, and a record-supplied alternate ledger path cannot bypass the canonical check', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-contam-complete-'));
+  mkdirSync(join(dir, 'lab/preregistration/cycle-006'), { recursive: true });
+  const canonicalAbs = join(dir, EMPTY_LEDGER.rel);
+  writeFileSync(canonicalAbs, '');
+
+  // survey-complete with the exact ledger evidence passes (the survey-record digest
+  // obligation is a `reached_artifacts` concern the structural validator checks — T2.11 (6)).
+  const complete = contaminationStatus(C006_SURVEY_PHASES.COMPLETE);
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: complete }),
+    { valid: true, problems: [] });
+
+  // A record declaring an alternate `contamination_ledger.rel` cannot redirect the disk
+  // check away from the canonical path — a decoy file elsewhere with different bytes is
+  // irrelevant; the canonical 0-byte file is still what gets compared.
+  mkdirSync(join(dir, 'decoy'), { recursive: true });
+  writeFileSync(join(dir, 'decoy/alternate.jsonl'), 'not the real ledger\n');
+  const steered = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: { ...EMPTY_LEDGER, rel: 'decoy/alternate.jsonl', sha256: 'sha256:decoy-digest', size: 999 },
+  });
+  const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: steered });
+  assert.equal(result.valid, false, 'the canonical path is checked regardless of the declared rel');
+  assert.ok(result.problems.some(p => /survey-contamination-r2\.jsonl is 0 bytes on disk/.test(p)),
+    'the mismatch is reported against the CANONICAL path bytes, not the decoy');
+});
+
+test('T2.11 (10): the stage partition stays exact in every survey phase', () => {
+  for (const args of [preFreezeArgs(), startedIncompleteArgs(),
+    { ...startedIncompleteArgs(), stages_reached: ['gate-p'], contamination_status: contaminationStatus(C006_SURVEY_PHASES.NOT_STARTED) }]) {
+    const rec = buildPreFreezeTerminalRecord(args);
+    assert.deepEqual([...rec.stages_reached, ...rec.absent_stages].sort(), [...C006_STAGES].sort());
+    assert.equal(rec.stages_reached.filter(s => rec.absent_stages.includes(s)).length, 0,
+      'every fixed stage occurs exactly once across the two arrays');
+  }
+});
+
+test('T2.11 (11): post-freeze-chain behavior is unchanged — the prose contamination_status still validates', () => {
+  const head = chainHead();
+  assert.equal(validateTerminalRecord(head).valid, true);
+  assert.equal(head.contamination_status, 'none detected', 'the string form is untouched in the chain form');
+  assert.equal(validateTerminalRecord({ ...head, contamination_status: '' }).valid, false);
+  // The chain form neither requires nor gains a survey phase.
+  assert.ok(!('survey_phase' in Object(head.contamination_status)));
+
+  // TC-1: pristine-HEAD strictness recovered — the chain form refuses EVERY plain-object
+  // shape, including ones the pre-freeze structured block would accept outright.
+  for (const cs of [{}, { survey_phase: 'totally-made-up' },
+    contaminationStatus(C006_SURVEY_PHASES.COMPLETE)]) {
+    const { valid, problems } = validateTerminalRecord({ ...head, contamination_status: cs });
+    assert.equal(valid, false, `post-freeze-chain must refuse ${JSON.stringify(cs)}`);
+    assert.ok(problems.some(p => p.includes('post-freeze-chain: contamination_status must be a non-empty string')));
+  }
+
+  // Changing ONLY the runtime type of contamination_status cannot switch which per-form
+  // contract applies — `authority_form` alone governs branching, never the value's shape.
+  assert.equal(validateTerminalRecord({ ...preFreeze(), contamination_status: 'a string' }).valid, false,
+    'a pre-freeze-standalone record with a string value is still judged as pre-freeze-standalone, and refused');
+  assert.equal(validateTerminalRecord({ ...head, contamination_status: contaminationStatus(C006_SURVEY_PHASES.COMPLETE) }).valid, false,
+    'a post-freeze-chain record with a structured object is still judged as post-freeze-chain, and refused');
+});
+
+test('T2.11 (15): pre-freeze-standalone refuses the legacy prose string — the structured block is mandatory', () => {
+  const { valid, problems } = validateTerminalRecord({ ...preFreeze(), contamination_status: 'none detected' });
+  assert.equal(valid, false);
+  assert.ok(problems.some(p => /contamination_status must be the structured block/.test(p)));
+});
+
+test('T2.11 (12): the LIVE Cycle-006 terminal record self-verifies against the repository', () => {
+  const rel = 'lab/evidence/cycle-006/terminal-disposition.json';
+  const rec = JSON.parse(readFileSync(join(REPO_ROOT, rel), 'utf8'));
+
+  assert.deepEqual(validateTerminalRecord(rec), { valid: true, problems: [] });
+  assert.ok(verifyRecordId(rec), 'record_id equals its self-excluded content address');
+
+  // The accepted terminal, unchanged by the schema correction.
+  assert.equal(rec.record_kind, 'terminal-disposition');
+  assert.equal(rec.schema_version, '2.0.0');
+  assert.equal(rec.cycle, 'cycle-006');
+  assert.equal(rec.disposition, 'B');
+  assert.equal(rec.b_type, 'pre-freeze-halt');
+  assert.equal(rec.authority_form, 'pre-freeze-standalone');
+  assert.equal(rec.at, '2026-07-29T02:21:31.163Z', 'the original terminal-acceptance timestamp, not a new one');
+
+  // The started-but-incomplete survey, represented truthfully.
+  assert.deepEqual(rec.stages_reached, ['gate-p', 'survey']);
+  assert.deepEqual(rec.absent_stages, ['pool', 'gate-f', 'apparatus-gate-a', 'g0', 'acquisition',
+    'census', 'selection', 'invariance', 'p-star', 'runnability-validity', 'seal']);
+  assert.equal(rec.contamination_status.survey_phase, C006_SURVEY_PHASES.STARTED_INCOMPLETE);
+  assert.ok(!('survey_record_digest' in rec.reached_artifacts), 'no survey record exists, so the key is absent');
+  assert.ok(!('pool_digest' in rec.reached_artifacts), 'no pool exists either');
+  for (const [k, v] of Object.entries(rec.reached_artifacts)) {
+    assert.equal(typeof v, 'string'); assert.ok(v.length > 0, `${k} is a real reference, not a placeholder`);
+  }
+
+  // The declared ledger evidence still matches the bytes on disk.
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: REPO_ROOT, contamination_status: rec.contamination_status }),
+    { valid: true, problems: [] });
+  assert.equal(rec.contamination_status.contamination_ledger.size, 0);
+  assert.equal(rec.contamination_status.contamination_ledger.sha256,
+    'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+
+  // Nothing later than the survey was reached, and no forbidden key crept in.
+  for (const k of ['chain', 'pin_invariance_ref', 'successor_freeze_ref', 'apparatus_identity', 'm5_handoff',
+    'gate_f_ref', 'gate_a_ref', 'g0_ref', 'seal_ref']) {
+    assert.ok(!(k in rec), `${k} must be structurally absent from a pre-freeze ending`);
+  }
+});
+
+test('T2.11 (16): TC-2 — the LIVE record cloned to pre-authorization is refused because the real ledger exists on disk', () => {
+  const rel = 'lab/evidence/cycle-006/terminal-disposition.json';
+  const rec = JSON.parse(readFileSync(join(REPO_ROOT, rel), 'utf8'));
+  assert.notEqual(rec.contamination_status.survey_phase, C006_SURVEY_PHASES.NOT_STARTED,
+    'sanity: the live record is NOT pre-authorization to begin with');
+
+  const clonedNotStarted = contaminationStatus(C006_SURVEY_PHASES.NOT_STARTED);
+  const result = verifyC006ContaminationStatus({ repoRoot: REPO_ROOT, contamination_status: clonedNotStarted });
+  assert.equal(result.valid, false, 'the real 0-byte ledger on disk refutes a pre-authorization claim');
+  assert.ok(result.problems.some(p => /already exists on disk/.test(p)));
+});
+
+// ── T2.11 AC-1 remediation: typed_event_count/untyped_lines re-derived from disk ──
+//
+// The exact-tree audit found that `verifyC006ContaminationStatus` recomputed disk
+// existence, byte count, and digest, but TRUSTED the record's declared
+// typed_event_count/untyped_lines outright — a non-empty ledger with three typed
+// events could declare typed_event_count: 1 or 999 and still pass. These tests
+// prove the counts are now derived from the canonical bytes already read for the
+// digest check, and any declared value the derivation cannot reproduce is refused.
+
+function writeLedger(dir, text) {
+  mkdirSync(join(dir, 'lab/preregistration/cycle-006'), { recursive: true });
+  writeFileSync(join(dir, EMPTY_LEDGER.rel), text);
+}
+
+/** Ledger evidence TRUE to `text`'s real size/digest, with counts overridden to the declared value under test. */
+function ledgerEvidence(text, counts) {
+  return {
+    rel: EMPTY_LEDGER.rel,
+    exists: true,
+    size: Buffer.byteLength(text, 'utf8'),
+    sha256: sha256LFNormalized(text),
+    ...counts,
+  };
+}
+
+const THREE_TYPED_TEXT = '{"type":"a"}\n{"type":"b"}\n{"type":"c"}\n';
+const ONE_TYPED_ONE_MALFORMED_TEXT = '{"type":"a"}\nnot json\n';
+
+test('T2.11 AC-1 (1): a 0-byte ledger derives typed_event_count=0 / untyped_lines=0 and the truthful claim passes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-empty-'));
+  writeLedger(dir, '');
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence('', { typed_event_count: 0, untyped_lines: 0 }),
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs }),
+    { valid: true, problems: [] });
+});
+
+test('T2.11 AC-1 (2): three typed events declared 3/0 pass', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-3of3-'));
+  writeLedger(dir, THREE_TYPED_TEXT);
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(THREE_TYPED_TEXT, { typed_event_count: 3, untyped_lines: 0 }),
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs }),
+    { valid: true, problems: [] });
+});
+
+test('T2.11 AC-1 (3)/(4): the same three typed events under-declared (1/0) or over-declared (999/0) both refuse', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-mismatch-'));
+  writeLedger(dir, THREE_TYPED_TEXT);
+
+  for (const declared of [1, 999]) {
+    const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+      contamination_ledger: ledgerEvidence(THREE_TYPED_TEXT, { typed_event_count: declared, untyped_lines: 0 }),
+    });
+    const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs });
+    assert.equal(result.valid, false, `declared typed_event_count=${declared} must refuse`);
+    assert.ok(result.problems.some(p => p.includes(`typed_event_count=${declared}`) && p.includes('derives 3 typed event')),
+      `problem names both the declared (${declared}) and derived (3) count`);
+  }
+});
+
+test('T2.11 AC-1 (5)/(6): one typed + one malformed line — the disk-truth check passes a true 1/1 declaration (DR-4.8 policy refuses it separately); a false 2/0 declaration is refused as a disk-truth mismatch', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-mixed-'));
+  writeLedger(dir, ONE_TYPED_ONE_MALFORMED_TEXT);
+
+  // Disk truth: the declared 1/1 exactly reproduces what's on disk, so the TC-2
+  // disk-verifier alone passes it. "Every append must be typed" is a separate,
+  // upstream policy (validateContaminationStatusBlock / DR-4.8) — not this
+  // function's job, and this remediation does not fold that policy in.
+  const trueShape = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(ONE_TYPED_ONE_MALFORMED_TEXT, { typed_event_count: 1, untyped_lines: 1 }),
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: trueShape }),
+    { valid: true, problems: [] });
+  // ...yet building a full record around that same truthful shape still hits the
+  // existing DR-4.8 refusal — the two checks are independent and both stand.
+  assert.throws(() => buildPreFreezeTerminalRecord(startedIncompleteArgs({ contamination_status: trueShape })),
+    /every ledger append must be a typed event object/);
+
+  // Declaring 2/0 against the SAME bytes is a disk-truth mismatch and the TC-2
+  // verifier refuses it directly, independent of the DR-4.8 policy question.
+  const wrongShape = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(ONE_TYPED_ONE_MALFORMED_TEXT, { typed_event_count: 2, untyped_lines: 0 }),
+  });
+  const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: wrongShape });
+  assert.equal(result.valid, false);
+  assert.ok(result.problems.some(p => /typed_event_count=2/.test(p) && /derives 1 typed event/.test(p)));
+  assert.ok(result.problems.some(p => /untyped_lines=0/.test(p) && /derives 1 untyped line/.test(p)));
+});
+
+test('T2.11 AC-1 (7): a matching digest and byte count cannot mask an event-count mismatch', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-digest-match-'));
+  writeLedger(dir, THREE_TYPED_TEXT);
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    // size and sha256 are TRUE to the bytes on disk; only the event counts lie.
+    contamination_ledger: ledgerEvidence(THREE_TYPED_TEXT, { typed_event_count: 1, untyped_lines: 0 }),
+  });
+  const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs });
+  assert.equal(result.valid, false);
+  assert.ok(!result.problems.some(p => /digests to|is \d+ bytes on disk/.test(p)),
+    'size and digest are truthful — only the count mismatch should be reported');
+});
+
+test('T2.11 AC-1 (8): a JSON value that is not a plain object counts as untyped', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-nonobject-'));
+  const text = '[1,2,3]\n"a string"\n42\n';
+  writeLedger(dir, text);
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(text, { typed_event_count: 0, untyped_lines: 3 }),
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs }),
+    { valid: true, problems: [] });
+});
+
+test('T2.11 AC-1 (9): blank-line handling follows the existing convention and cannot be used to falsify counts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-blank-'));
+  const text = '{"type":"a"}\n\n   \n{"type":"b"}\n';
+  writeLedger(dir, text);
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(text, { typed_event_count: 2, untyped_lines: 0 }),
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs }),
+    { valid: true, problems: [] });
+
+  // Padding the blank-line count cannot buy a higher declared total — blank lines
+  // are not "relevant lines" under the existing convention, so they cannot inflate
+  // untyped_lines either.
+  const inflated = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: ledgerEvidence(text, { typed_event_count: 2, untyped_lines: 2 }),
+  });
+  const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: inflated });
+  assert.equal(result.valid, false);
+  assert.ok(result.problems.some(p => /untyped_lines=2/.test(p) && /derives 0 untyped line/.test(p)));
+});
+
+test('T2.11 AC-1 (10): negative, fractional, string, null, and unsafe-integer declarations all refuse', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-badtype-'));
+  writeLedger(dir, '');
+  const bad = [-1, 1.5, '0', null, Number.MAX_SAFE_INTEGER + 1];
+  for (const v of bad) {
+    const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+      contamination_ledger: ledgerEvidence('', { typed_event_count: v, untyped_lines: 0 }),
+    });
+    const result = verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs });
+    assert.equal(result.valid, false, `typed_event_count=${JSON.stringify(v)} must refuse`);
+    assert.ok(result.problems.some(p => /typed_event_count must be a non-negative safe integer/.test(p)));
+  }
+});
+
+test('T2.11 AC-1 (11): the verifier derives counts only from the canonical ledger path — a record-supplied rel cannot steer derivation', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'c006-ac1-decoy-'));
+  writeLedger(dir, THREE_TYPED_TEXT);
+  mkdirSync(join(dir, 'decoy'), { recursive: true });
+  writeFileSync(join(dir, 'decoy/alternate.jsonl'), '{"only":"one"}\n');
+
+  const cs = contaminationStatus(C006_SURVEY_PHASES.STARTED_INCOMPLETE, {
+    contamination_ledger: {
+      ...ledgerEvidence(THREE_TYPED_TEXT, { typed_event_count: 3, untyped_lines: 0 }),
+      rel: 'decoy/alternate.jsonl',
+    },
+  });
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: dir, contamination_status: cs }),
+    { valid: true, problems: [] },
+    'the canonical 3-event ledger is what gets derived and compared, regardless of the declared rel');
+});
+
+test('T2.11 AC-1 (12): the accepted LIVE terminal record still self-verifies after remediation', () => {
+  const rel = 'lab/evidence/cycle-006/terminal-disposition.json';
+  const rec = JSON.parse(readFileSync(join(REPO_ROOT, rel), 'utf8'));
+  assert.equal(rec.contamination_status.contamination_ledger.typed_event_count, 0);
+  assert.equal(rec.contamination_status.contamination_ledger.untyped_lines, 0);
+  assert.deepEqual(verifyC006ContaminationStatus({ repoRoot: REPO_ROOT, contamination_status: rec.contamination_status }),
+    { valid: true, problems: [] });
+  assert.deepEqual(validateTerminalRecord(rec), { valid: true, problems: [] });
+  assert.ok(verifyRecordId(rec));
 });
 
 test('DR-10.2: buildSuccessorChainHead refuses a ref for a stage that was never reached', () => {
