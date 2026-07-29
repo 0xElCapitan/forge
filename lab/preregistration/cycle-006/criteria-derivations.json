@@ -2,6 +2,26 @@
   "record_kind": "criteria-derivations",
   "schema_version": "1.0.0",
   "cycle": "cycle-006",
+  "revision": 2,
+  "reissue_provenance": {
+    "revision": 2,
+    "supersedes_revision_ref": "revision 1",
+    "supersedes_note": "the revision-1 worksheet carried no explicit revision field; the revision-1 Gate-P acceptance fixed those bytes as revision 1 of this artifact",
+    "superseded_worksheet_digest": "sha256:5254af545df43e8230d3fdb09af04228c2646978f18a89aca1adaf57607b6f5e",
+    "superseded_gate_p_record_id": "sha256:3af84045ee41d487e9e2dc5e063cbe4fb1decc8e91f77d58e63348bc0e1e8bc4",
+    "superseded_gate_p_record_path": "lab/evidence/cycle-006/gate-p-acceptance.json",
+    "superseded_gate_p_record_preserved": true,
+    "reissue_reason": "the Cycle-006 pool-entry criteria were re-issued at revision 2 to repair a specification defect in the product-family discovery rule and to declare one fixed enumeration index per portal. The three Gate-P artifacts are accepted as one unit, so this worksheet is re-issued with the unit and carries the revision and provenance of that re-issue.",
+    "measured_values_changed": false,
+    "binding_arithmetic_changed": false,
+    "frozen_inputs_changed": false,
+    "ci_legs_changed": false,
+    "changed_fields": [
+      "revision",
+      "reissue_provenance"
+    ],
+    "unchanged_assertion": "every constant, leg, binding_value, formula, frozen input, cadence-history envelope row, dispatch provenance record, artifact-validation record, operator-reserved value, and known discrepancy is byte-identical to revision 1. Only the two provenance fields above were added."
+  },
   "constants": [
     {
       "constant_id": "classifier_input_ceiling_n_ci",

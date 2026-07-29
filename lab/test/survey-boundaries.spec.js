@@ -120,8 +120,9 @@ const FS_WRITE_CALLS = [
 // exactly like the import allowlist above.
 const PERMITTED_WRITE_ROOT = 'lab/preregistration/cycle-006/';
 const READ_ALLOWED_PATHS = new Set([
-  'lab/evidence/cycle-006/gate-p-acceptance.json', // the Gate-P authority record (DR-2.4, I-3)
-  'lab/census/burned-list.json',                   // the frozen burned-list authority (DR-4.5 §h)
+  'lab/evidence/cycle-006/gate-p-acceptance.json',   // the Gate-P authority record (DR-2.4, I-3)
+  'lab/evidence/cycle-006/gate-p-acceptance-2.json', // its revision-2 re-issue (criteria §16.1)
+  'lab/census/burned-list.json',                     // the frozen burned-list authority (DR-4.5 §h)
 ]);
 const REPO_PATH_LITERAL = /(['"])((?:lab|src|spec|scripts|grimoires|\.beads|\.github)\/[^'"]*)\1/g;
 
@@ -259,7 +260,8 @@ test('DR-4.7 self-check: every fence FIRES on a planted violation and stays quie
   assert.equal(pathLiteralAllowed(permitted[0]), true, 'the lane may name its own write root');
   assert.equal(pathLiteralAllowed('lab/census/burned-list.json'), true, 'the frozen burned-list authority is read-allowlisted');
   assert.equal(pathLiteralAllowed('lab/census/candidate-pool.json'), false, 'the read allowlist is exact files, never a directory prefix');
-  assert.equal(pathLiteralAllowed('lab/evidence/cycle-006/gate-f-acceptance.json'), false, 'only the Gate-P record is read-allowlisted under lab/evidence/cycle-006/');
+  assert.equal(pathLiteralAllowed('lab/evidence/cycle-006/gate-p-acceptance-2.json'), true, 'the revision-2 re-issue record is read-allowlisted alongside its predecessor');
+  assert.equal(pathLiteralAllowed('lab/evidence/cycle-006/gate-f-acceptance.json'), false, 'only the Gate-P acceptance records are read-allowlisted under lab/evidence/cycle-006/');
 
   // (6) ledger tokens
   assert.ok(FORBIDDEN_LEDGER_TOKENS.some(re => re.test("appendTrial(TRIALS_LEDGER_PATH, e)")), 'the ledger fence catches a planted trials write');

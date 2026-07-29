@@ -42,7 +42,7 @@ import {
 } from '../survey/criteria.js';
 import {
   verifyGatePAuthority, validateGatePRecord, computeGatePRecordId, verifyAcceptedDigestUnit,
-  GATE_P_RECORD_REL, CRITERIA_DOC_REL, PREREGISTRATION_REL, DERIVATIONS_REL,
+  GATE_P_RECORD_REL, GATE_P_RECORD_REL_R2, CRITERIA_DOC_REL, PREREGISTRATION_REL, DERIVATIONS_REL,
 } from '../survey/gate-p.js';
 import {
   deriveAdmission, deriveAdmissions, probeSelectionRelevance, candidateKey,
@@ -52,6 +52,7 @@ import { assignRanks, buildComparator, deriveRankAttributes, validateRankSequenc
 import {
   rederiveFromSurveyRecord, validatePoolAgainstSurvey, requireSurveyAuthority,
   serializeSurveyArtifact, writeSurveyArtifact, checkPoolBounds, validateSurveyRecordShape,
+  readContaminationLedgerState, validateContaminationLedgerPhase, SURVEY_PHASES,
 } from '../survey/validate.js';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -810,12 +811,12 @@ test('NFR-CEIL: a forbidden claim-ceiling key can never be written by the survey
 
 // ── §9 The landed T2.1 and T2.2 documents ────────────────────────────────────
 
-test('T2.3a: the landed criteria document is GATE_P_FIXED at revision 1 with ZERO sentinels', () => {
+test('T2.3a: the landed criteria document is GATE_P_FIXED at revision 2 with ZERO sentinels', () => {
   const text = readFileSync(join(PREREG_DIR, 'pool-entry-criteria.md'), 'utf8');
   const { block, status, gate_p_fixed } = parseCriteriaDocument(text);
   assert.equal(status, CRITERIA_STATUS.GATE_P_FIXED);
   assert.equal(gate_p_fixed, true);
-  assert.equal(block.revision, 1, 'Gate P fixed the values; it did not bump the revision');
+  assert.equal(block.revision, 2, 'the revision-2 re-issue bumped the revision (criteria §16.1)');
   assert.deepEqual(findOperatorSentinels(block), [], 'no operator-reserved slot may remain undecided at GATE_P_FIXED');
   assert.deepEqual(findUnprovenancedNumbers(block), [], 'revision is the ONLY lawful bare number (C6-FR-P5)');
   assert.doesNotThrow(() => assertGatePFixed(block));
@@ -883,14 +884,16 @@ test('T2.3a: the P-5 source universe and seventeen-step procedure are digest-fix
   const { block } = parseCriteriaDocument(readFileSync(join(PREREG_DIR, 'pool-entry-criteria.md'), 'utf8'));
 
   const su = block.source_universe;
-  assert.equal(su.declared_ref, 'cycle-006-source-universe-1');
+  assert.equal(su.declared_ref, 'cycle-006-source-universe-2');
   assert.equal(su.growth_policy, 'never grown mid-survey');
   assert.equal(su.entries.length, 8, 'the universe is exhaustively enumerated');
 
-  // Exactly the three approved keys — never `provider` / `product`.
+  // Exactly the four approved keys — never `provider` / `product`. Revision 2 adds
+  // `enumeration_index_url`; the other three are byte-preserved from revision 1.
   for (const e of su.entries) {
-    assert.deepEqual(Object.keys(e).sort(), ['controlling_authority', 'declared_root', 'portal_id']);
+    assert.deepEqual(Object.keys(e).sort(), ['controlling_authority', 'declared_root', 'enumeration_index_url', 'portal_id']);
     assert.ok(e.portal_id.length > 0 && e.declared_root.length > 0 && e.controlling_authority.length > 0);
+    assert.ok(e.enumeration_index_url.length > 0);
   }
   const portals = su.entries.map(e => e.portal_id);
   assert.deepEqual(portals, [...portals].sort(), 'the declared order IS lexicographic portal_id order');
@@ -909,7 +912,7 @@ test('T2.3a: the P-5 source universe and seventeen-step procedure are digest-fix
   assert.equal(firstIndex('NASA'), 0);
 
   const sp = block.survey_procedure;
-  assert.equal(sp.declared_ref, 'cycle-006-survey-procedure-1');
+  assert.equal(sp.declared_ref, 'cycle-006-survey-procedure-2');
   assert.equal(sp.steps.length, 17, 'all seventeen approved steps are digest-fixed in the machine block');
   for (const s of sp.steps) assert.equal(typeof s, 'string');
   assert.ok(sp.traversal.length > 20 && sp.stopping_rule.length > 20, 'the fixture convention fields are preserved');
@@ -998,24 +1001,38 @@ test('C6-FR-N4 / I-1: no provider-product has been nominated, enumerated, evalua
   const { block } = parseCriteriaDocument(criteria);
   const blockText = canonicalize(block);
 
-  // (a) No candidate-bearing, survey, pool, or freeze artifact exists at all.
-  for (const rel of ['survey-record.json', 'successor-pool.json', 'survey-contamination.jsonl']) {
+  // (a) No candidate-bearing, survey, pool, or freeze artifact exists at all — at either
+  //     revision. The revision-2 contamination ledger is governed by the PHASE guard:
+  //     absent before authorization is the only lawful state, and the guard says so.
+  for (const rel of ['survey-record.json', 'successor-pool.json', 'survey-contamination.jsonl',
+    'survey-record-r2.json', 'successor-pool-r2.json', 'survey-contamination-r2.jsonl']) {
     assert.equal(existsSync(join(PREREG_DIR, rel)), false, `${rel} must not exist — no survey has run`);
   }
+  assert.deepEqual(
+    validateContaminationLedgerPhase({
+      phase: SURVEY_PHASES.PRE_AUTHORIZATION,
+      ledger: readContaminationLedgerState({ repoRoot: REPO_ROOT }),
+    }),
+    { valid: true, problems: [] },
+    'the repository is in the pre-authorization phase and the ledger is correspondingly absent',
+  );
   assert.equal(existsSync(join(REPO_ROOT, 'lab/freeze/cycle-006')), false, 'no successor freeze exists');
 
-  // (b) The ONLY Cycle-006 evidence artifact is the Gate-P acceptance record itself, and
-  //     it carries no candidate, no product family, and no ranking.
-  assert.deepEqual(readdirSync(join(REPO_ROOT, 'lab/evidence/cycle-006')).sort(), ['gate-p-acceptance.json']);
+  // (b) The ONLY Cycle-006 evidence artifacts are the two Gate-P acceptance records, and
+  //     neither carries a candidate, a product family, or a ranking.
+  assert.deepEqual(readdirSync(join(REPO_ROOT, 'lab/evidence/cycle-006')).sort(),
+    ['gate-p-acceptance-2.json', 'gate-p-acceptance.json']);
   const recordText = readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL), 'utf8');
+  const recordText2 = readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL_R2), 'utf8');
   for (const key of ['candidates', 'candidate_key', 'nominated', 'shortlist', 'surveyed', 'admitted', 'rejected', 'rank', 'score']) {
     assert.ok(!recordText.includes(`"${key}"`), `the Gate-P record carries a "${key}" key`);
+    assert.ok(!recordText2.includes(`"${key}"`), `the re-issue record carries a "${key}" key`);
     assert.ok(!blockText.includes(`"${key}"`), `the criteria machine block carries a "${key}" key`);
   }
 
   // (c) No provider-PRODUCT identity anywhere: the identity key form is <provider>/<product>,
   //     and neither field is ever populated in a landed artifact.
-  for (const [label, text] of [['criteria block', blockText], ['Gate-P record', recordText]]) {
+  for (const [label, text] of [['criteria block', blockText], ['Gate-P record', recordText], ['re-issue record', recordText2]]) {
     assert.ok(!/"provider"\s*:\s*"[^"]/.test(text), `${label} names a provider`);
     assert.ok(!/"product"\s*:\s*"[^"]/.test(text), `${label} names a product`);
   }
@@ -1025,7 +1042,7 @@ test('C6-FR-N4 / I-1: no provider-product has been nominated, enumerated, evalua
   const authorities = new Set(block.source_universe.entries.map(e => e.controlling_authority));
   assert.deepEqual([...authorities].sort(), ['NASA', 'NOAA', 'USACE', 'USBR', 'USDA NRCS', 'USGS']);
   for (const e of block.source_universe.entries) {
-    assert.deepEqual(Object.keys(e).sort(), ['controlling_authority', 'declared_root', 'portal_id']);
+    assert.deepEqual(Object.keys(e).sort(), ['controlling_authority', 'declared_root', 'enumeration_index_url', 'portal_id']);
   }
 
   // (e) No admission, rejection, ranking, or score has been recorded for anything.
@@ -1038,6 +1055,7 @@ test('C6-FR-N4 / I-1: no provider-product has been nominated, enumerated, evalua
     assert.ok(!criteria.includes(synthetic), 'fixture identities must not appear in the criteria document');
     assert.ok(!prereg.includes(synthetic), 'fixture identities must not appear in the preregistration');
     assert.ok(!recordText.includes(synthetic), 'fixture identities must not appear in the Gate-P record');
+    assert.ok(!recordText2.includes(synthetic), 'fixture identities must not appear in the re-issue record');
   }
 });
 
@@ -1097,7 +1115,12 @@ test('DR-2.3: the three Gate-P digests are computable over the landed bytes as o
 
 // ── §12 The landed Gate-P acceptance record (T2.3a) ──────────────────────────
 
+// The FIRST-ISSUE record. Revision 2 supersedes it; it stays on disk byte-unchanged, so
+// every assertion below still holds over it — that is what preservation means. What it no
+// longer does is AUTHORIZE: see the stale-authority assertions in the digest test.
 const GATE_P_RECORD = JSON.parse(readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL), 'utf8'));
+/** The GOVERNING record after the revision-2 re-issue (criteria §16.1). */
+const GATE_P_RECORD_2 = JSON.parse(readFileSync(join(REPO_ROOT, GATE_P_RECORD_REL_R2), 'utf8'));
 
 test('T2.3a: the Gate-P acceptance record self-verifies and carries the accepted decisions', () => {
   assert.deepEqual(validateGatePRecord(GATE_P_RECORD), { valid: true, problems: [] });
@@ -1126,31 +1149,49 @@ test('T2.3a: the Gate-P acceptance record self-verifies and carries the accepted
   assert.match(s, /I do not authorize/);
 });
 
-test('T2.3a: every digest the record accepts equals the EXACT bytes on disk', () => {
-  assert.equal(GATE_P_RECORD.criteria_digest, criteriaDigest(readFileSync(join(PREREG_DIR, 'pool-entry-criteria.md'))));
-  assert.equal(GATE_P_RECORD.successor_prereg_digest, sha256LFNormalized(readFileSync(join(PREREG_DIR, 'preregistration.md'))));
-  assert.equal(GATE_P_RECORD.derivations_digest, sha256LFNormalized(readFileSync(join(PREREG_DIR, 'criteria-derivations.json'))));
+test('T2.3a: every digest the GOVERNING record accepts equals the EXACT bytes on disk', () => {
+  assert.equal(GATE_P_RECORD_2.criteria_digest, criteriaDigest(readFileSync(join(PREREG_DIR, 'pool-entry-criteria.md'))));
+  assert.equal(GATE_P_RECORD_2.successor_prereg_digest, sha256LFNormalized(readFileSync(join(PREREG_DIR, 'preregistration.md'))));
+  assert.equal(GATE_P_RECORD_2.derivations_digest, sha256LFNormalized(readFileSync(join(PREREG_DIR, 'criteria-derivations.json'))));
 
-  // The two historical refs are the live values, not transcriptions.
-  assert.equal(GATE_P_RECORD.refs.historical_freeze_companion,
-    readFileSync(join(REPO_ROOT, 'lab/freeze/freeze-manifest.sha256'), 'utf8').trim());
-  assert.equal(GATE_P_RECORD.refs.trials_ledger_digest,
-    sha256LFNormalized(readFileSync(join(REPO_ROOT, 'lab/ledgers/trials-ledger.jsonl'))));
+  // The two historical refs are the live values, not transcriptions — at BOTH revisions,
+  // and they are identical because the re-issue touched no historical artifact.
+  for (const rec of [GATE_P_RECORD, GATE_P_RECORD_2]) {
+    assert.equal(rec.refs.historical_freeze_companion,
+      readFileSync(join(REPO_ROOT, 'lab/freeze/freeze-manifest.sha256'), 'utf8').trim());
+    assert.equal(rec.refs.trials_ledger_digest,
+      sha256LFNormalized(readFileSync(join(REPO_ROOT, 'lab/ledgers/trials-ledger.jsonl'))));
+  }
 
   // The DR-2.3 unit check: all three accepted digests still match, as one unit.
   assert.deepEqual(verifyAcceptedDigestUnit({
-    record: GATE_P_RECORD,
+    record: GATE_P_RECORD_2,
     preregistrationPath: join(REPO_ROOT, PREREGISTRATION_REL),
     derivationsPath: join(REPO_ROOT, DERIVATIONS_REL),
   }), { valid: true, problems: [] });
 
   // And the criteria-side authority gate resolves against the real repository paths.
   const ok = verifyGatePAuthority({
-    gatePRecordPath: join(REPO_ROOT, GATE_P_RECORD_REL),
+    gatePRecordPath: join(REPO_ROOT, GATE_P_RECORD_REL_R2),
     criteriaDocumentPath: join(REPO_ROOT, CRITERIA_DOC_REL),
   });
-  assert.equal(ok.criteria_digest, GATE_P_RECORD.criteria_digest);
-  assert.equal(ok.record_id, GATE_P_RECORD.record_id);
+  assert.equal(ok.criteria_digest, GATE_P_RECORD_2.criteria_digest);
+  assert.equal(ok.record_id, GATE_P_RECORD_2.record_id);
+
+  // STALE AUTHORITY: the superseded record is preserved and still self-verifies as a
+  // record, but it accepts criteria bytes that are no longer on disk — so it refuses.
+  assert.deepEqual(validateGatePRecord(GATE_P_RECORD), { valid: true, problems: [] });
+  assert.notEqual(GATE_P_RECORD.criteria_digest, GATE_P_RECORD_2.criteria_digest);
+  const stale = refusesWith(R.GATE_P_CRITERIA_DIGEST_MISMATCH, () => verifyGatePAuthority({
+    gatePRecordPath: join(REPO_ROOT, GATE_P_RECORD_REL),
+    criteriaDocumentPath: join(REPO_ROOT, CRITERIA_DOC_REL),
+  }), 'the superseded revision-1 record');
+  assert.match(stale.message, /full re-issue/);
+  assert.deepEqual(verifyAcceptedDigestUnit({
+    record: GATE_P_RECORD,
+    preregistrationPath: join(REPO_ROOT, PREREGISTRATION_REL),
+    derivationsPath: join(REPO_ROOT, DERIVATIONS_REL),
+  }).valid, false, 'the superseded record no longer accepts the bytes on disk, as one unit');
 });
 
 test('T2.3a: one byte of drift in ANY accepted artifact is caught — acceptance is over bytes, not intent', () => {
@@ -1160,15 +1201,15 @@ test('T2.3a: one byte of drift in ANY accepted artifact is caught — acceptance
     const critPath = join(dir, 'pool-entry-criteria.md');
     const preregPath = join(dir, 'preregistration.md');
     const derivPath = join(dir, 'criteria-derivations.json');
-    writeFileSync(recPath, serializeSurveyArtifact(GATE_P_RECORD));
+    writeFileSync(recPath, serializeSurveyArtifact(GATE_P_RECORD_2));
     for (const [src, dst] of [['pool-entry-criteria.md', critPath], ['preregistration.md', preregPath], ['criteria-derivations.json', derivPath]]) {
       writeFileSync(dst, readFileSync(join(PREREG_DIR, src)));
     }
 
     // Baseline: the copied unit verifies.
     assert.equal(verifyGatePAuthority({ gatePRecordPath: recPath, criteriaDocumentPath: critPath }).criteria_digest,
-      GATE_P_RECORD.criteria_digest);
-    assert.equal(verifyAcceptedDigestUnit({ record: GATE_P_RECORD, preregistrationPath: preregPath, derivationsPath: derivPath }).valid, true);
+      GATE_P_RECORD_2.criteria_digest);
+    assert.equal(verifyAcceptedDigestUnit({ record: GATE_P_RECORD_2, preregistrationPath: preregPath, derivationsPath: derivPath }).valid, true);
 
     // Criteria drift is the AUTHORITY gate: a typed refusal naming the re-issue rule.
     writeFileSync(critPath, readFileSync(join(PREREG_DIR, 'pool-entry-criteria.md'), 'utf8') + '\n');
@@ -1178,12 +1219,12 @@ test('T2.3a: one byte of drift in ANY accepted artifact is caught — acceptance
 
     // Preregistration and worksheet drift are the UNIT check: reported, never silent.
     writeFileSync(preregPath, readFileSync(join(PREREG_DIR, 'preregistration.md'), 'utf8') + '\n');
-    const u1 = verifyAcceptedDigestUnit({ record: GATE_P_RECORD, preregistrationPath: preregPath, derivationsPath: derivPath });
+    const u1 = verifyAcceptedDigestUnit({ record: GATE_P_RECORD_2, preregistrationPath: preregPath, derivationsPath: derivPath });
     assert.equal(u1.valid, false);
     assert.ok(u1.problems.some(p => p.startsWith('successor_prereg_digest')), u1.problems.join('; '));
 
     writeFileSync(derivPath, readFileSync(join(PREREG_DIR, 'criteria-derivations.json'), 'utf8') + ' ');
-    const u2 = verifyAcceptedDigestUnit({ record: GATE_P_RECORD, preregistrationPath: preregPath, derivationsPath: derivPath });
+    const u2 = verifyAcceptedDigestUnit({ record: GATE_P_RECORD_2, preregistrationPath: preregPath, derivationsPath: derivPath });
     assert.ok(u2.problems.some(p => p.startsWith('derivations_digest')), u2.problems.join('; '));
 
     // A tampered record no longer self-verifies — the content address is the seal.

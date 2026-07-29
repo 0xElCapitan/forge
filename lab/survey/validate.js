@@ -29,7 +29,7 @@
  * @module lab/survey/validate
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, statSync } from 'node:fs';
 import {
   resolve as resolvePath, relative as relativePath, isAbsolute, sep as PATH_SEP,
 } from 'node:path';
@@ -44,7 +44,8 @@ import { parseCriteriaDocument, assertGatePFixed, CANDIDATE_CRITERION_IDS } from
 import { deriveAdmissions } from './admit.js';
 import { deriveRankAttributes, assignRanks, validateRankSequence } from './rank.js';
 import {
-  verifyGatePAuthority, GATE_P_RECORD_REL, CRITERIA_DOC_REL, PREREGISTRATION_REL, DERIVATIONS_REL,
+  verifyGatePAuthority, resolveGoverningGatePRecord,
+  GATE_P_RECORD_REL, CRITERIA_DOC_REL, PREREGISTRATION_REL, DERIVATIONS_REL,
 } from './gate-p.js';
 
 /** The frozen burned-list authority the §(h) pre-screen and gate 5 join against. */
@@ -55,6 +56,15 @@ export const SURVEY_WRITE_ROOT = 'lab/preregistration/cycle-006/';
 
 export const SURVEY_RECORD_KIND = 'survey-record';
 export const POOL_AUTHORITY = 'successor-candidate-pool';
+
+// ── Revision-2 survey outputs (criteria §14.6) ───────────────────────────────
+//
+// A re-issue writes revision-suffixed artifacts so superseded outputs are never edited
+// or overwritten. The governing revision is the one the newest Gate-P record names.
+
+export const SURVEY_RECORD_REL_R2 = 'lab/preregistration/cycle-006/survey-record-r2.json';
+export const SURVEY_CONTAMINATION_REL_R2 = 'lab/preregistration/cycle-006/survey-contamination-r2.jsonl';
+export const SUCCESSOR_POOL_REL_R2 = 'lab/preregistration/cycle-006/successor-pool-r2.json';
 
 // Resolved anchor for the write-root containment proof below. Anchored to this module's
 // own on-disk location — never to `process.cwd()` — so the guard's answer does not
@@ -443,6 +453,101 @@ export function checkPoolBounds({ selection_relevant_count, pool_bounds }) {
   };
 }
 
+// ── Contamination-ledger phase semantics (criteria §14.6) ────────────────────
+//
+// The revision-specific contamination ledger is a PHASE signal, not merely a container.
+// Its lifecycle is:
+//
+//   pre-authorization  → ABSENT. Its existence is mechanical proof a survey began, so an
+//                        existing ledger before authorization means an unauthorized survey
+//                        act occurred (C6-FR-N4 / I-1).
+//   survey-started     → PRESENT at exactly 0 bytes, created before the first
+//                        documentation read, and staying at 0 bytes until an exposure.
+//   survey-complete    → PRESENT. A CLEAN survey retains the 0-byte ledger; an absent
+//                        ledger after a survey is a defect, not a clean result.
+//
+// Lazy first-exposure creation is deliberately NOT adopted: under lazy creation "no
+// ledger" and "no exposure" are indistinguishable from "the survey never wrote one",
+// which is exactly the ambiguity a contamination record exists to remove.
+
+export const SURVEY_PHASES = Object.freeze({
+  PRE_AUTHORIZATION: 'pre-authorization',
+  SURVEY_STARTED: 'survey-started',
+  SURVEY_COMPLETE: 'survey-complete',
+});
+
+const SURVEY_PHASE_VALUES = Object.freeze(Object.values(SURVEY_PHASES));
+
+/**
+ * Observe the revision-2 contamination ledger on disk. Reads only; never creates.
+ *
+ * A "typed event" is one canonical JSON object per line — the shape `appendLedgerLine`
+ * produces (DR-4.8). A non-empty line that is not a JSON object could not have come
+ * through the typed path, and is reported rather than silently tolerated.
+ *
+ * @param {Object} p
+ * @param {string} p.repoRoot - absolute repository root
+ * @returns {{path:string, rel:string, exists:boolean, size:number, typed_event_count:number, untyped_lines:number}}
+ */
+export function readContaminationLedgerState({ repoRoot }) {
+  const rel = SURVEY_CONTAMINATION_REL_R2;
+  const path = `${posix(repoRoot).replace(/\/$/, '')}/${rel}`;
+  if (!existsSync(path)) return { path, rel, exists: false, size: 0, typed_event_count: 0, untyped_lines: 0 };
+
+  const size = statSync(path).size;
+  let typed_event_count = 0;
+  let untyped_lines = 0;
+  for (const line of readFileSync(path, 'utf8').split('\n')) {
+    if (line.trim().length === 0) continue;
+    let parsed;
+    try { parsed = JSON.parse(line); } catch { untyped_lines++; continue; }
+    if (isPlainObject(parsed)) typed_event_count++;
+    else untyped_lines++;
+  }
+  return { path, rel, exists: true, size, typed_event_count, untyped_lines };
+}
+
+/**
+ * Fail-closed check of the ledger's state against the survey phase. PURE (no I/O) so a
+ * caller can test every phase without touching the filesystem.
+ *
+ * @param {Object} p
+ * @param {string} p.phase - one of {@link SURVEY_PHASES}
+ * @param {{exists:boolean, size:number, typed_event_count:number, untyped_lines:number}} p.ledger
+ * @returns {{valid:boolean, problems:string[]}}
+ */
+export function validateContaminationLedgerPhase({ phase, ledger }) {
+  const problems = [];
+  if (!SURVEY_PHASE_VALUES.includes(phase)) {
+    return { valid: false, problems: [`unknown survey phase "${phase}" — must be one of ${SURVEY_PHASE_VALUES.join(', ')}`] };
+  }
+  if (!isPlainObject(ledger)) return { valid: false, problems: ['ledger state must be an object'] };
+
+  if (phase === SURVEY_PHASES.PRE_AUTHORIZATION) {
+    if (ledger.exists) {
+      problems.push(`${SURVEY_CONTAMINATION_REL_R2} must not exist before the survey is authorized — its existence is mechanical proof a survey began (C6-FR-N4 / I-1)`);
+    }
+    return { valid: problems.length === 0, problems };
+  }
+
+  // survey-started and survey-complete share the same shape obligations.
+  if (!ledger.exists) {
+    problems.push(`${SURVEY_CONTAMINATION_REL_R2} must exist from the authorized start of the survey revision — it is created at exactly 0 bytes before the first documentation read, and lazy first-exposure creation is not adopted (criteria §14.6)`);
+    return { valid: false, problems };
+  }
+  if (!Number.isInteger(ledger.size) || ledger.size < 0) {
+    problems.push('ledger.size must be a non-negative integer');
+  } else if (ledger.size === 0) {
+    if (ledger.typed_event_count !== 0) problems.push('a 0-byte ledger cannot carry a typed contamination event');
+  } else if (ledger.typed_event_count < 1) {
+    problems.push('the ledger is non-empty but carries no typed contamination event — contamination appends only typed events through the existing step-14 path (DR-4.8)');
+  }
+  if (ledger.untyped_lines > 0) {
+    problems.push(`the ledger carries ${ledger.untyped_lines} line(s) that are not a typed event object — every append must go through the typed path (DR-4.8)`);
+  }
+  return { valid: problems.length === 0, problems };
+}
+
 // ── The production survey path ───────────────────────────────────────────────
 
 /**
@@ -465,9 +570,13 @@ export function requireSurveyAuthority({ repoRoot }) {
     refuse(R.CRITERIA_BLOCK_ABSENT, 'the pool-entry criteria document does not exist', { expected_at: CRITERIA_DOC_REL });
   }
 
-  // I-3: the Gate-P record is the authority. Absent it, nothing below runs.
+  // I-3: the Gate-P record is the authority. Absent it, nothing below runs. After a
+  // re-issue the authority is the GOVERNING record — the newest link of the acceptance
+  // chain. A superseded link stays on disk and is never consulted here, so it cannot
+  // authorize the later revision's survey outputs (criteria §16.1).
+  const governing = resolveGoverningGatePRecord({ repoRoot });
   const { record, criteria_digest, record_id } = verifyGatePAuthority({
-    gatePRecordPath: at(GATE_P_RECORD_REL),
+    gatePRecordPath: governing.path,
     criteriaDocumentPath: criteriaPath,
   });
 
@@ -480,7 +589,10 @@ export function requireSurveyAuthority({ repoRoot }) {
   }
   const burnedList = JSON.parse(readFileSync(burnedPath, 'utf8'));
 
-  return { criteria: block, criteria_digest, gate_p_record: record, gate_p_record_id: record_id, burnedList };
+  return {
+    criteria: block, criteria_digest, gate_p_record: record, gate_p_record_id: record_id, burnedList,
+    gate_p_record_rel: governing.rel, superseded_gate_p_records: governing.superseded,
+  };
 }
 
 /**

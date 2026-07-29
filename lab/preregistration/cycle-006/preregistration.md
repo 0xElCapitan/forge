@@ -1,9 +1,11 @@
 # Cycle-006 Successor Pre-Registration
 
-**Status:** `ACCEPTED_AT_GATE_P` — **revision 1**
+**Status:** `ACCEPTED_AT_GATE_P` — **revision 2**
 **Cycle:** cycle-006 · **Authority:** PRD C6-FR-P1/P2/P3/P7/P8, C6-FR-N4, C6-FR-T2 · SDD DR-2.2, DR-8, DR-9, DR-10 · Sprint Plan T2.2 / T2.3a
 
-> **This document is authority.** EC accepted it at Gate P **as one unit** with the pool-entry criteria and the CI-line derivation worksheet; the acceptance record is `lab/evidence/cycle-006/gate-p-acceptance.json`. Gate P authorizes **materialization and verification only** — it does not authorize candidate enumeration, survey execution, provider contact, pool construction, successor freeze, commit, push, landing, or LU-2B. The acceptance is not yet operative for any survey act: the record must still be reviewed, exact-tree audited, committed, CI-verified, and landed.
+> **This document is authority.** EC accepted it at Gate P **as one unit** with the pool-entry criteria and the CI-line derivation worksheet; the governing acceptance record is `lab/evidence/cycle-006/gate-p-acceptance-2.json`. Gate P authorizes **materialization and verification only** — it does not authorize candidate enumeration, survey execution, provider contact, pool construction, successor freeze, commit, push, landing, or LU-2B. The acceptance is not yet operative for any survey act: the record must still be reviewed, exact-tree audited, committed, CI-verified, and landed.
+>
+> **Revision 2 is a full re-issue** (§12.1). The three Gate-P artifacts are accepted as **one unit**, so a re-issue of the criteria is a re-issue of the unit. Revision 1 of this document — digest `sha256:1208815ca4aab33c4bc9af426e09c8e7bc00635fabf6bcc6b631d857251d6cc9`, accepted by Gate-P record `sha256:3af84045ee41d487e9e2dc5e063cbe4fb1decc8e91f77d58e63348bc0e1e8bc4` — is **superseded**. That record is preserved unchanged at `lab/evidence/cycle-006/gate-p-acceptance.json` and no longer authorizes any survey act. **No pre-registered condition, adoption, supersession clause, bound, or ceiling in this document changed** — the re-issue updates the revision, the companion digests, and this framing only.
 >
 > **No successor candidate has been nominated or evaluated.** This document names no prospective provider and no prospective product.
 
@@ -171,14 +173,23 @@ A product or scientific claim raised **from an M4 result** is a scientific-integ
 
 ## 11. Companion artifacts — accepted-at-Gate-P identity
 
-> **These digests are ACCEPTED IDENTITY.** EC accepted them at Gate P as one unit with this document, and the `gate-p-acceptance.json` record names all three. They are no longer provisional: from the acceptance forward, a byte change to either file is **not** a new provisional digest but a criteria amendment — a full re-issue with a bumped revision, a new Gate-P acceptance record naming the superseded record and digests, and a complete re-survey (§12; criteria §16). The survey tooling enforces the first half mechanically: it refuses to run when the criteria bytes on disk do not digest to the value the Gate-P record accepted.
+> **These digests are ACCEPTED IDENTITY.** EC accepted them at Gate P as one unit with this document, and the `gate-p-acceptance-2.json` record names all three. They are no longer provisional: from the acceptance forward, a byte change to either file is **not** a new provisional digest but a criteria amendment — a full re-issue with a bumped revision, a new Gate-P acceptance record naming the superseded record and digests, and a complete re-survey (§12; criteria §16). The survey tooling enforces the first half mechanically: it refuses to run when the criteria bytes on disk do not digest to the value the Gate-P record accepted.
 
 | Artifact | Path | Accepted digest |
 |---|---|---|
-| Pool-entry criteria (`GATE_P_FIXED`, revision 1) | `lab/preregistration/cycle-006/pool-entry-criteria.md` | `sha256:aec400164f717bb6abd674a3921d1924a777726b588f875f1ac982b9f9a4e231` |
-| CI-line derivation worksheet (byte-unchanged at Gate P) | `lab/preregistration/cycle-006/criteria-derivations.json` | `sha256:5254af545df43e8230d3fdb09af04228c2646978f18a89aca1adaf57607b6f5e` |
+| Pool-entry criteria (`GATE_P_FIXED`, revision 2) | `lab/preregistration/cycle-006/pool-entry-criteria.md` | `sha256:a80c8873f239c27c25f279a2ba55525ecdab4b3d3739f71c6777deb04df0d91f` |
+| CI-line derivation worksheet (revision 2 — provenance fields only) | `lab/preregistration/cycle-006/criteria-derivations.json` | `sha256:ee301c1028634610eae1c0222c63f7459b24961c31d7d1eadb8e860d86f10852` |
 
-The worksheet digest is **unchanged from drafting**: Gate P fixed policy values in the criteria machine block, this document, and the acceptance record, and left the measured derivation evidence byte-for-byte alone.
+The **superseded** revision-1 digests, preserved here by reference so the chain is walkable from either end:
+
+| Artifact | Superseded revision-1 digest |
+|---|---|
+| Pool-entry criteria | `sha256:aec400164f717bb6abd674a3921d1924a777726b588f875f1ac982b9f9a4e231` |
+| CI-line derivation worksheet | `sha256:5254af545df43e8230d3fdb09af04228c2646978f18a89aca1adaf57607b6f5e` |
+| This document | `sha256:1208815ca4aab33c4bc9af426e09c8e7bc00635fabf6bcc6b631d857251d6cc9` |
+| Gate-P acceptance record | `sha256:3af84045ee41d487e9e2dc5e063cbe4fb1decc8e91f77d58e63348bc0e1e8bc4` |
+
+The worksheet carries **no measured change** across the re-issue: the revision-2 bytes differ from revision 1 by exactly two added provenance fields (`revision`, `reissue_provenance`). Every constant, CI leg, binding value, formula, frozen input, and cadence-envelope row is byte-identical. Gate P fixed policy values in the criteria machine block, this document, and the acceptance record, and left the measured derivation evidence alone at both revisions.
 
 EC accepted **three digests as one unit**: this document, the criteria document, and the derivation worksheet. This document's own digest is carried in the acceptance record as `successor_prereg_digest` — it is not restated here, because a document cannot contain its own digest. Every later survey, enumeration, pool, freeze, and Gate-A artifact cites the accepted `criteria_digest`.
 
@@ -191,3 +202,11 @@ EC accepted **three digests as one unit**: this document, the criteria document,
 **After Gate P, before Gate F — where this document now stands.** An amendment is a **full re-issue**: new bytes at this path with a bumped revision, a new Gate-P acceptance record naming the superseded record and digests, and — where the criteria are also amended — a **complete** re-survey and re-enumeration. Superseded artifacts stay tracked and are cited by digest in the terminal record.
 
 **After Gate F** — this document is successor-pinned. Any change is void-condition semantics: HALT, never an edit.
+
+### 12.1 The revision-1 → revision-2 re-issue, as executed
+
+The criteria were re-issued at revision 2 to repair a specification defect in their product-family discovery rule and to declare one fixed enumeration index per portal (criteria §14.3, §14.5, §16.1). Because Gate P accepts the three artifacts **as one unit**, the unit was re-issued: this document and the derivation worksheet were bumped to revision 2 alongside the criteria, and a new acceptance record `lab/evidence/cycle-006/gate-p-acceptance-2.json` names all three revision-2 digests and the superseded revision-1 record.
+
+**Nothing pre-registered here changed.** The adoption of the frozen design by pinned reference, the adoption of the single primary comparison, the two supersession clauses, the outcome-blind acquirability ground, the restrict-only runnability condition, the bounded-FR-D2 posture, the ending semantics, the M4│M5 hard stop, and the claim ceiling are all byte-preserved across the re-issue. What changed is the revision label, the companion digests in §11, and this clause.
+
+**The superseded record is preserved, and is now stale authority.** `lab/evidence/cycle-006/gate-p-acceptance.json` remains on disk unedited and still self-verifies as a record, but the criteria bytes on disk no longer digest to the value it accepted, so the survey tooling refuses it. A revision-2 survey output can only be authorized by the revision-2 record.
