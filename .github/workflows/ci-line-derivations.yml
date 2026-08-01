@@ -92,7 +92,7 @@ jobs:
           echo "working tree clean — no repository file was written"
 
       - name: Upload the leg artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}
           path: ${{ runner.temp }}/ci-line-derivation-${{ matrix.os }}-node${{ matrix.node }}.json
